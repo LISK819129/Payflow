@@ -128,7 +128,8 @@ async function main() {
     const result = await s.run(ctx);
     const cost = Number(await spentUsd()) - before;
     report.push({ scenario: s.key, expected: s.expect, costUsd: cost.toFixed(6), seconds: ((Date.now() - t0) / 1000).toFixed(1), result });
-    const { graph: _g, ...printable } = result as { graph?: unknown };
+    const printable: Record<string, unknown> = { ...result };
+    delete printable.graph;
     console.log(`\n── ${s.key}  (expected: ${s.expect})  $${cost.toFixed(4)}  ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     console.log(JSON.stringify(printable, null, 2));
   }
