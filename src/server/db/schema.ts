@@ -136,3 +136,171 @@ export const paypalEvents = pgTable(
     index("paypal_events_resource_idx").on(t.resourceId),
   ],
 );
+
+// ── Workflows ─────────────────────────────────────────────────────────────────
+
+export const workflowState = pgEnum("workflow_state", [
+  "DRAFT",
+  "VALIDATING",
+  "SIMULATING",
+  "AWAITING_APPROVAL",
+  "ACTIVE",
+  "PAUSED",
+  "FROZEN",
+  "COMPLETED",
+  "EXPIRED",
+  "FAILED",
+]);
+
+export const versionStatus = pgEnum("version_status", ["DRAFT", "ACTIVE", "SUPERSEDED"]);
+
+export const workflows = pgTable(
+  "workflows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    name: text("name").notNull(),
+    description: text("description"),
+    state: workflowState("state").notNull().default("DRAFT"),
+    activeVersionId: uuid("active_version_id"),
+    /** Workflows this one depends on: freezing any of them freezes this one. */
+    dependsOn: jsonb("depends_on").$type<string[]>().notNull().default([]),
+    frozenReason: text("frozen_reason"),
+    frozenAt: timestamp("frozen_at", { withTimezone: true }),
+    /** The run whose Freeze node froze this workflow; only that run may continue to its end. */
+    frozenByRunId: uuid("frozen_by_run_id"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("workflows_ws_idx").on(t.workspaceId)],
+);
+
+/**
+ * Immutable once activated. A DRAFT version may be edited in place; editing an
+ * ACTIVE workflow creates a new DRAFT version that needs its own activation.
+ */
+export const workflowVersions = pgTable(
+  "workflow_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id),
+    version: integer("version").notNull(),
+    status: versionStatus("status").notNull().default("DRAFT"),
+    graph: jsonb("graph").notNull(),
+    /** sha256 of the canonical graph; recorded in the audit chain at activation. */
+    graphHash: text("graph_hash").notNull(),
+    provenance: provenance("provenance").notNull(),
+    /** AI compilation provenance (model, prompt hash, repair attempts) when AI-generated. */
+    compileMeta: jsonb("compile_meta"),
+    validation: jsonb("validation"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    activatedBy: uuid("activated_by").references(() => users.id),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("workflow_versions_uq").on(t.workflowId, t.version)],
+);
+
+export const runStatus = pgEnum("run_status", [
+  "RUNNING",
+  "WAITING_APPROVAL",
+  "WAITING_TIMER",
+  "SUSPENDED",
+  "COMPLETED",
+  "BLOCKED",
+  "REJECTED",
+  "NEEDS_REVIEW",
+  "FAILED",
+]);
+
+export const workflowRuns = pgTable(
+  "workflow_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id),
+    /** Runs are pinned to the version they started on. */
+    versionId: uuid("version_id")
+      .notNull()
+      .references(() => workflowVersions.id),
+    status: runStatus("status").notNull().default("RUNNING"),
+    triggerKind: text("trigger_kind").notNull(),
+    /** Idempotency handle: PayPal event id, schedule slot, or a manual-run id. */
+    triggerRef: text("trigger_ref").notNull(),
+    triggerPayload: jsonb("trigger_payload").notNull(),
+    provenance: provenance("provenance").notNull(),
+    currentNodeId: text("current_node_id"),
+    /** Set while waiting on a timer. */
+    wakeAt: timestamp("wake_at", { withTimezone: true }),
+    outcome: text("outcome"),
+    startedBy: uuid("started_by").references(() => users.id),
+    startedAt: timestamp("started_at", { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true, precision: 3 }),
+  },
+  (t) => [
+    uniqueIndex("workflow_runs_trigger_uq").on(t.versionId, t.triggerRef),
+    index("workflow_runs_ws_idx").on(t.workspaceId, t.startedAt),
+    index("workflow_runs_workflow_idx").on(t.workflowId),
+  ],
+);
+
+export const stepStatus = pgEnum("step_status", ["OK", "ERROR", "WAITING"]);
+
+/** One row per executed node. Graphs are DAGs, so a node runs at most once per run. */
+export const runSteps = pgTable(
+  "run_steps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => workflowRuns.id),
+    seq: integer("seq").notNull(),
+    nodeId: text("node_id").notNull(),
+    nodeType: text("node_type").notNull(),
+    status: stepStatus("status").notNull(),
+    port: text("port"),
+    output: jsonb("output"),
+    /** Plain-language account of what the node decided and why. */
+    explanation: text("explanation"),
+    error: jsonb("error"),
+    startedAt: timestamp("started_at", { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true, precision: 3 }),
+  },
+  (t) => [uniqueIndex("run_steps_node_uq").on(t.runId, t.nodeId), uniqueIndex("run_steps_seq_uq").on(t.runId, t.seq)],
+);
+
+export const approvalStatus = pgEnum("approval_status", ["PENDING", "APPROVED", "REJECTED", "EXPIRED"]);
+
+export const approvals = pgTable(
+  "approvals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => workflowRuns.id),
+    nodeId: text("node_id").notNull(),
+    status: approvalStatus("status").notNull().default("PENDING"),
+    reason: text("reason").notNull(),
+    /** Snapshot shown to the approver: amount, counterparty, rule results. */
+    summary: jsonb("summary").notNull().default({}),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    requestedAt: timestamp("requested_at", { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+    decidedBy: uuid("decided_by").references(() => users.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true, precision: 3 }),
+    note: text("note"),
+  },
+  (t) => [uniqueIndex("approvals_run_node_uq").on(t.runId, t.nodeId), index("approvals_ws_status_idx").on(t.workspaceId, t.status)],
+);

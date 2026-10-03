@@ -4,12 +4,21 @@ import { env } from "../config/env";
 export const QUEUES = {
   /** A verified PayPal event waiting to be matched to workflows. */
   paypalEventRoute: "paypal-event-route",
+  /** Advance a workflow run as far as it can go. */
+  runAdvance: "run-advance",
+  /** A schedule-triggered workflow is due. */
+  workflowSchedule: "workflow-schedule",
+  /** Sweeps for timers whose delayed job was lost. */
+  timerSweep: "timer-sweep",
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
 
 export type JobPayloads = {
   [QUEUES.paypalEventRoute]: { paypalEventId: string };
+  [QUEUES.runAdvance]: { runId: string };
+  [QUEUES.workflowSchedule]: { workflowId: string };
+  [QUEUES.timerSweep]: Record<string, never>;
 };
 
 const g = globalThis as unknown as { __boss?: Promise<PgBoss> };

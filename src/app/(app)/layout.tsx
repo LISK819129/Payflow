@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Wordmark } from "@/components/ui";
 import { requireUser } from "@/server/auth/current";
 import { logoutAction } from "../login/actions";
+import { MainFrame } from "./main-frame";
 import { NavLinks } from "./nav-links";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -34,9 +35,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           </p>
         </div>
       </aside>
-      <main className="min-w-0 flex-1 px-5 py-8 md:px-12 md:py-12 xl:px-16">
-        <div className="mx-auto max-w-[1180px]">{children}</div>
-      </main>
+      <MainFrame>{children}</MainFrame>
     </div>
   );
 }

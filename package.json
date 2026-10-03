@@ -22,9 +22,11 @@
     "paypal:sandbox:payout": "tsx scripts/paypal-sandbox-payout.ts",
     "paypal:sandbox:plan": "tsx scripts/paypal-sandbox-plan.ts",
     "paypal:webhook:resend": "tsx scripts/paypal-webhook-resend.ts",
-    "paypal:webhook:replay": "tsx scripts/paypal-webhook-replay.ts"
+    "paypal:webhook:replay": "tsx scripts/paypal-webhook-replay.ts",
+    "db:seed:demo-flow": "tsx scripts/seed-demo-flow.ts"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.1",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "@xyflow/react": "^12.12.0",
     "drizzle-orm": "^0.45.3",

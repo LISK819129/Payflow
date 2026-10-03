@@ -24,3 +24,12 @@ export async function createWorkspace(name = "Test Workspace") {
   const [ws] = await db().insert(workspaces).values({ name }).returning();
   return ws;
 }
+
+export async function createUser(workspaceId: string, role: "OWNER" | "APPROVER" | "VIEWER" = "OWNER") {
+  const { users } = await import("@/server/db/schema");
+  const [u] = await db()
+    .insert(users)
+    .values({ workspaceId, email: `${role.toLowerCase()}-${Math.random().toString(36).slice(2)}@pixelforge.test`, name: role, passwordHash: "x", role })
+    .returning();
+  return u;
+}

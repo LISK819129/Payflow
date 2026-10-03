@@ -217,6 +217,51 @@
   animation: pf-pulse-dot 1.8s var(--pf-ease) infinite;
 }
 
+/* ── Flow canvas (React Flow restyled to the PayFlow language) ─────────────── */
+.pf-canvas {
+  background: var(--pf-canvas);
+}
+.pf-canvas .react-flow__controls {
+  border: 1px solid var(--pf-line);
+  border-radius: var(--pf-radius);
+  background: var(--pf-surface);
+  overflow: hidden;
+}
+.pf-canvas .react-flow__controls-button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-bottom: 1px solid var(--pf-line);
+  background: var(--pf-surface);
+  color: var(--pf-ink-2);
+}
+.pf-canvas .react-flow__controls-button:hover {
+  background: var(--pf-sunken);
+}
+.pf-canvas .react-flow__controls-button svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+.pf-canvas .react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--pf-ink-2) !important;
+}
+.pf-canvas .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--pf-ink) !important;
+}
+/* The path a run took is drawn in once, like a marker stroke. */
+.pf-edge-travelled .react-flow__edge-path {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: pf-edge-draw 900ms var(--pf-ease) forwards;
+  stroke-linecap: round;
+}
+@keyframes pf-edge-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

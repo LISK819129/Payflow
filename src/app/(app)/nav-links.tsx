@@ -21,8 +21,8 @@ type Item = { href: string; label: string; icon: LucideIcon; phase?: number };
 // complete without pretending those screens exist.
 const primary: Item[] = [
   { href: "/", label: "Home", icon: House },
-  { href: "/flows", label: "Flows", icon: Workflow, phase: 3 },
-  { href: "/executions", label: "Executions", icon: Activity, phase: 3 },
+  { href: "/flows", label: "Flows", icon: Workflow },
+  { href: "/executions", label: "Executions", icon: Activity },
   { href: "/approvals", label: "Approvals", icon: Stamp, phase: 6 },
   { href: "/agents", label: "Agents", icon: KeyRound, phase: 9 },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight, phase: 5 },

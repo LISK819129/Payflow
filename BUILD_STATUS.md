@@ -18,6 +18,7 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | 1 | App shell, design tokens, provenance badges, Dashboard / PayPal events / Audit pages | Browser check, no console errors |
 | 1.5 | Design-system override: white canvas, ink, fluorescent-cyan marker; Instrument Sans + IBM Plex Mono (OFL, `tnum` verified); token system; wordmark; Button/Field/Status/ProvenanceTag/Section/CopyId primitives; new login, sidebar, editorial Home, forensic Audit timeline, Events table, live Settings | `docs/DESIGN_SYSTEM.md`; contrast ratios computed (ink 19.4, muted 6.1, marker-ink 5.8, field 3.3, ink-on-marker 10.5); typecheck, lint, 37 tests, `next build` clean; inspected at 1920×1080 and 375px (no horizontal scroll) |
 | **2** | **Real PayPal Sandbox integration — COMPLETE (2026-10-03)** | Evidence below |
+| **3** | **Workflow DSL, validator, durable runtime, Flow Builder, Executions (2026-10-03)** | see Phase 3 evidence |
 | 1.5 | Local Postgres encoding bug: cluster had initialised as WIN1252, so any non-ASCII text failed to insert. Databases recreated as UTF8 (old ones kept as `*_win1252_old`), migrate now refuses non-UTF8, new clusters init with `--encoding=UTF8` | Regression test with non-ASCII audit text |
 
 ## IN PROGRESS
@@ -34,6 +35,23 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | AI provider key | Anthropic approved (provider-agnostic `AIProvider`); hard $10 budget; add `ANTHROPIC_API_KEY` | Phase 4 |
 | Public webhook URL | cloudflared 2026.9.3 downloaded (Authenticode: Cloudflare, Inc., valid) | — |
 | PayPal sandbox merchant | Link the app to a **US** sandbox business account (current one is India-registered: payouts + card processing refused) and enable **Invoicing** + **Transaction Search** | Scenarios A, C, overdue reminder (Phase 5) |
+
+## Phase 3 evidence
+
+| Item | Verified by |
+|---|---|
+| Typed DSL: 22 node types (12 executable now, later-phase types draftable but not activatable), zod config per type | `tests/dsl.test.ts` |
+| Condition language is data (typed AST, fixed interpreter); exact decimal money (BigInt), currency-aware comparison, `pct_diff`; missing data / type mismatch → error, never "false" | 7 expression tests incl. prototype-pollution and prompt-injection-as-data |
+| Validator: one root trigger, no cycles/dead ends/unreachable nodes, one edge per port, refs only to nodes that run on every path first (dominators), **money/external nodes unreachable unless a policy `pass` or approval `approved` was taken**, AI output may not feed a money action | 7 validator tests |
+| Versioning: DRAFT edited in place; editing an ACTIVE workflow creates a new draft; activation is human, validated for activation, superseding the old version with a field-level diff in the audit chain (`max.value 5000.00 → 4000.00`) | runtime test "keeps a running run on the version it started with" |
+| Durable runtime: one node per transaction under a run row lock; steps + audit committed together; approvals and timers park the run; PAUSED/FROZEN suspend runs (except the run that froze it); freeze cascades to dependent workflows; runs idempotent on (version, trigger ref) | `tests/runtime.test.ts` — 13 tests incl. 3 concurrent workers on one run → no duplicate steps |
+| PayPal event routing → matching ACTIVE workflows (optional trigger filter), frozen/paused workflows recorded as held | runtime routing test |
+| Worker queues: paypal-event-route, run-advance, workflow-schedule, timer-sweep | worker log: run → WAITING_APPROVAL → COMPLETED |
+| Flow Builder (React Flow): node library generated from the catalogue (later-phase nodes disabled with phase label), inspector, live client-side validation, save draft, activate, pause/resume/unfreeze, manual run (USER-PROVIDED) | Browser: added node → 3 live problems; seeded flow → Valid → Activate → "v1 is active" |
+| Executions list + run view: path overlay (travelled edges in marker cyan), step timeline with explanations, approval panel | Browser: manual $6,850 run → waiting approval at "Amount differs materially" → Approve with note → completed; 5 travelled edges |
+| AI | **No Anthropic API calls made** (Phase 4) |
+
+Visual inspection of the canvas is pending: the preview pane was hidden during this session, so screenshots could not be taken; DOM checks were used instead.
 
 ## Phase 2 evidence (real PayPal Sandbox, 2026-10-03)
 
@@ -64,4 +82,5 @@ Nothing in Phase 2 is simulated. No simulator events were used.
 
 ## NEXT
 
-Phase 3 — workflow DSL, graph editor, deterministic runtime (waiting for go-ahead after the Phase 2 checkpoint).
+1. On new **US** Sandbox credentials: re-verify OAuth, all 8 capabilities, re-register the webhook, re-run Phase 2 checks.
+2. Phase 4 — AI workflow compiler (NL → validated graph, NL patch edits) behind `AIProvider`; tests mock the provider; real Anthropic calls only for final end-to-end validation within the $10 budget.
