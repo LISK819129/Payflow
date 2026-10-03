@@ -17,7 +17,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "paypal:check": "tsx scripts/paypal-check.ts",
-    "paypal:webhook:register": "tsx scripts/paypal-webhook-register.ts"
+    "paypal:webhook:register": "tsx scripts/paypal-webhook-register.ts",
+    "paypal:sandbox:capture": "tsx scripts/paypal-sandbox-card-capture.ts",
+    "paypal:sandbox:payout": "tsx scripts/paypal-sandbox-payout.ts",
+    "paypal:sandbox:plan": "tsx scripts/paypal-sandbox-plan.ts",
+    "paypal:webhook:resend": "tsx scripts/paypal-webhook-resend.ts",
+    "paypal:webhook:replay": "tsx scripts/paypal-webhook-replay.ts"
   },
   "dependencies": {
     "@paypal/paypal-server-sdk": "^2.5.0",

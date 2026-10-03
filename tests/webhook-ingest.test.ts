@@ -55,6 +55,9 @@ describe("webhook ingest", () => {
       provenance: "REAL_PAYPAL_SANDBOX",
       deliveries: 1,
     });
+    // The exact signed bytes and headers are kept so the signature can be re-verified later.
+    expect(row.rawBody).toBe(JSON.stringify(event));
+    expect(row.signature).toMatchObject({ authAlgo: "SHA256withRSA" });
     const jobs = await db().execute<{ n: number }>(
       sql`select count(*)::int as n from pgboss.job where name = ${QUEUES.paypalEventRoute} and data->>'paypalEventId' = ${row.id}`,
     );

@@ -121,6 +121,10 @@ export const paypalEvents = pgTable(
     verification: text("verification").notNull(),
     provenance: provenance("provenance").notNull(),
     raw: jsonb("raw").notNull(),
+    /** Exact bytes PayPal signed, kept so the signature can be re-verified later (forensics, replay tests). */
+    rawBody: text("raw_body"),
+    /** PayPal transmission headers for the first delivery (public values, no secrets). */
+    signature: jsonb("signature"),
     deliveries: integer("deliveries").notNull().default(1),
     receivedAt: timestamp("received_at", { withTimezone: true, precision: 3 }).notNull().defaultNow(),
     lastDeliveryAt: timestamp("last_delivery_at", { withTimezone: true, precision: 3 }).notNull().defaultNow(),

@@ -100,6 +100,8 @@ export async function ingestPayPalWebhook(
         verification: verification.method,
         provenance,
         raw: JSON.parse(rawBody),
+        rawBody,
+        signature: headers,
       })
       .onConflictDoUpdate({
         target: paypalEvents.eventId,
