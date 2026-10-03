@@ -2,6 +2,8 @@ import { CopyId, PageHeader, Section, SetupRequired, Status } from "@/components
 import { requireUser } from "@/server/auth/current";
 import { env, integrationStatus } from "@/server/config/env";
 import { describeConnection } from "@/server/paypal/capabilities";
+import { DEFAULT_COMPILE_MODEL, DEFAULT_FAST_MODEL } from "@/server/ai";
+import { usageSummary } from "@/server/ai/usage";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +11,9 @@ export default async function SettingsPage() {
   await requireUser();
   const status = integrationStatus();
   const e = env();
-  const conn = status.paypal.configured ? await describeConnection() : null;
+  const [conn, usage] = await Promise.all([status.paypal.configured ? describeConnection() : Promise.resolve(null), usageSummary()]);
+  const spent = Number(usage.total);
+  const budget = Number(usage.budget);
 
   return (
     <>
@@ -74,6 +78,25 @@ export default async function SettingsPage() {
             <div className="py-4">
               {status.ai.configured ? <Status tone="ok">Anthropic key present</Status> : <SetupRequired />}
               <p className="mt-1 text-body-sm text-muted">Used only by the workflow compiler and analysis nodes. Never authorises money movement.</p>
+              <dl className="mt-3 grid grid-cols-[120px_1fr] gap-y-1 text-body-sm">
+                <dt className="text-muted">Compiler</dt>
+                <dd className="font-mono text-meta">{e.AI_MODEL_COMPILE ?? DEFAULT_COMPILE_MODEL}</dd>
+                <dt className="text-muted">Classification</dt>
+                <dd className="font-mono text-meta">{e.AI_MODEL_FAST ?? DEFAULT_FAST_MODEL}</dd>
+              </dl>
+            </div>
+          </Section>
+          <Section label="AI spend" aside={`hard budget $${budget.toFixed(2)}`}>
+            <div className="py-4">
+              <div className="text-title font-semibold">
+                ${spent.toFixed(4)} <span className="text-body font-normal text-muted">of ${budget.toFixed(2)}</span>
+              </div>
+              <div className="mt-2 h-1.5 w-full rounded-sm bg-sunken" role="meter" aria-valuemin={0} aria-valuemax={budget} aria-valuenow={spent} aria-label="AI budget used">
+                <div className="h-1.5 rounded-sm bg-ink" style={{ width: `${Math.min(100, (spent / budget) * 100)}%` }} />
+              </div>
+              <p className="mt-2 text-body-sm text-muted">
+                {usage.calls} call{usage.calls === 1 ? "" : "s"} · {usage.input.toLocaleString()} input · {usage.output.toLocaleString()} output · {usage.cache_read.toLocaleString()} cached tokens. Calls that could cross the budget are refused before they are made.
+              </p>
             </div>
           </Section>
           <Section label="Webhook simulator events">

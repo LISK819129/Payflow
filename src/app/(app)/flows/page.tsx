@@ -1,7 +1,9 @@
 import { ArrowRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { Button, Empty, PageHeader, Status, formatClock, formatDay, type StatusTone } from "@/components/ui";
-import { requireUser } from "@/server/auth/current";
+import { CompilePanel } from "@/components/flow/compile-panel";
+import { canAuthorize, requireUser } from "@/server/auth/current";
+import { integrationStatus } from "@/server/config/env";
 import { listWorkflows } from "@/server/workflow/queries";
 import { createWorkflowAction } from "./actions";
 
@@ -39,8 +41,9 @@ export default async function FlowsPage() {
           </form>
         }
       />
+      {canAuthorize(user) && <CompilePanel aiConfigured={integrationStatus().ai.configured} />}
       {flows.length === 0 ? (
-        <Empty>No flows yet. Create one, or describe one in plain language once the compiler arrives in Phase 4.</Empty>
+        <Empty>No flows yet. Describe one above, or create an empty flow and build it by hand.</Empty>
       ) : (
         <ul>
           {flows.map((f) => (

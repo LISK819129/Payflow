@@ -2,17 +2,18 @@
 
 import type { Connection } from "@xyflow/react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { CircleAlert, CircleCheck, LayoutGrid, Pause, Play, Rocket, Save, Sparkles, X } from "lucide-react";
+import { CircleAlert, CircleCheck, LayoutGrid, Pause, Play, Rocket, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { activateAction, manualRunAction, saveDraftAction, setStateAction } from "@/app/(app)/flows/actions";
-import { Button } from "@/components/ui";
+import { Button, ProvenanceTag } from "@/components/ui";
 import { canonicalJson } from "@/server/audit/canonical-json";
 import { NODE_SPECS, SPEC_BY_TYPE, type GraphNode, type WorkflowGraph } from "@/server/workflow/dsl/nodes";
 import { RUNTIME_PHASE, validateGraph, type Issue } from "@/server/workflow/dsl/validate";
 import { edgeKey, GraphCanvas } from "./graph-canvas";
 import { Inspector } from "./inspector";
 import { layoutGraph } from "./layout";
+import { PatchBar } from "./patch-bar";
 
 type Props = {
   workflowId: string;
@@ -23,6 +24,9 @@ type Props = {
   activeVersion: number | null;
   initialGraph: WorkflowGraph;
   canAuthorize: boolean;
+  aiConfigured: boolean;
+  provenance: string;
+  aiInstruction?: string | null;
 };
 
 const CATEGORY_ORDER = ["trigger", "policy", "control", "paypal", "ai", "ledger"] as const;
@@ -63,7 +67,7 @@ export function FlowBuilder(props: Props) {
   );
 }
 
-function Builder({ workflowId, name, state, latestVersion, latestStatus, activeVersion, initialGraph, canAuthorize }: Props) {
+function Builder({ workflowId, name, state, latestVersion, latestStatus, activeVersion, initialGraph, canAuthorize, aiConfigured, provenance, aiInstruction }: Props) {
   const router = useRouter();
   const [graph, setGraph] = useState<WorkflowGraph>(initialGraph);
   const [positions, setPositions] = useState(() => layoutGraph(initialGraph));
@@ -200,22 +204,16 @@ function Builder({ workflowId, name, state, latestVersion, latestStatus, activeV
         </div>
       </header>
 
-      {/* Command bar — the AI compiler lands in Phase 4; until then it is shown, not faked. */}
-      <div className="flex items-center gap-3 border-b border-line bg-surface px-5 py-2.5">
-        <Sparkles size={15} className="text-marker-ink" aria-hidden />
-        <label htmlFor="pf-command" className="sr-only">
-          What should your money do?
-        </label>
-        <input
-          id="pf-command"
-          disabled
-          placeholder="What should your money do?  —  natural-language compilation arrives in Phase 4"
-          className="min-w-0 flex-1 bg-transparent text-body text-ink placeholder:text-faint outline-none disabled:cursor-not-allowed"
-        />
-        <Button size="sm" variant="secondary" disabled>
-          Generate
-        </Button>
-      </div>
+      <PatchBar workflowId={workflowId} aiConfigured={aiConfigured} disabledReason={dirty ? "Save your manual edits before asking for an AI change" : canAuthorize ? undefined : "Only owners and approvers can edit"} />
+
+      {provenance === "AI_GENERATED" && aiInstruction && (
+        <div className="flex items-center gap-3 border-b border-line bg-surface px-5 py-2 text-body-sm text-muted">
+          <ProvenanceTag value="AI_GENERATED" />
+          <span className="truncate" title={aiInstruction}>
+            v{latestVersion} compiled from: “{aiInstruction}”
+          </span>
+        </div>
+      )}
 
       {flash && (
         <div className={`flex items-center gap-2 border-b px-5 py-2 text-body-sm ${flash.tone === "ok" ? "border-line bg-ok-wash text-ok" : "border-line bg-danger-wash text-danger"}`} role="status">

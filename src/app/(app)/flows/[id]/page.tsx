@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { FlowBuilder } from "@/components/flow/builder";
 import { canAuthorize, requireUser } from "@/server/auth/current";
+import { integrationStatus } from "@/server/config/env";
 import type { WorkflowGraph } from "@/server/workflow/dsl/nodes";
 import { getWorkflowForEditing } from "@/server/workflow/queries";
 
@@ -21,6 +22,9 @@ export default async function FlowPage(props: PageProps<"/flows/[id]">) {
       activeVersion={data.active?.version ?? null}
       initialGraph={data.latest.graph as WorkflowGraph}
       canAuthorize={canAuthorize(user)}
+      aiConfigured={integrationStatus().ai.configured}
+      provenance={data.latest.provenance}
+      aiInstruction={(data.latest.compileMeta as { instruction?: string } | null)?.instruction ?? null}
     />
   );
 }

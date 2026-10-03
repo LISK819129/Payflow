@@ -53,6 +53,8 @@ export type FlowNodeData = {
   runState?: NodeRunState;
   /** Port taken when this node ran (run view). */
   takenPort?: string | null;
+  /** Proposed-edit view: this node is new or changed. */
+  highlight?: "added" | "changed";
 };
 
 export type FlowNode = Node<FlowNodeData, "pf">;
@@ -60,7 +62,7 @@ export type FlowNode = Node<FlowNodeData, "pf">;
 const PORT_LABEL: Record<string, string> = { next: "", true: "yes", false: "no", pass: "pass", block: "block", approved: "approved", rejected: "rejected", elapsed: "", done: "done", error: "error" };
 
 export function FlowNodeView({ data, selected }: NodeProps<FlowNode>) {
-  const { node, issues, runState = "idle", takenPort } = data;
+  const { node, issues, runState = "idle", takenPort, highlight } = data;
   const spec = SPEC_BY_TYPE[node.type];
   const ports = spec?.ports ?? [];
   const isAI = spec?.isAI;
@@ -73,9 +75,11 @@ export function FlowNodeView({ data, selected }: NodeProps<FlowNode>) {
         ? "border-danger"
         : runState === "waiting"
           ? "border-warn"
-          : selected
-            ? "border-ink"
-            : "border-line-strong";
+          : highlight
+            ? "border-marker border-[1.5px]"
+            : selected
+              ? "border-ink"
+              : "border-line-strong";
 
   return (
     <div
@@ -91,7 +95,10 @@ export function FlowNodeView({ data, selected }: NodeProps<FlowNode>) {
         {runState === "ok" && <CircleCheck size={13} className="ml-auto text-ok" aria-label="ran" />}
         {runState === "error" && <CircleX size={13} className="ml-auto text-danger" aria-label="error" />}
         {runState === "waiting" && <Hourglass size={13} className="ml-auto text-warn" aria-label="waiting" />}
-        {!data.runState && !!issues && (
+        {highlight && (
+          <span className="ml-auto rounded-sm bg-marker px-1 font-mono text-[10px] font-medium text-on-marker">{highlight === "added" ? "new" : "changed"}</span>
+        )}
+        {!data.runState && !highlight && !!issues && (
           <span className="ml-auto rounded-sm bg-danger-wash px-1 font-mono text-[10px] text-danger" title={`${issues} problem(s)`}>
             {issues}
           </span>

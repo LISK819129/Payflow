@@ -23,7 +23,8 @@
     "paypal:sandbox:plan": "tsx scripts/paypal-sandbox-plan.ts",
     "paypal:webhook:resend": "tsx scripts/paypal-webhook-resend.ts",
     "paypal:webhook:replay": "tsx scripts/paypal-webhook-replay.ts",
-    "db:seed:demo-flow": "tsx scripts/seed-demo-flow.ts"
+    "db:seed:demo-flow": "tsx scripts/seed-demo-flow.ts",
+    "ai:live-test": "tsx scripts/ai-live-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

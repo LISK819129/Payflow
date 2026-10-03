@@ -41,6 +41,10 @@ type Props = {
   issues?: Issue[];
   selectedId?: string | null;
   run?: RunOverlay;
+  /** Nodes to mark as new/changed (proposed edits). */
+  highlight?: Record<string, "added" | "changed">;
+  /** Progressive reveal: only these node ids are shown (edges appear once both ends are). */
+  visible?: Set<string>;
   editable?: boolean;
   onSelect?: (id: string | null) => void;
   onMove?: (id: string, pos: { x: number; y: number }) => void;
@@ -55,10 +59,10 @@ export const edgeKey = (e: { from: string; port: string; to: string }) => `${e.f
  * The canvas. In a run view, the path the run actually took is re-stroked as a
  * moving fluorescent marker; untaken branches stay grey.
  */
-export function GraphCanvas({ graph, positions, issues = [], selectedId, run, editable, onSelect, onMove, onConnect, onDeleteNodes, onDeleteEdges }: Props) {
+export function GraphCanvas({ graph, positions, issues = [], selectedId, run, highlight, visible, editable, onSelect, onMove, onConnect, onDeleteNodes, onDeleteEdges }: Props) {
   const nodes: FlowNode[] = useMemo(
     () =>
-      graph.nodes.map((n) => ({
+      graph.nodes.filter((n) => !visible || visible.has(n.id)).map((n) => ({
         id: n.id,
         type: "pf" as const,
         position: positions[n.id] ?? { x: 0, y: 0 },
@@ -73,14 +77,15 @@ export function GraphCanvas({ graph, positions, issues = [], selectedId, run, ed
           issues: issues.filter((i) => i.nodeId === n.id && i.severity === "error").length,
           runState: run ? (run[n.id]?.state ?? "idle") : undefined,
           takenPort: run?.[n.id]?.port ?? null,
+          highlight: highlight?.[n.id],
         },
       })),
-    [graph.nodes, positions, issues, selectedId, run, editable],
+    [graph.nodes, positions, issues, selectedId, run, editable, highlight, visible],
   );
 
   const edges: RFEdge[] = useMemo(
     () =>
-      graph.edges.map((e) => {
+      graph.edges.filter((e) => !visible || (visible.has(e.from) && visible.has(e.to))).map((e) => {
         const travelled = !!run && run[e.from]?.port === e.port && !!run[e.to] && run[e.to].state !== "idle";
         const isError = e.port === "error";
         return {
@@ -98,7 +103,7 @@ export function GraphCanvas({ graph, positions, issues = [], selectedId, run, ed
           markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: travelled ? "var(--pf-marker)" : "var(--pf-line-strong)" },
         };
       }),
-    [graph.edges, run],
+    [graph.edges, run, visible],
   );
 
   return (
