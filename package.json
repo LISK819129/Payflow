@@ -1,0 +1,53 @@
+{
+  "name": "payflow",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "worker": "tsx src/worker/index.ts",
+    "env:init": "tsx scripts/init-env.ts",
+    "db:start": "tsx scripts/dev-db.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@paypal/paypal-server-sdk": "^2.5.0",
+    "@xyflow/react": "^12.12.0",
+    "drizzle-orm": "^0.45.3",
+    "next": "16.3.8",
+    "pg": "^8.23.1",
+    "pg-boss": "^12.35.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "dotenv": "^18.0.5",
+    "drizzle-kit": "^0.31.11",
+    "embedded-postgres": "18.4.0-beta.17",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.8",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^5.0.3"
+  },
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": ">=20.9"
+  }
+}

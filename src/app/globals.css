@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/*
+ * PayFlow design tokens. Restrained, ledger-like: one accent, semantic status
+ * colours, no gradients. Every colour used in components comes from here.
+ */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f6;
+  --border: #e2e5ea;
+  --border-strong: #cdd2da;
+  --text: #121620;
+  --text-muted: #5b6474;
+  --text-faint: #8a93a3;
+  --accent: #1f4fd1;
+  --accent-ink: #ffffff;
+  --accent-soft: #e8eefc;
+  --ok: #157f4a;
+  --ok-soft: #e6f4ec;
+  --warn: #a35a00;
+  --warn-soft: #fbf0e0;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --info: #3b5bab;
+  --info-soft: #eaeffa;
+  --sim: #6941c6;
+  --sim-soft: #f1ecfb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1016;
+    --surface: #141821;
+    --surface-2: #1a1f2a;
+    --border: #262c38;
+    --border-strong: #353d4c;
+    --text: #e7eaf0;
+    --text-muted: #9aa3b2;
+    --text-faint: #6b7385;
+    --accent: #6d8ff0;
+    --accent-ink: #0d1016;
+    --accent-soft: #1b2440;
+    --ok: #4cc38a;
+    --ok-soft: #12261c;
+    --warn: #e6a23c;
+    --warn-soft: #2a1f0f;
+    --danger: #f2766b;
+    --danger-soft: #2c1513;
+    --info: #8aa4e8;
+    --info-soft: #18203a;
+    --sim: #a88bf0;
+    --sim-soft: #221a36;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-sim: var(--sim);
+  --color-sim-soft: var(--sim-soft);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+/* Money and identifiers line up in columns. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
