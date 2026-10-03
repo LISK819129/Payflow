@@ -15,7 +15,9 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "paypal:check": "tsx scripts/paypal-check.ts",
+    "paypal:webhook:register": "tsx scripts/paypal-webhook-register.ts"
   },
   "dependencies": {
     "@paypal/paypal-server-sdk": "^2.5.0",
@@ -41,6 +43,7 @@
     "embedded-postgres": "18.4.0-beta.17",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "selfsigned": "^5.5.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",

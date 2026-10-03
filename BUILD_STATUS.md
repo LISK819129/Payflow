@@ -19,14 +19,21 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 
 ## IN PROGRESS
 
-—
+| Phase | Item | State |
+|---|---|---|
+| 2 | OAuth token cache (refresh from `expires_in`, single-flight, 401 → one forced refresh) | Built + unit-tested with fake PayPal; **awaiting real sandbox credentials** |
+| 2 | REST client: mandatory `PayPal-Request-Id` on POST, backoff on 429/5xx/network, typed errors with `debug_id`, non-JSON → MALFORMED_RESPONSE | Built + unit-tested; awaiting real sandbox |
+| 2 | Webhook verification: self-verify (CRC32 of raw bytes, PayPal-host-only cert URL, cert subject/validity) with postback fallback; simulator events only when enabled, stored as SIMULATED | Built + 10 tests with a generated certificate; forged requests to the live endpoint return 400. Awaiting a real PayPal delivery |
+| 2 | Idempotent ingest: unique PayPal event id, redeliveries counted not re-processed, routing job enqueued in the same transaction (pg-boss `fromDrizzle`) | Built + tested incl. 5 concurrent duplicate deliveries → 1 job |
+| 2 | Worker re-fetches every real event from `GET /v1/notifications/webhooks-events/{id}` before routing | Built; awaiting real sandbox |
+| 2 | `pnpm paypal:check`, `pnpm paypal:webhook:register <https-url>` | Built; check correctly reports "setup required" |
 
 ## BLOCKED / NEEDS USER ACTION
 
 | Item | Needed from user | Blocks |
 |---|---|---|
 | PayPal Sandbox app + accounts | Client ID/Secret in `.env.local`, three sandbox accounts (see README of this turn) | Phase 2 |
-| PayPal AI Toolkit plugin for Claude Code | Run `/plugin install paypal@claude-plugins-official` in an interactive Claude Code session | PayPal integration work (Phase 2+) |
+| PayPal AI Toolkit plugin | Installed on the account 2026-10-03; loads in the next session. Its best-practices references were read directly from github.com/paypal/AI-Toolkit for Phase 2 | — |
 | APIMatic Context Plugin | Run `npx context-plugins install https://github.com/paypaldev/server-sdk-context-plugin-preview` | Phase 2+ (also prerequisite for the APIMatic prize) |
 | AI provider key | Decide provider + add key | Phase 4 |
 | Public webhook URL | Tunnel or early Render deploy — decided at Phase 2 | Phase 2 webhooks |
