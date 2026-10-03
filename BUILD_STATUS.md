@@ -15,7 +15,9 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | 1 | Local PostgreSQL 18.4 (embedded-postgres), Drizzle schema + migration `0000_init` | `pnpm db:migrate` applied; `select version()` |
 | 1 | Hash-chained append-only audit log | `tests/audit.test.ts`: chain verifies; 20 concurrent appends stay gapless; edited payload and deleted record are both detected |
 | 1 | Auth: scrypt passwords, DB sessions (hashed ids), login rate limit, proxy redirect | `tests/password.test.ts`; browser: wrong password rejected, correct password → dashboard, login audited |
-| 1 | App shell, design tokens (light/dark), provenance badges, Dashboard / PayPal events / Audit pages | Browser check, no console errors |
+| 1 | App shell, design tokens, provenance badges, Dashboard / PayPal events / Audit pages | Browser check, no console errors |
+| 1.5 | Design-system override: white canvas, ink, fluorescent-cyan marker; Instrument Sans + IBM Plex Mono (OFL, `tnum` verified); token system; wordmark; Button/Field/Status/ProvenanceTag/Section/CopyId primitives; new login, sidebar, editorial Home, forensic Audit timeline, Events table, live Settings | `docs/DESIGN_SYSTEM.md`; contrast ratios computed (ink 19.4, muted 6.1, marker-ink 5.8, field 3.3, ink-on-marker 10.5); typecheck, lint, 37 tests, `next build` clean; inspected at 1920×1080 and 375px (no horizontal scroll) |
+| 1.5 | Local Postgres encoding bug: cluster had initialised as WIN1252, so any non-ASCII text failed to insert. Databases recreated as UTF8 (old ones kept as `*_win1252_old`), migrate now refuses non-UTF8, new clusters init with `--encoding=UTF8` | Regression test with non-ASCII audit text |
 
 ## IN PROGRESS
 
@@ -34,9 +36,10 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 |---|---|---|
 | PayPal Sandbox app + accounts | Client ID/Secret in `.env.local`, three sandbox accounts (see README of this turn) | Phase 2 |
 | PayPal AI Toolkit plugin | Installed on the account 2026-10-03; loads in the next session. Its best-practices references were read directly from github.com/paypal/AI-Toolkit for Phase 2 | — |
-| APIMatic Context Plugin | Run `npx context-plugins install https://github.com/paypaldev/server-sdk-context-plugin-preview` | Phase 2+ (also prerequisite for the APIMatic prize) |
-| AI provider key | Decide provider + add key | Phase 4 |
-| Public webhook URL | Tunnel or early Render deploy — decided at Phase 2 | Phase 2 webhooks |
+| APIMatic Context Plugin | Installed 2026-10-03 as project skills in `.claude/skills/` (TypeScript set, pinned commit 6aa0571) because the installer needs the `claude` CLI, which this machine lacks. Loads next session. Free-subscription form still to be submitted by the user | — |
+| AI provider key | Anthropic approved (provider-agnostic `AIProvider`); hard $10 budget; add `ANTHROPIC_API_KEY` | Phase 4 |
+| Public webhook URL | cloudflared 2026.9.3 downloaded (Authenticode: Cloudflare, Inc., valid) | — |
+| PayPal app features | Enable **Invoicing** and **Transaction Search** on the sandbox app (both 403 / absent from scopes) | Phase 5 invoicing scenarios |
 
 ## NEXT
 

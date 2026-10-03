@@ -1,33 +1,79 @@
 "use client";
 
+import {
+  Activity,
+  ArrowLeftRight,
+  House,
+  KeyRound,
+  Radio,
+  ScrollText,
+  Settings2,
+  Stamp,
+  Workflow,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Only sections whose backend exists are listed; more are added as each phase lands.
-const links = [
-  { href: "/", label: "Dashboard" },
-  { href: "/events", label: "PayPal events" },
-  { href: "/audit", label: "Audit" },
+type Item = { href: string; label: string; icon: LucideIcon; phase?: number };
+
+// Items with a `phase` have no backend yet: shown, not linked, so the shell is
+// complete without pretending those screens exist.
+const primary: Item[] = [
+  { href: "/", label: "Home", icon: House },
+  { href: "/flows", label: "Flows", icon: Workflow, phase: 3 },
+  { href: "/executions", label: "Executions", icon: Activity, phase: 3 },
+  { href: "/approvals", label: "Approvals", icon: Stamp, phase: 6 },
+  { href: "/agents", label: "Agents", icon: KeyRound, phase: 9 },
+  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight, phase: 5 },
+  { href: "/events", label: "PayPal events", icon: Radio },
+  { href: "/audit", label: "Audit", icon: ScrollText },
 ];
+const secondary: Item[] = [{ href: "/settings", label: "Settings", icon: Settings2 }];
+
+function NavItem({ item, active }: { item: Item; active: boolean }) {
+  const Icon = item.icon;
+  const inner = (
+    <>
+      <span
+        aria-hidden
+        className={`absolute inset-y-1.5 left-0 w-[3px] rounded-r-sm bg-marker transition-transform duration-[var(--pf-dur)] ease-pf ${active ? "scale-y-100" : "scale-y-0"}`}
+      />
+      <Icon size={16} strokeWidth={1.5} aria-hidden className={active ? "text-ink" : "text-faint group-hover:text-ink-2"} />
+      <span>{item.label}</span>
+      {item.phase && <span className="ml-auto font-mono text-[10px] text-faint">P{item.phase}</span>}
+    </>
+  );
+  const cls = `group relative flex items-center gap-2.5 whitespace-nowrap py-1.5 pl-4 pr-3 text-body transition-colors duration-[var(--pf-dur-fast)]`;
+  if (item.phase) {
+    return (
+      <span className={`${cls} cursor-default text-faint`} aria-disabled title={`Arrives in Phase ${item.phase}`}>
+        {inner}
+      </span>
+    );
+  }
+  return (
+    <Link href={item.href} aria-current={active ? "page" : undefined} className={`${cls} ${active ? "font-medium text-ink" : "text-muted hover:text-ink"}`}>
+      {inner}
+    </Link>
+  );
+}
 
 export function NavLinks() {
   const pathname = usePathname();
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   return (
-    <nav className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:pb-0">
-      {links.map((l) => {
-        const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
-        return (
-          <Link
-            key={l.href}
-            href={l.href}
-            className={`whitespace-nowrap rounded-md px-2.5 py-1.5 text-sm ${
-              active ? "bg-accent-soft font-medium text-accent" : "text-muted hover:bg-surface-2 hover:text-text"
-            }`}
-          >
-            {l.label}
-          </Link>
-        );
-      })}
+    <nav aria-label="Main" className="flex flex-1 flex-col">
+      <div className="flex gap-0.5 overflow-x-auto md:flex-col">
+        {primary.map((i) => (
+          <NavItem key={i.href} item={i} active={isActive(i.href)} />
+        ))}
+      </div>
+      <div className="mt-4 hidden border-t border-line pt-4 md:block">
+        {secondary.map((i) => (
+          <NavItem key={i.href} item={i} active={isActive(i.href)} />
+        ))}
+      </div>
     </nav>
   );
 }

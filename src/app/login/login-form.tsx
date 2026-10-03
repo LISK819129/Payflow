@@ -1,45 +1,25 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
 import { useActionState } from "react";
+import { Button, Field } from "@/components/ui";
 import { loginAction, type LoginState } from "./actions";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState<LoginState, FormData>(loginAction, {});
   return (
-    <form action={action} className="space-y-4 rounded-lg border border-border bg-surface p-6">
-      <label className="block">
-        <span className="text-sm font-medium">Email</span>
-        <input
-          name="email"
-          defaultValue={state.email}
-          type="email"
-          autoComplete="username"
-          required
-          className="mt-1 block w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-      </label>
-      <label className="block">
-        <span className="text-sm font-medium">Password</span>
-        <input
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          className="mt-1 block w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-      </label>
+    <form action={action} className="space-y-8">
+      <Field id="email" name="email" label="Email" type="email" autoComplete="username" required defaultValue={state.email} />
+      <Field id="password" name="password" label="Password" type="password" autoComplete="current-password" required />
       {state.error && (
-        <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+        <p role="alert" className="border-l-2 border-danger pl-3 text-body text-danger">
           {state.error}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
-      >
+      <Button type="submit" variant="primary" size="lg" disabled={pending} className="w-full">
         {pending ? "Signing in…" : "Sign in"}
-      </button>
+        {!pending && <ArrowRight size={16} strokeWidth={2} aria-hidden />}
+      </Button>
     </form>
   );
 }

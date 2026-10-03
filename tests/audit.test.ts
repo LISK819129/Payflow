@@ -48,6 +48,12 @@ describe("audit chain", () => {
     expect(await verifyChain(ws.id)).toMatchObject({ ok: false, brokenAtSeq: 2 });
   });
 
+  it("stores and verifies non-ASCII text (database must be UTF8)", async () => {
+    const ws = await createWorkspace("Ünïcode Studio");
+    await audit({ workspaceId: ws.id, actor: "system", kind: "k", summary: "Nova Labs → PixelForge · ₹ € ✓", payload: { note: "naïve café — 日本" } });
+    expect(await verifyChain(ws.id)).toMatchObject({ ok: true, records: 1 });
+  });
+
   it("keeps chains of different workspaces independent", async () => {
     const a = await createWorkspace("A");
     const b = await createWorkspace("B");

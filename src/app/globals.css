@@ -1,93 +1,228 @@
 @import "tailwindcss";
 
 /*
- * PayFlow design tokens. Restrained, ledger-like: one accent, semantic status
- * colours, no gradients. Every colour used in components comes from here.
+ * PayFlow design tokens — the only place colours, radii, shadows, type sizes and
+ * motion are defined. Components reference these through Tailwind theme names
+ * (bg-canvas, text-ink, border-line, bg-marker …). See docs/DESIGN_SYSTEM.md.
+ *
+ * Identity: white = clarity, black = precision, fluorescent cyan = money and
+ * information actively flowing. Cyan is a highlighter, never a background wash.
  */
-:root {
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --surface-2: #f1f3f6;
-  --border: #e2e5ea;
-  --border-strong: #cdd2da;
-  --text: #121620;
-  --text-muted: #5b6474;
-  --text-faint: #8a93a3;
-  --accent: #1f4fd1;
-  --accent-ink: #ffffff;
-  --accent-soft: #e8eefc;
-  --ok: #157f4a;
-  --ok-soft: #e6f4ec;
-  --warn: #a35a00;
-  --warn-soft: #fbf0e0;
-  --danger: #b42318;
-  --danger-soft: #fdecea;
-  --info: #3b5bab;
-  --info-soft: #eaeffa;
-  --sim: #6941c6;
-  --sim-soft: #f1ecfb;
-}
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0d1016;
-    --surface: #141821;
-    --surface-2: #1a1f2a;
-    --border: #262c38;
-    --border-strong: #353d4c;
-    --text: #e7eaf0;
-    --text-muted: #9aa3b2;
-    --text-faint: #6b7385;
-    --accent: #6d8ff0;
-    --accent-ink: #0d1016;
-    --accent-soft: #1b2440;
-    --ok: #4cc38a;
-    --ok-soft: #12261c;
-    --warn: #e6a23c;
-    --warn-soft: #2a1f0f;
-    --danger: #f2766b;
-    --danger-soft: #2c1513;
-    --info: #8aa4e8;
-    --info-soft: #18203a;
-    --sim: #a88bf0;
-    --sim-soft: #221a36;
-  }
+:root {
+  color-scheme: light;
+
+  /* Neutrals (warm, very slightly off-white page) */
+  --pf-canvas: #fbfaf7;
+  --pf-surface: #ffffff;
+  --pf-sunken: #f4f3ef;
+  --pf-line: #e6e4de;
+  --pf-line-strong: #cfccc4;
+  --pf-ink: #0c0d0f;
+  --pf-ink-2: #2c2e33;
+  --pf-muted: #5f6269;
+  --pf-faint: #8d9097;
+  --pf-field: #8a8d94; /* input boundaries: ≥3:1 on white (WCAG 1.4.11) */
+
+  /* The marker. Tune the brand by changing these two values. */
+  --pf-marker: #0fd0f5; /* fluorescent fill, strokes, active paths — never text on white */
+  --pf-marker-ink: #006d99; /* the accessible accent for text/icons on white (5.76:1) */
+  --pf-marker-wash: color-mix(in oklab, var(--pf-marker) 16%, transparent);
+  --pf-on-marker: #0c0d0f; /* text sitting on the marker */
+
+  /* Financial states: restrained, always paired with an icon + label */
+  --pf-ok: #1d7a4c;
+  --pf-ok-wash: #e8f3ec;
+  --pf-warn: #985d00;
+  --pf-warn-wash: #fbf1e1;
+  --pf-danger: #b0281f;
+  --pf-danger-wash: #fbeceb;
+  --pf-sim: #6b4bb8; /* SIMULATED provenance only */
+  --pf-sim-wash: #f1edf9;
+
+  /* Shape and depth */
+  --pf-radius-sm: 3px;
+  --pf-radius: 5px;
+  --pf-radius-lg: 8px;
+  --pf-shadow-pop: 0 1px 2px rgb(12 13 15 / 0.06), 0 8px 24px -8px rgb(12 13 15 / 0.14);
+
+  /* Motion */
+  --pf-dur-fast: 150ms;
+  --pf-dur: 220ms;
+  --pf-dur-slow: 350ms;
+  --pf-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
-  --color-text: var(--text);
-  --color-muted: var(--text-muted);
-  --color-faint: var(--text-faint);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-accent-soft: var(--accent-soft);
-  --color-ok: var(--ok);
-  --color-ok-soft: var(--ok-soft);
-  --color-warn: var(--warn);
-  --color-warn-soft: var(--warn-soft);
-  --color-danger: var(--danger);
-  --color-danger-soft: var(--danger-soft);
-  --color-info: var(--info);
-  --color-info-soft: var(--info-soft);
-  --color-sim: var(--sim);
-  --color-sim-soft: var(--sim-soft);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--pf-canvas);
+  --color-surface: var(--pf-surface);
+  --color-sunken: var(--pf-sunken);
+  --color-line: var(--pf-line);
+  --color-line-strong: var(--pf-line-strong);
+  --color-ink: var(--pf-ink);
+  --color-ink-2: var(--pf-ink-2);
+  --color-muted: var(--pf-muted);
+  --color-faint: var(--pf-faint);
+  --color-field: var(--pf-field);
+  --color-marker: var(--pf-marker);
+  --color-marker-ink: var(--pf-marker-ink);
+  --color-marker-wash: var(--pf-marker-wash);
+  --color-on-marker: var(--pf-on-marker);
+  --color-ok: var(--pf-ok);
+  --color-ok-wash: var(--pf-ok-wash);
+  --color-warn: var(--pf-warn);
+  --color-warn-wash: var(--pf-warn-wash);
+  --color-danger: var(--pf-danger);
+  --color-danger-wash: var(--pf-danger-wash);
+  --color-sim: var(--pf-sim);
+  --color-sim-wash: var(--pf-sim-wash);
+
+  --radius-sm: var(--pf-radius-sm);
+  --radius: var(--pf-radius);
+  --radius-lg: var(--pf-radius-lg);
+  --shadow-pop: var(--pf-shadow-pop);
+
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  /* Type scale (px): 11 label · 12 meta · 13 body-sm · 14 body · 16 lead · 20 title · 28 headline · 44 figure */
+  --text-label: 11px;
+  --text-label--line-height: 14px;
+  --text-meta: 12px;
+  --text-meta--line-height: 16px;
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-lead: 16px;
+  --text-lead--line-height: 24px;
+  --text-title: 20px;
+  --text-title--line-height: 26px;
+  --text-headline: 28px;
+  --text-headline--line-height: 34px;
+  --text-figure: 44px;
+  --text-figure--line-height: 48px;
+
+  --ease-pf: var(--pf-ease);
 }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-feature-settings: "tnum" 1, "cv11" 1;
+@layer base {
+  html {
+    background: var(--pf-canvas);
+  }
+  body {
+    background: var(--pf-canvas);
+    color: var(--pf-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    /* Tabular figures everywhere: money must line up. */
+    font-feature-settings: "tnum" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--pf-marker-wash);
+    color: var(--pf-ink);
+  }
+  /* One visible, consistent focus treatment: an ink ring with a marker halo. */
+  :focus-visible {
+    outline: 2px solid var(--pf-ink);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px var(--pf-marker-wash);
+    border-radius: var(--pf-radius-sm);
+  }
 }
 
-/* Money and identifiers line up in columns. */
-.num {
-  font-variant-numeric: tabular-nums;
+@layer components {
+  /* Uppercase metadata label used for section heads and field names. */
+  .pf-label {
+    font-size: var(--text-label);
+    line-height: var(--text-label--line-height);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--pf-muted);
+  }
+
+  /* The highlighter: an imperfect marker stroke behind inline text. */
+  .pf-mark {
+    position: relative;
+    isolation: isolate;
+    padding: 0 0.12em;
+  }
+  .pf-mark::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    /* A highlighter covers the lower body of the letters, not a full box. */
+    left: -0.06em;
+    right: -0.1em;
+    top: 0.34em;
+    bottom: 0.02em;
+    background: var(--pf-marker);
+    border-radius: 0.08em 0.5em 0.12em 0.6em / 0.5em 0.18em 0.45em 0.16em;
+    transform: rotate(-1.6deg) skewX(-8deg);
+    opacity: 0.92;
+  }
+  /* Animated variant: the marker sweeps in once (respects reduced motion). */
+  .pf-mark-draw::before {
+    transform-origin: left center;
+    animation: pf-mark-draw var(--pf-dur-slow) var(--pf-ease) both;
+  }
+}
+
+@keyframes pf-mark-draw {
+  from {
+    transform: rotate(-1.6deg) skewX(-8deg) scaleX(0);
+  }
+  to {
+    transform: rotate(-1.6deg) skewX(-8deg) scaleX(1);
+  }
+}
+
+@keyframes pf-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pf-pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--pf-marker) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--pf-marker) 0%, transparent);
+  }
+}
+
+@keyframes pf-draw-line {
+  from {
+    stroke-dashoffset: var(--pf-line-length, 600);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@utility animate-fade-up {
+  animation: pf-fade-up var(--pf-dur) var(--pf-ease) both;
+}
+@utility animate-live-dot {
+  animation: pf-pulse-dot 1.8s var(--pf-ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

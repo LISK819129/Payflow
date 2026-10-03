@@ -22,6 +22,8 @@ async function main() {
     password,
     port: PORT,
     persistent: true,
+    // Windows initdb defaults to WIN1252; PayFlow stores arbitrary Unicode (names, notes, arrows).
+    initdbFlags: ["--encoding=UTF8", "--locale=C"],
     onLog: () => {},
     onError: (m) => console.error("[pg]", m),
   });
@@ -35,10 +37,16 @@ async function main() {
   for (const name of ["payflow", "payflow_test"]) {
     const c = new Client({ host: "127.0.0.1", port: PORT, user, password, database: "postgres" });
     await c.connect();
-    const r = await c.query("select 1 from pg_database where datname = $1", [name]);
+    const r = await c.query<{ enc: string }>(
+      "select pg_encoding_to_char(encoding) as enc from pg_database where datname = $1",
+      [name],
+    );
     if (r.rowCount === 0) {
-      await c.query(`create database ${name}`);
-      console.log(`[pg] created database ${name}`);
+      await c.query(`create database ${name} with encoding 'UTF8' lc_collate 'C' lc_ctype 'C' template template0`);
+      console.log(`[pg] created database ${name} (UTF8)`);
+    } else if (r.rows[0].enc !== "UTF8") {
+      await c.end();
+      throw new Error(`database ${name} uses ${r.rows[0].enc}, not UTF8. Rename it and rerun to recreate it as UTF8.`);
     }
     await c.end();
   }
