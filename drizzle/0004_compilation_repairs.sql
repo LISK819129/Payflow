@@ -1,0 +1,1 @@
+ALTER TABLE "ai_compilations" ADD COLUMN "repairs" jsonb;

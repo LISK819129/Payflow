@@ -134,6 +134,7 @@ Operand = { "ref": Ref } or { "const": value }. Amounts compare as exact decimal
 ${EVENT_TYPES.join(", ")}
 
 # Graph conventions
+- workflow.name: a short human-readable title in plain words ("Client payment review"), not an identifier.
 - Node ids: lowercase snake_case, short and meaningful (payment_received, within_limit, owner_approval).
 - Labels: short, written for a business owner ("Over $400?", "Ask me", "Pay supplier").
 - config_json: the node's config object as a JSON string, exactly matching the config shape above.

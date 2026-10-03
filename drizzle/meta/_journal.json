@@ -29,6 +29,13 @@
       "when": 1791029342899,
       "tag": "0003_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791044126976,
+      "tag": "0004_compilation_repairs",
+      "breakpoints": true
     }
   ]
 }

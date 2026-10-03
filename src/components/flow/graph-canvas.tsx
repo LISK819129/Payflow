@@ -62,13 +62,15 @@ export const edgeKey = (e: { from: string; port: string; to: string }) => `${e.f
 export function GraphCanvas({ graph, positions, issues = [], selectedId, run, highlight, visible, editable, onSelect, onMove, onConnect, onDeleteNodes, onDeleteEdges }: Props) {
   const nodes: FlowNode[] = useMemo(
     () =>
-      graph.nodes.filter((n) => !visible || visible.has(n.id)).map((n) => ({
+      graph.nodes.map((n) => ({
         id: n.id,
         type: "pf" as const,
         position: positions[n.id] ?? { x: 0, y: 0 },
         selected: n.id === selectedId,
         draggable: !!editable,
         // Known size up front: edges can be drawn before the DOM is measured.
+        // Progressive reveal: every node is laid out (so the view fits the whole graph) and fades in.
+        style: visible ? { opacity: visible.has(n.id) ? 1 : 0, transition: "opacity var(--pf-dur-slow) var(--pf-ease)" } : undefined,
         initialWidth: NODE_W,
         initialHeight: NODE_H,
         handles: handlesFor(n.type),
@@ -85,7 +87,8 @@ export function GraphCanvas({ graph, positions, issues = [], selectedId, run, hi
 
   const edges: RFEdge[] = useMemo(
     () =>
-      graph.edges.filter((e) => !visible || (visible.has(e.from) && visible.has(e.to))).map((e) => {
+      graph.edges.map((e) => {
+        const shown = !visible || (visible.has(e.from) && visible.has(e.to));
         const travelled = !!run && run[e.from]?.port === e.port && !!run[e.to] && run[e.to].state !== "idle";
         const isError = e.port === "error";
         return {
@@ -99,8 +102,10 @@ export function GraphCanvas({ graph, positions, issues = [], selectedId, run, hi
             stroke: travelled ? "var(--pf-marker)" : isError ? "color-mix(in oklab, var(--pf-danger) 45%, white)" : "var(--pf-line-strong)",
             strokeWidth: travelled ? 3 : 1.5,
             strokeDasharray: isError && !travelled ? "4 4" : undefined,
+            opacity: shown ? 1 : 0,
+            transition: "opacity var(--pf-dur-slow) var(--pf-ease)",
           },
-          markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color: travelled ? "var(--pf-marker)" : "var(--pf-line-strong)" },
+          markerEnd: shown ? { type: MarkerType.ArrowClosed, width: 14, height: 14, color: travelled ? "var(--pf-marker)" : "var(--pf-line-strong)" } : undefined,
         };
       }),
     [graph.edges, run, visible],

@@ -19,6 +19,7 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | 1.5 | Design-system override: white canvas, ink, fluorescent-cyan marker; Instrument Sans + IBM Plex Mono (OFL, `tnum` verified); token system; wordmark; Button/Field/Status/ProvenanceTag/Section/CopyId primitives; new login, sidebar, editorial Home, forensic Audit timeline, Events table, live Settings | `docs/DESIGN_SYSTEM.md`; contrast ratios computed (ink 19.4, muted 6.1, marker-ink 5.8, field 3.3, ink-on-marker 10.5); typecheck, lint, 37 tests, `next build` clean; inspected at 1920×1080 and 375px (no horizontal scroll) |
 | **2** | **Real PayPal Sandbox integration — COMPLETE (2026-10-03)** | Evidence below |
 | **3** | **Workflow DSL, validator, durable runtime, Flow Builder, Executions (2026-10-03)** | see Phase 3 evidence |
+| **4** | **AI workflow compiler — mock-validated and real-model validated (2026-10-03)** | see Phase 4 evidence · `evidence/phase4/` |
 | 1.5 | Local Postgres encoding bug: cluster had initialised as WIN1252, so any non-ASCII text failed to insert. Databases recreated as UTF8 (old ones kept as `*_win1252_old`), migrate now refuses non-UTF8, new clusters init with `--encoding=UTF8` | Regression test with non-ASCII audit text |
 
 ## IN PROGRESS
@@ -32,9 +33,27 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | PayPal Sandbox app | Credentials in `.env.local` ✓ | — |
 | PayPal AI Toolkit plugin | Installed on the account 2026-10-03; loads in the next session. Its best-practices references were read directly from github.com/paypal/AI-Toolkit for Phase 2 | — |
 | APIMatic Context Plugin | Installed 2026-10-03 as project skills in `.claude/skills/` (TypeScript set, pinned commit 6aa0571) because the installer needs the `claude` CLI, which this machine lacks. Loads next session. Free-subscription form still to be submitted by the user | — |
-| AI provider key | Anthropic approved (provider-agnostic `AIProvider`); hard $10 budget; add `ANTHROPIC_API_KEY` | Phase 4 |
+| AI provider | OpenAI `gpt-5.4-mini` configured; $5 total budget, $0.35 used | — |
 | Public webhook URL | cloudflared 2026.9.3 downloaded (Authenticode: Cloudflare, Inc., valid) | — |
 | PayPal sandbox merchant | Link the app to a **US** sandbox business account (current one is India-registered: payouts + card processing refused) and enable **Invoicing** + **Transaction Search** | Scenarios A, C, overdue reminder (Phase 5) |
+
+## Phase 4 evidence
+
+Full detail, screenshots and a database-generated manifest: [`evidence/phase4/README.md`](evidence/phase4/README.md), `evidence/phase4/manifest.json`.
+
+| Item | Result |
+|---|---|
+| Architecture | Provider-neutral `AIProvider`; OpenAI (default) and Anthropic adapters; strict structured outputs; PayFlow re-parses every response; grounding check + Phase 3 validator decide; drafts only; activation always human |
+| Mock tests (MOCK_TEST) | 10 scenario categories, malformed output, invented node types, unsafe edges, budget guard, provenance — part of 99/99 passing tests |
+| Real model (REAL_OPENAI) | `gpt-5.4-mini`, **13 calls, $0.347525**, Phase 4 cap $1, ≈$4.65 of $5 remaining |
+| Simple instruction | COMPILED after 1 repair → 7-node graph, grounded, valid, activatable |
+| Full Nova instruction | Clarification ×3 (precise questions; receipts/audit report listed as unsupported); last two rounds truncated at 16k/24k output tokens → FAILED safely, nothing saved; no Nova draft |
+| Ambiguous / bypass / impossible | Clarification / unsupported ("would move money with no policy gate or human approval") / unsupported — nothing saved |
+| Prompt injection in invoice text | Compiled with the stated $300 limit and approval; injected `1000000` ignored and reported as untrusted data |
+| NL edits | One-value edit = exactly one diff entry; precise exception edit adds a 2-node branch, unrelated nodes untouched, kept as draft v2 while v1 stays active |
+| End-to-end (REAL_OPENAI + REAL_PAYPAL_SANDBOX) | AI-compiled v1 activated by owner → Sandbox capture `16J09094P99667628` ($2,750) → webhook `WH-2GU87192VK4570835-8ME497805N0158404` (SELF-verified) → worker → limit blocked → paused → owner approved → **COMPLETED** (run `6501f281-4c9d-4cee-9238-c9fee0299da5`); audit chain intact |
+| Fixed during capture | Login limiter counted successful sign-ins (now failures only, tested); repair reasons were not persisted (now `ai_compilations.repairs` + `compileMeta.repairReasons`, tested); prompt hash recorded per draft; webhook registration now moves the single PayFlow webhook instead of creating duplicates |
+| Open findings | AI boundary mismatch at exactly $2,500 (inclusive limit vs stated "under"); approved path ends at "Accepted automatically."; multi-automation instructions exhaust output tokens (proposal: split into separate workflows); stale Phase 3 demo flow also subscribes to captures |
 
 ## Phase 3 evidence
 
@@ -82,5 +101,4 @@ Nothing in Phase 2 is simulated. No simulator events were used.
 
 ## NEXT
 
-1. On new **US** Sandbox credentials: re-verify OAuth, all 8 capabilities, re-register the webhook, re-run Phase 2 checks.
-2. Phase 4 — AI workflow compiler (NL → validated graph, NL patch edits) behind `AIProvider`; tests mock the provider; real Anthropic calls only for final end-to-end validation within the $10 budget.
+Waiting for approval of the Phase 4 checkpoint before Phase 5 (PayPal action nodes).

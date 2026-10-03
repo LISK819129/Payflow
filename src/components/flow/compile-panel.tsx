@@ -15,11 +15,18 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * "What should your money do?" — a command surface, not a chat. One
  * instruction in, one validated draft (or precise questions) out.
  */
-export function CompilePanel({ aiConfigured }: { aiConfigured: boolean }) {
-  const [instruction, setInstruction] = useState("");
+export function CompilePanel({
+  aiConfigured,
+  stored,
+}: {
+  aiConfigured: boolean;
+  /** A past compilation re-rendered from its record (no model call). */
+  stored?: { instruction: string; result: CompileActionResult; model: string; at: string };
+}) {
+  const [instruction, setInstruction] = useState(stored?.instruction ?? "");
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [stage, setStage] = useState<Stage>("idle");
-  const [result, setResult] = useState<CompileActionResult | null>(null);
+  const [stage, setStage] = useState<Stage>(stored ? "Ready" : "idle");
+  const [result, setResult] = useState<CompileActionResult | null>(stored?.result ?? null);
   const [pending, start] = useTransition();
 
   const run = (text: string) =>
@@ -87,10 +94,15 @@ export function CompilePanel({ aiConfigured }: { aiConfigured: boolean }) {
         </div>
       </form>
 
+      {stored && result === stored.result && (
+        <p className="mt-4 font-mono text-meta text-muted">
+          Stored result · {stored.model} · {new Date(stored.at).toLocaleString("en-GB", { hour12: false })} · {stored.result.status === "FAILED" ? "" : `${(stored.result as { attempts: number }).attempts} attempt(s)`}
+        </p>
+      )}
       {result && <Result result={result} />}
 
       {questions.length > 0 && (
-        <div className="mt-6 max-w-3xl space-y-4">
+        <div className="mt-6 max-w-3xl space-y-4" role="group" aria-label="Answer the questions">
           {questions.map((q, i) => (
             <label key={i} className="block">
               <span className="text-body text-ink">{q.question}</span>

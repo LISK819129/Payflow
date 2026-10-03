@@ -2,7 +2,7 @@ import { CopyId, PageHeader, Section, SetupRequired, Status } from "@/components
 import { requireUser } from "@/server/auth/current";
 import { env, integrationStatus } from "@/server/config/env";
 import { describeConnection } from "@/server/paypal/capabilities";
-import { DEFAULT_COMPILE_MODEL, DEFAULT_FAST_MODEL } from "@/server/ai";
+import { compileModel, fastModel } from "@/server/ai";
 import { usageSummary } from "@/server/ai/usage";
 
 export const dynamic = "force-dynamic";
@@ -76,13 +76,13 @@ export default async function SettingsPage() {
         <div className="space-y-12">
           <Section label="AI provider">
             <div className="py-4">
-              {status.ai.configured ? <Status tone="ok">Anthropic key present</Status> : <SetupRequired />}
+              {status.ai.configured ? <Status tone="ok">{e.AI_PROVIDER === "openai" ? "OpenAI" : "Anthropic"} key present</Status> : <SetupRequired />}
               <p className="mt-1 text-body-sm text-muted">Used only by the workflow compiler and analysis nodes. Never authorises money movement.</p>
               <dl className="mt-3 grid grid-cols-[120px_1fr] gap-y-1 text-body-sm">
                 <dt className="text-muted">Compiler</dt>
-                <dd className="font-mono text-meta">{e.AI_MODEL_COMPILE ?? DEFAULT_COMPILE_MODEL}</dd>
+                <dd className="font-mono text-meta">{compileModel()}</dd>
                 <dt className="text-muted">Classification</dt>
-                <dd className="font-mono text-meta">{e.AI_MODEL_FAST ?? DEFAULT_FAST_MODEL}</dd>
+                <dd className="font-mono text-meta">{fastModel()}</dd>
               </dl>
             </div>
           </Section>

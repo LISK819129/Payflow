@@ -24,7 +24,9 @@
     "paypal:webhook:resend": "tsx scripts/paypal-webhook-resend.ts",
     "paypal:webhook:replay": "tsx scripts/paypal-webhook-replay.ts",
     "db:seed:demo-flow": "tsx scripts/seed-demo-flow.ts",
-    "ai:live-test": "tsx scripts/ai-live-test.ts"
+    "ai:live-test": "tsx scripts/ai-live-test.ts",
+    "evidence": "tsx scripts/evidence/capture.ts",
+    "evidence:manifest": "tsx scripts/evidence/manifest.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -34,6 +36,7 @@
     "drizzle-orm": "^0.45.3",
     "lucide-react": "^1.49.0",
     "next": "16.3.8",
+    "openai": "^7.27.0",
     "pg": "^8.23.1",
     "pg-boss": "^12.35.1",
     "react": "19.2.8",
@@ -53,6 +56,7 @@
     "embedded-postgres": "18.4.0-beta.17",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "playwright-core": "^1.63.0",
     "selfsigned": "^5.5.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",

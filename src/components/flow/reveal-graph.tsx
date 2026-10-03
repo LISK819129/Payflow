@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
+import { ReactFlowProvider } from "@xyflow/react";
 import { useEffect, useMemo, useState } from "react";
 import type { WorkflowGraph } from "@/server/workflow/dsl/nodes";
 import { GraphCanvas } from "./graph-canvas";
@@ -29,18 +29,12 @@ function Reveal({ graph, highlight, stepMs }: { graph: WorkflowGraph; highlight?
   const order = useMemo(() => revealOrder(graph), [graph]);
   const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const [count, setCount] = useState(reduced ? order.length : 1);
-  const { fitView } = useReactFlow();
 
   useEffect(() => {
     if (count >= order.length) return;
     const t = setTimeout(() => setCount((c) => c + 1), stepMs);
     return () => clearTimeout(t);
   }, [count, order.length, stepMs]);
-
-  useEffect(() => {
-    const t = setTimeout(() => fitView({ padding: 0.2, maxZoom: 1, duration: 200 }), 30);
-    return () => clearTimeout(t);
-  }, [count, fitView]);
 
   const visible = useMemo(() => new Set(order.slice(0, count)), [order, count]);
   return <GraphCanvas graph={graph} positions={positions} visible={visible} highlight={highlight} />;

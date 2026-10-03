@@ -375,6 +375,11 @@ describe("9. malformed model output", () => {
     const r = await compile("When a PayPal payment over $400 comes in, ask me to approve it.", p);
     expect(r).toMatchObject({ status: "COMPILED", attempts: 2 });
     expect(p.compileRequests[1].repair?.previousOutput).toContain('"status": "compiled"');
+    // Why the first attempt was rejected is kept with the compilation and the draft's provenance.
+    const [c] = await db().select().from(aiCompilations);
+    expect(c.repairs).toEqual([["The model did not return valid JSON"]]);
+    const [v] = await db().select().from(workflowVersions);
+    expect(v.compileMeta).toMatchObject({ repairReasons: [["The model did not return valid JSON"]], promptHash: expect.stringMatching(/^[0-9a-f]{16}$/) });
   });
 
   it("gives up after one repair: no third paid call, no draft", async () => {

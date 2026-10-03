@@ -7,7 +7,7 @@ import type { Usage } from "./types";
 
 /** Hard lifetime budget for real model calls (USD). */
 export function aiBudgetUsd(): string {
-  return process.env.AI_BUDGET_USD && /^\d+(\.\d+)?$/.test(process.env.AI_BUDGET_USD) ? process.env.AI_BUDGET_USD : "10";
+  return process.env.AI_BUDGET_USD && /^\d+(\.\d+)?$/.test(process.env.AI_BUDGET_USD) ? process.env.AI_BUDGET_USD : "5";
 }
 
 export async function spentUsd(): Promise<string> {

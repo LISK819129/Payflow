@@ -51,15 +51,30 @@ async function main() {
   const eventTypes = WEBHOOK_EVENT_TYPES.map((name) => ({ name }));
 
   const { data } = await paypal().request<{ webhooks: Webhook[] }>({ method: "GET", path: "/v1/notifications/webhooks" });
-  const existing = data.webhooks.find((w) => w.url === url);
+  // PayFlow owns one webhook per app: reuse it (moving its URL when the dev tunnel changes).
+  const ours = data.webhooks.filter((w) => new URL(w.url).pathname === "/api/webhooks/paypal");
+  const existing = ours.find((w) => w.url === url) ?? ours[0];
 
   if (existing) {
-    await paypal().request({
-      method: "PATCH",
-      path: `/v1/notifications/webhooks/${existing.id}`,
-      body: [{ op: "replace", path: "/event_types", value: eventTypes }],
-    });
-    console.log(`Updated existing webhook ${existing.id} → ${url}`);
+    try {
+      await paypal().request({
+        method: "PATCH",
+        path: `/v1/notifications/webhooks/${existing.id}`,
+        body: [
+          { op: "replace", path: "/url", value: url },
+          { op: "replace", path: "/event_types", value: eventTypes },
+        ],
+      });
+    } catch (err) {
+      // Already pointing at this URL with these event types: nothing to update.
+      if (!(err instanceof PayPalApiError && err.code === "WEBHOOK_PATCH_REQUEST_NO_CHANGE")) throw err;
+    }
+    // Any other PayFlow webhooks point at dead tunnels; remove them so PayPal stops retrying into the void.
+    for (const stale of ours.filter((w) => w.id !== existing.id)) {
+      await paypal().request({ method: "DELETE", path: `/v1/notifications/webhooks/${stale.id}` });
+      console.log(`Removed stale webhook ${stale.id} (${stale.url})`);
+    }
+    console.log(`Updated webhook ${existing.id} → ${url}`);
     console.log(`\nPAYPAL_WEBHOOK_ID=${existing.id}`);
     return;
   }

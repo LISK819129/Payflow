@@ -348,6 +348,8 @@ export const aiCompilations = pgTable(
     grounding: jsonb("grounding"),
     changes: jsonb("changes"),
     attempts: integer("attempts").notNull().default(1),
+    /** Why each rejected attempt was rejected (validator / parser objections), in order. */
+    repairs: jsonb("repairs"),
     error: jsonb("error"),
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: createdAt(),

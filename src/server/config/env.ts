@@ -32,10 +32,13 @@ const schema = z.object({
   PAYPAL_WEBHOOK_ID: optionalString,
   PAYPAL_ALLOW_SIMULATOR_EVENTS: boolFlag,
 
-  AI_PROVIDER: z.enum(["anthropic"]).default("anthropic"),
+  AI_PROVIDER: z.enum(["openai", "anthropic"]).default("openai"),
+  OPENAI_API_KEY: optionalString,
   ANTHROPIC_API_KEY: optionalString,
   AI_MODEL_COMPILE: optionalString,
   AI_MODEL_FAST: optionalString,
+  /** Ceiling on a compile call's output (reasoning + answer). Raising it raises the worst-case cost. */
+  AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(2000).max(64000).default(16000),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -79,6 +82,6 @@ export function integrationStatus() {
   return {
     paypal: check({ PAYPAL_CLIENT_ID: e.PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET: e.PAYPAL_CLIENT_SECRET }),
     paypalWebhooks: check({ PAYPAL_WEBHOOK_ID: e.PAYPAL_WEBHOOK_ID }),
-    ai: check({ ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY }),
+    ai: e.AI_PROVIDER === "openai" ? check({ OPENAI_API_KEY: e.OPENAI_API_KEY }) : check({ ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY }),
   };
 }

@@ -1,12 +1,16 @@
 import type { Usage } from "./types";
 
 /**
- * Published Anthropic first-party prices, USD per million tokens (checked
- * 2026-10-03). Cache writes (5-minute TTL) bill at 1.25× input, cache reads at
- * 0.1× input. Unknown models are priced at the most expensive known rate so the
- * budget guard errs on the safe side.
+ * Published first-party prices, USD per million tokens (checked 2026-10-03).
+ * Anthropic: cache writes (5-minute TTL) 1.25× input, cache reads 0.1× input.
+ * OpenAI: cached input 0.1× input (gpt-5.4-mini $0.075 vs $0.75), no write premium
+ * (the adapter reports cacheWriteTokens = 0). Unknown models are priced at a
+ * high fallback so the budget guard errs on the safe side.
  */
 const PRICES: Record<string, { input: number; output: number }> = {
+  "gpt-5.4-mini": { input: 0.75, output: 4.5 },
+  "gpt-5.4-nano": { input: 0.2, output: 1.25 },
+  "gpt-5.4": { input: 2.5, output: 15 },
   "claude-sonnet-5": { input: 2, output: 10 },
   "claude-sonnet-5-5": { input: 2, output: 10 },
   "claude-haiku-4-5": { input: 1, output: 5 },
@@ -14,8 +18,9 @@ const PRICES: Record<string, { input: number; output: number }> = {
 };
 const FALLBACK = { input: 10, output: 50 };
 
+/** Providers report dated snapshots (gpt-5.4-mini-2026-03-17); price them as their base model. */
 export function priceFor(model: string) {
-  return PRICES[model] ?? FALLBACK;
+  return PRICES[model] ?? PRICES[model.replace(/-\d{4}-\d{2}-\d{2}$/, "")] ?? FALLBACK;
 }
 
 /** Cost in USD as a decimal string (6 dp), computed without floating point drift. */

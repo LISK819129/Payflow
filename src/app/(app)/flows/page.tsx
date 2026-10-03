@@ -4,6 +4,7 @@ import { Button, Empty, PageHeader, Status, formatClock, formatDay, type StatusT
 import { CompilePanel } from "@/components/flow/compile-panel";
 import { canAuthorize, requireUser } from "@/server/auth/current";
 import { integrationStatus } from "@/server/config/env";
+import { storedCompileOutcome } from "@/server/workflow/compiler/compile";
 import { listWorkflows } from "@/server/workflow/queries";
 import { createWorkflowAction } from "./actions";
 
@@ -17,8 +18,10 @@ const stateTone: Record<string, StatusTone> = {
   COMPLETED: "ok",
 };
 
-export default async function FlowsPage() {
+export default async function FlowsPage(props: PageProps<"/flows">) {
   const user = await requireUser();
+  const q = await props.searchParams;
+  const stored = typeof q.compilation === "string" && /^[0-9a-f-]{36}$/.test(q.compilation) ? await storedCompileOutcome(user.workspaceId, q.compilation) : null;
   const flows = await listWorkflows(user.workspaceId);
   return (
     <>
@@ -41,7 +44,12 @@ export default async function FlowsPage() {
           </form>
         }
       />
-      {canAuthorize(user) && <CompilePanel aiConfigured={integrationStatus().ai.configured} />}
+      {canAuthorize(user) && (
+        <CompilePanel
+          aiConfigured={integrationStatus().ai.configured}
+          stored={stored ? { instruction: stored.instruction, result: stored.outcome, model: stored.model, at: stored.createdAt.toISOString() } : undefined}
+        />
+      )}
       {flows.length === 0 ? (
         <Empty>No flows yet. Describe one above, or create an empty flow and build it by hand.</Empty>
       ) : (

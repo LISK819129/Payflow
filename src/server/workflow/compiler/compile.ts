@@ -10,6 +10,8 @@ import { createWorkflow, saveDraft } from "../service";
 import { weakenedControls, type ControlChange } from "./assess";
 import { graphForModel, wireToGraph } from "./convert";
 import { checkGrounding, type Ungrounded } from "./grounding";
+import { systemPrompt } from "./prompt";
+import { sha256Hex } from "../../audit/canonical";
 import { applyOps } from "./ops";
 
 /** Initial attempt plus at most one repair; never more (each attempt is a paid call). */
@@ -69,6 +71,7 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
   if (bad) return { status: "FAILED", error: bad, attempts: 0 };
 
   let repair: { previousOutput: string; problems: string[] } | undefined;
+  const repairs: string[][] = [];
   let last: { env?: CompileEnvelope; raw?: string; problems: string[]; graph?: WorkflowGraph } = { problems: [] };
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -76,19 +79,20 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
     if (!r.ok) {
       if (r.code === "MALFORMED_OUTPUT" && attempt < MAX_ATTEMPTS && r.raw) {
         repair = { previousOutput: r.raw.slice(0, 8000), problems: [r.message] };
+        repairs.push(repair.problems);
         continue;
       }
-      const id = await record(input, { kind: "COMPILE", status: "FAILED", provider: input.provider, error: { code: r.code, message: r.message }, output: r.raw ? { raw: r.raw.slice(0, 8000) } : null, attempts: attempt });
+      const id = await record(input, { kind: "COMPILE", status: "FAILED", provider: input.provider, error: { code: r.code, message: r.message }, output: r.raw ? { raw: r.raw.slice(0, 8000) } : null, attempts: attempt, repairs });
       return { status: "FAILED", compilationId: id, error: r.message, attempts: attempt };
     }
 
     const env = r.value;
     if (env.status === "needs_clarification") {
-      const id = await record(input, { kind: "COMPILE", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, attempts: attempt });
+      const id = await record(input, { kind: "COMPILE", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, attempts: attempt, repairs });
       return { status: "NEEDS_CLARIFICATION", compilationId: id, ai: interp(env), questions: env.questions, ungrounded: [], attempts: attempt };
     }
     if (env.status === "unsupported") {
-      const id = await record(input, { kind: "COMPILE", status: "UNSUPPORTED", provider: input.provider, output: env, attempts: attempt });
+      const id = await record(input, { kind: "COMPILE", status: "UNSUPPORTED", provider: input.provider, output: env, attempts: attempt, repairs });
       return { status: "UNSUPPORTED", compilationId: id, ai: interp(env), attempts: attempt };
     }
 
@@ -99,6 +103,7 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
     if (all.length > 0) {
       if (attempt < MAX_ATTEMPTS) {
         repair = { previousOutput: r.raw.slice(0, 8000), problems: all };
+        repairs.push(all);
         continue;
       }
       break;
@@ -107,7 +112,7 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
     // Validated. Now: did the model invent any critical value?
     const ungrounded = checkGrounding(v.graph!, [instruction]);
     if (ungrounded.length > 0) {
-      const id = await record(input, { kind: "COMPILE", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, graph: v.graph, grounding: ungrounded, attempts: attempt });
+      const id = await record(input, { kind: "COMPILE", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, graph: v.graph, grounding: ungrounded, attempts: attempt, repairs });
       return {
         status: "NEEDS_CLARIFICATION",
         compilationId: id,
@@ -127,6 +132,9 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
       generatedAt: new Date().toISOString(),
       instruction,
       attempts: attempt,
+      repairReasons: repairs,
+      /** Identifies the exact system prompt version that produced this workflow. */
+      promptHash: sha256Hex(systemPrompt()).slice(0, 16),
       interpretation: env.interpretation,
       assumptions: env.assumptions,
       unsupported: env.unsupported,
@@ -141,7 +149,7 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
       compileMeta,
     });
     if (!created.ok) {
-      const id = await record(input, { kind: "COMPILE", status: "INVALID", provider: input.provider, output: env, error: { message: created.error }, attempts: attempt });
+      const id = await record(input, { kind: "COMPILE", status: "INVALID", provider: input.provider, output: env, error: { message: created.error }, attempts: attempt, repairs });
       return { status: "INVALID", compilationId: id, ai: interp(env), problems: [created.error], attempts: attempt };
     }
     const id = await record(input, {
@@ -153,6 +161,7 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
       validation: activation.issues,
       grounding: [],
       attempts: attempt,
+      repairs,
       workflowId: created.workflowId,
       resultVersionId: created.versionId,
     });
@@ -169,7 +178,7 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
     };
   }
 
-  const id = await record(input, { kind: "COMPILE", status: "INVALID", provider: input.provider, output: last.env ?? null, graph: last.graph ?? null, error: { problems: last.problems }, attempts: MAX_ATTEMPTS });
+  const id = await record(input, { kind: "COMPILE", status: "INVALID", provider: input.provider, output: last.env ?? null, graph: last.graph ?? null, error: { problems: last.problems }, attempts: MAX_ATTEMPTS, repairs });
   return { status: "INVALID", compilationId: id, ai: last.env ? interp(last.env) : undefined, problems: last.problems, graph: last.graph, attempts: MAX_ATTEMPTS };
 }
 
@@ -192,6 +201,7 @@ export async function proposePatch(input: { workspaceId: string; userId: string;
   const ctx = { ...input, workflowId: wf.id, baseVersionId: base.id };
 
   let repair: { previousOutput: string; problems: string[] } | undefined;
+  const repairs: string[][] = [];
   let lastProblems: string[] = [];
   let lastEnv: PatchEnvelope | undefined;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -199,19 +209,20 @@ export async function proposePatch(input: { workspaceId: string; userId: string;
     if (!r.ok) {
       if (r.code === "MALFORMED_OUTPUT" && attempt < MAX_ATTEMPTS && r.raw) {
         repair = { previousOutput: r.raw.slice(0, 8000), problems: [r.message] };
+        repairs.push(repair.problems);
         continue;
       }
-      const id = await record(ctx, { kind: "PATCH", status: "FAILED", provider: input.provider, error: { code: r.code, message: r.message }, attempts: attempt });
+      const id = await record(ctx, { kind: "PATCH", status: "FAILED", provider: input.provider, error: { code: r.code, message: r.message }, attempts: attempt, repairs });
       return { status: "FAILED", compilationId: id, error: r.message, attempts: attempt };
     }
     const env = r.value;
     lastEnv = env;
     if (env.status === "needs_clarification") {
-      const id = await record(ctx, { kind: "PATCH", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, attempts: attempt });
+      const id = await record(ctx, { kind: "PATCH", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, attempts: attempt, repairs });
       return { status: "NEEDS_CLARIFICATION", compilationId: id, ai: interp(env), questions: env.questions, ungrounded: [], attempts: attempt };
     }
     if (env.status === "unsupported") {
-      const id = await record(ctx, { kind: "PATCH", status: "UNSUPPORTED", provider: input.provider, output: env, attempts: attempt });
+      const id = await record(ctx, { kind: "PATCH", status: "UNSUPPORTED", provider: input.provider, output: env, attempts: attempt, repairs });
       return { status: "UNSUPPORTED", compilationId: id, ai: interp(env), attempts: attempt };
     }
 
@@ -230,6 +241,7 @@ export async function proposePatch(input: { workspaceId: string; userId: string;
     if (problems.length > 0 || !after) {
       if (attempt < MAX_ATTEMPTS) {
         repair = { previousOutput: r.raw.slice(0, 8000), problems };
+        repairs.push(problems);
         continue;
       }
       break;
@@ -237,7 +249,7 @@ export async function proposePatch(input: { workspaceId: string; userId: string;
 
     const ungrounded = checkGrounding(after, [instruction, JSON.stringify(before.nodes.map((n) => n.config))]);
     if (ungrounded.length > 0) {
-      const id = await record(ctx, { kind: "PATCH", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, graph: after, grounding: ungrounded, attempts: attempt });
+      const id = await record(ctx, { kind: "PATCH", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, graph: after, grounding: ungrounded, attempts: attempt, repairs });
       return {
         status: "NEEDS_CLARIFICATION",
         compilationId: id,
@@ -260,10 +272,11 @@ export async function proposePatch(input: { workspaceId: string; userId: string;
       grounding: [],
       changes: { changes, weakened, model: r.model, requestId: r.requestId ?? null },
       attempts: attempt,
+      repairs,
     });
     return { status: "PROPOSED", compilationId: id, ai: interp(env), before, graph: after, changes, weakened, validation: issues, attempts: attempt };
   }
-  const id = await record(ctx, { kind: "PATCH", status: "INVALID", provider: input.provider, output: lastEnv ?? null, error: { problems: lastProblems }, attempts: MAX_ATTEMPTS });
+  const id = await record(ctx, { kind: "PATCH", status: "INVALID", provider: input.provider, output: lastEnv ?? null, error: { problems: lastProblems }, attempts: MAX_ATTEMPTS, repairs });
   return { status: "INVALID", compilationId: id, ai: lastEnv ? interp(lastEnv) : undefined, problems: lastProblems, attempts: MAX_ATTEMPTS };
 }
 
@@ -339,6 +352,7 @@ async function record(
     changes?: unknown;
     error?: unknown;
     attempts: number;
+    repairs?: string[][];
     workflowId?: string;
     resultVersionId?: string;
   },
@@ -362,6 +376,7 @@ async function record(
       changes: r.changes ?? null,
       error: r.error ?? null,
       attempts: r.attempts,
+      repairs: r.repairs && r.repairs.length ? r.repairs : null,
       createdBy: ctx.userId,
     })
     .returning({ id: aiCompilations.id });
@@ -374,4 +389,48 @@ async function record(
     workflowId: r.workflowId ?? ctx.workflowId ?? null,
   });
   return row.id;
+}
+
+/**
+ * Rebuilds the outcome of a past compilation from its stored record, without
+ * calling any model: used to review (and evidence) what a real call produced.
+ */
+export async function storedCompileOutcome(workspaceId: string, compilationId: string): Promise<{ instruction: string; createdAt: Date; model: string; outcome: CompileOutcome } | null> {
+  const [c] = await db()
+    .select()
+    .from(aiCompilations)
+    .where(and(eq(aiCompilations.id, compilationId), eq(aiCompilations.workspaceId, workspaceId), eq(aiCompilations.kind, "COMPILE")));
+  if (!c) return null;
+  const env = c.output as CompileEnvelope | null;
+  const ai = env ? interp(env) : undefined;
+  const graph = (c.graph as WorkflowGraph | null) ?? undefined;
+  const base = { compilationId: c.id, attempts: c.attempts };
+  let outcome: CompileOutcome;
+  switch (c.status) {
+    case "COMPILED":
+      outcome = {
+        ...base,
+        status: "COMPILED",
+        workflowId: c.workflowId!,
+        graph: graph!,
+        ai: ai!,
+        validation: [],
+        activationIssues: ((c.validation as Issue[] | null) ?? []).filter((i) => i.severity === "error"),
+      };
+      break;
+    case "NEEDS_CLARIFICATION": {
+      const ungrounded = (c.grounding as Ungrounded[] | null) ?? [];
+      outcome = { ...base, status: "NEEDS_CLARIFICATION", ai: ai!, ungrounded, graph, questions: [...(env?.questions ?? []), ...ungrounded.map((u) => ({ topic: u.field, question: u.question }))] };
+      break;
+    }
+    case "UNSUPPORTED":
+      outcome = { ...base, status: "UNSUPPORTED", ai: ai! };
+      break;
+    case "INVALID":
+      outcome = { ...base, status: "INVALID", ai, graph, problems: ((c.error as { problems?: string[] } | null)?.problems ?? []) };
+      break;
+    default:
+      outcome = { ...base, status: "FAILED", error: ((c.error as { message?: string } | null)?.message ?? "Failed") };
+  }
+  return { instruction: c.instruction, createdAt: c.createdAt, model: c.model, outcome };
 }
