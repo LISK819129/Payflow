@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   index,
   integer,
   jsonb,
@@ -303,4 +304,77 @@ export const approvals = pgTable(
     note: text("note"),
   },
   (t) => [uniqueIndex("approvals_run_node_uq").on(t.runId, t.nodeId), index("approvals_ws_status_idx").on(t.workspaceId, t.status)],
+);
+
+// ── AI ────────────────────────────────────────────────────────────────────────
+
+export const compilationKind = pgEnum("compilation_kind", ["COMPILE", "PATCH"]);
+export const compilationStatus = pgEnum("compilation_status", [
+  "COMPILED",
+  "NEEDS_CLARIFICATION",
+  "UNSUPPORTED",
+  "INVALID",
+  "FAILED",
+  "PROPOSED",
+  "APPLIED",
+  "DISCARDED",
+]);
+
+/**
+ * Provenance for every AI compilation or edit: the instruction, the provider
+ * and model, the structured output it returned (never chain-of-thought), what
+ * PayFlow's deterministic checks concluded, and what the user did with it.
+ */
+export const aiCompilations = pgTable(
+  "ai_compilations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    kind: compilationKind("kind").notNull(),
+    status: compilationStatus("status").notNull(),
+    instruction: text("instruction").notNull(),
+    workflowId: uuid("workflow_id").references(() => workflows.id),
+    /** Version the patch was proposed against / the draft version created. */
+    baseVersionId: uuid("base_version_id"),
+    resultVersionId: uuid("result_version_id"),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    /** The structured output the model returned (final attempt). */
+    output: jsonb("output"),
+    graph: jsonb("graph"),
+    validation: jsonb("validation"),
+    grounding: jsonb("grounding"),
+    changes: jsonb("changes"),
+    attempts: integer("attempts").notNull().default(1),
+    error: jsonb("error"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [index("ai_compilations_ws_idx").on(t.workspaceId, t.createdAt)],
+);
+
+/** One row per real model call, for the hard budget and the Settings spend view. */
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id),
+    at: timestamp("at", { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    purpose: text("purpose").notNull(),
+    requestId: text("request_id"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    /** USD, computed from the published per-token prices at call time. */
+    costUsd: text("cost_usd").notNull().default("0"),
+    ok: boolean("ok").notNull(),
+    error: text("error"),
+  },
+  (t) => [index("ai_usage_at_idx").on(t.at)],
 );
