@@ -21,6 +21,7 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | **3** | **Workflow DSL, validator, durable runtime, Flow Builder, Executions (2026-10-03)** | see Phase 3 evidence |
 | **4** | **AI workflow compiler — mock-validated and real-model validated (2026-10-03)** | see Phase 4 evidence · `evidence/phase4/` |
 | **4.1** | **Correctness pass (2026-10-04)**: amount limit gains explicit `lt`/`lte` and a boundary review that corrects AI graphs to the instruction's wording (or asks when it contradicts itself); run outcomes derived from the executed path; AI edits refresh the changed node's own labels and flag stale mentions elsewhere ($2,500 → $1,800 regression); the old Nova and Phase-3 demo flows paused; decomposition seam documented (ARCHITECTURE §10) | `tests/phase41.test.ts` incl. replays of recorded real gpt-5.4-mini outputs at $0; commit `6528bd2` |
+| **7** | **AI financial intelligence (2026-10-04)**: five executable AI evidence nodes (invoice reading, contract check, purpose check, behaviour analysis, invoice match); deterministic history signals; authority purpose scope + intelligence policy; prompt-injection fencing + deterministic scanner; strict schemas, one repair, fail closed to review; content-addressed cache with single-flight; provenance; Intelligence panel | see Phase 7 evidence · `evidence/phase7/` |
 | **6** | **Financial authority, budgets and human control (2026-10-04)**: delegated authorities (who / what / to whom / how much / how often / until when), CHECK → RESERVE → EXECUTE → COMMIT/RELEASE under row locks, executable budget and frequency nodes, Approvals queue (approve once / reject), Authority pages, decision trace on every action, stale-worker protection | see Phase 6 evidence · `evidence/phase6/` |
 | **5** | **PayPal action nodes on the real US Sandbox (2026-10-04)**: refund, payout, order capture, invoice send, invoice reminder, PayPal lookup, transaction search, ledger reconcile — one execution boundary (ARCHITECTURE §11) | see Phase 5 evidence · `evidence/phase5/` |
 | 1.5 | Local Postgres encoding bug: cluster had initialised as WIN1252, so any non-ASCII text failed to insert. Databases recreated as UTF8 (old ones kept as `*_win1252_old`), migrate now refuses non-UTF8, new clusters init with `--encoding=UTF8` | Regression test with non-ASCII audit text |
@@ -40,6 +41,21 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | Public webhook URL | cloudflared 2026.9.3 downloaded (Authenticode: Cloudflare, Inc., valid) | — |
 | PayPal sandbox merchant | US Sandbox app with all features ✓ (India app retired) | — |
 | Order capture success path | A buyer must approve a Sandbox order in PayPal checkout with a Sandbox **personal** account: run `pnpm paypal:sandbox:order 64.00`, open the printed link, log in as the personal account, approve. Then start "Capture approved orders" with that order id | The capture *success* screenshot only — node and refusals are verified |
+
+## Phase 7 evidence (real OpenAI + real PayPal US Sandbox + deterministic tests, 2026-10-04)
+
+Details: `evidence/phase7/README.md`, database-generated `evidence/phase7/manifest.json`. **OpenAI this phase: 19 calls, $0.039292** (gpt-5.4-mini; cap $0.75 enforced in code). Lifetime $0.386817.
+
+| Check | Result |
+|---|---|
+| Normal: Acme $180 GPU compute | purpose WITHIN, risk LOW → ALLOW → payout `3DASFLRWK9TJG` |
+| Gift cards $470 from an approved supplier (all Phase-6 checks pass) | AI OUTSIDE_SCOPE → policy REVIEW → rejected; PayPal not contacted |
+| Re-sent invoice INV-7781 | code: already paid (3TNM3WA79KHV8) → HIGH → REVIEW; AI explains; rejected |
+| Contract mismatch (fee excluded by contract) | AI MISMATCH → REVIEW → approved once → payout `DBMDY8V8SKNKC` |
+| Injection in invoice / contract (real model) | code patterns + model flag → REVIEW; the model did not obey "report MATCH" |
+| Cache | identical invoice → 3 analyses reused (0 calls); fresh authority decision |
+| 20 requested cases | `tests/intelligence.test.ts` (29 tests) all passing; scanner-removal check fails as expected |
+| Audit chain | verified |
 
 ## Phase 6 evidence (real PayPal US Sandbox + deterministic tests, 2026-10-04)
 
@@ -143,4 +159,4 @@ Nothing in Phase 2 is simulated. No simulator events were used.
 
 ## NEXT
 
-Waiting for approval of the Phase 6 checkpoint before Phase 7.
+Waiting for approval of the Phase 7 checkpoint before Phase 8.

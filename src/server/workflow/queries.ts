@@ -1,6 +1,6 @@
-import { and, asc, count, desc, eq, max } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, max } from "drizzle-orm";
 import { db } from "../db/client";
-import { actionExecutions, approvals, authorityDecisions, runSteps, workflowRuns, workflowVersions, workflows } from "../db/schema";
+import { actionExecutions, aiAnalyses, approvals, authorityDecisions, runSteps, workflowRuns, workflowVersions, workflows } from "../db/schema";
 
 /** Read models for pages. Every query is scoped by workspace. */
 
@@ -86,7 +86,14 @@ export async function getRun(workspaceId: string, runId: string) {
   const runApprovals = await db().select().from(approvals).where(eq(approvals.runId, runId));
   const actions = await db().select().from(actionExecutions).where(eq(actionExecutions.runId, runId));
   const decisions = await db().select().from(authorityDecisions).where(eq(authorityDecisions.runId, runId)).orderBy(asc(authorityDecisions.createdAt));
-  return { ...row, steps, approvals: runApprovals, actions, decisions };
+  const analysisIds = steps.map((s) => (s.output as { analysisId?: string } | null)?.analysisId).filter((x): x is string => !!x);
+  const analyses = analysisIds.length
+    ? await db()
+        .select({ id: aiAnalyses.id, model: aiAnalyses.model, promptVersion: aiAnalyses.promptVersion, costUsd: aiAnalyses.costUsd, hits: aiAnalyses.hits, validation: aiAnalyses.validation })
+        .from(aiAnalyses)
+        .where(inArray(aiAnalyses.id, analysisIds))
+    : [];
+  return { ...row, steps, approvals: runApprovals, actions, decisions, analyses };
 }
 
 export async function listActions(workspaceId: string, limit = 200) {

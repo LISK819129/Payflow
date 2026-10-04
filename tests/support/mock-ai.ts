@@ -41,6 +41,9 @@ export class ScriptedProvider implements AIProvider {
     this.patchRequests.push(req);
     return this.respond(this.patches);
   }
+  async analyze<T>(): Promise<AIResult<T>> {
+    throw new Error("ScriptedProvider: compiler tests never run execution-time analysis");
+  }
 }
 
 // ── Envelope builders ─────────────────────────────────────────────────────────

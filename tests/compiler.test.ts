@@ -88,7 +88,7 @@ If Nova's invoice remains unpaid three days after its due date, draft a polite r
 My procurement agent may pay approved US software/cloud suppliers, but total autonomous spending must stay below $500 per month. Every request must correspond to a valid supplier invoice and approved purpose. Anything outside those boundaries requires approval.
 If a payment connected to this workflow is later disputed or refunded, freeze dependent automation and show me the complete audit history.`;
 
-  it("accepts a faithful multi-branch graph as a draft that cannot be activated until its later-phase nodes exist", async () => {
+  it("accepts a faithful multi-branch graph, now activatable because its AI evidence nodes run (Phase 7)", async () => {
     const env = compiled(
       "Nova Labs client payments",
       [
@@ -100,7 +100,7 @@ If a payment connected to this workflow is later disputed or refunded, freeze de
           id: "normal",
           type: "control.condition",
           label: "Matched and normal?",
-          config: { expr: { op: "and", args: [{ op: "exists", ref: "nodes.match_invoice.output.matchedInvoiceId" }, { op: "eq", left: { ref: "nodes.behavior.output.risk" }, right: { const: "LOW" } }] } },
+          config: { expr: { op: "and", args: [{ op: "exists", ref: "nodes.match_invoice.output.matchedInvoiceId" }, { op: "eq", left: { ref: "nodes.behavior.output.level" }, right: { const: "LOW" } }] } },
         },
         { id: "reconcile", type: "ledger.reconcile", label: "Reconcile and prepare receipt", config: { paymentRef: "trigger.amount", invoiceIdRef: "nodes.match_invoice.output.matchedInvoiceId" } },
         { id: "ask_me", type: "control.approval", label: "Ask me", config: { reason: "Nova's payment does not match the invoice, changed currency, or looks unusual", amountRef: "trigger.amount", counterpartyRef: "trigger.payer.email" } },
@@ -138,11 +138,9 @@ If a payment connected to this workflow is later disputed or refunded, freeze de
     expect(r.status).toBe("COMPILED");
     if (r.status !== "COMPILED") return;
     expect(r.graph.nodes).toHaveLength(11);
-    // Structurally valid now; activation correctly refused until Phases 5 and 7 ship the executors.
-    const codes = r.activationIssues.map((i) => i.code);
-    expect(codes).toContain("not_available");
-    expect(r.activationIssues.every((i) => i.code === "not_available")).toBe(true);
-    expect(await activateLatest({ workspaceId: ws.id, userId: user.id, workflowId: r.workflowId })).toMatchObject({ ok: false });
+    // Every node now has an executor; the AI nodes are evidence, routed by a condition, gated by policy.
+    expect(r.activationIssues.filter((i) => i.severity === "error")).toEqual([]);
+    expect(await activateLatest({ workspaceId: ws.id, userId: user.id, workflowId: r.workflowId })).toMatchObject({ ok: true });
   });
 });
 

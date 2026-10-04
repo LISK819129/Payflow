@@ -183,11 +183,9 @@ describe("graph validation", () => {
 
   it("drafts later-phase nodes but refuses to activate them", () => {
     const g = {
-      nodes: [T, { id: "ai", type: "ai.invoice_match", config: { paymentRef: "trigger.amount" } }, end("ok")],
-      edges: [
-        { from: "t", to: "ai", port: "next" },
-        { from: "ai", to: "ok", port: "done" },
-      ],
+      // trigger.agent_request runs from Phase 9.
+      nodes: [{ id: "t", type: "trigger.agent_request", config: {} }, end("ok")],
+      edges: [{ from: "t", to: "ok", port: "next" }],
     };
     expect(validateGraph(g).ok).toBe(true);
     expect(codes(validateGraph(g, { forActivation: true }))).toContain("not_available");

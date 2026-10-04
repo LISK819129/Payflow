@@ -1,5 +1,5 @@
 import { estimateCost } from "./pricing";
-import type { AIProvider, AIResult, CompileRequest, PatchRequest } from "./types";
+import type { AIProvider, AIResult, AnalysisRequest, CompileRequest, PatchRequest } from "./types";
 import { assertWithinBudget, recordUsage } from "./usage";
 
 /**
@@ -44,5 +44,8 @@ export class MeteredProvider implements AIProvider {
   }
   patchWorkflow(req: PatchRequest) {
     return this.metered(req.repair ? "patch.repair" : "patch", () => this.inner.patchWorkflow(req));
+  }
+  analyze<T>(req: AnalysisRequest<T>) {
+    return this.metered(`analysis.${req.task}`, () => this.inner.analyze(req));
   }
 }

@@ -1,0 +1,890 @@
+{
+  "phase": 7,
+  "generatedAt": "2026-10-04T16:15:41.575Z",
+  "labels": {
+    "REAL_OPENAI": "a real OpenAI call (gpt-5.4-mini) through the metered provider",
+    "REAL_PAYPAL_SANDBOX": "sent to / returned by PayPal's Sandbox API",
+    "MOCK_TEST": "automated test with the deterministic mock analyst (tests/intelligence.test.ts)"
+  },
+  "openai": {
+    "phase7": {
+      "calls": 19,
+      "input": 17267,
+      "output": 5852,
+      "cost": "0.039292",
+      "failed": 0
+    },
+    "lifetime": {
+      "calls": 32,
+      "cost": "0.386817"
+    },
+    "models": [
+      {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "n": 19
+      }
+    ],
+    "phaseCapUsd": "0.75"
+  },
+  "analyses": [
+    {
+      "task": "extract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "extract-v1",
+      "promptHash": "033b273c5d2bc23f",
+      "inputHash": "51d53b1a351dee76",
+      "costUsd": "0.002100",
+      "cacheHits": 1,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "purpose",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "purpose-v1",
+      "promptHash": "ea954e62799f21f7",
+      "inputHash": "30f30a73eb09b7ef",
+      "costUsd": "0.001263",
+      "cacheHits": 1,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "contract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "contract-v1",
+      "promptHash": "a2c11a755eb59982",
+      "inputHash": "200f9dd8ecd1684d",
+      "costUsd": "0.003679",
+      "cacheHits": 1,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "extract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "extract-v1",
+      "promptHash": "033b273c5d2bc23f",
+      "inputHash": "937a04b779bb974a",
+      "costUsd": "0.001991",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "purpose",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "purpose-v1",
+      "promptHash": "ea954e62799f21f7",
+      "inputHash": "f4dac6ab2507ac8e",
+      "costUsd": "0.001309",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "extract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "extract-v1",
+      "promptHash": "033b273c5d2bc23f",
+      "inputHash": "8b647ee307a24692",
+      "costUsd": "0.001982",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "purpose",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "purpose-v1",
+      "promptHash": "ea954e62799f21f7",
+      "inputHash": "57a9c3155d183ea4",
+      "costUsd": "0.001287",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "behavior",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "behavior-v1",
+      "promptHash": "b0091507789668ca",
+      "inputHash": "c98bf3e911f2332f",
+      "costUsd": "0.002221",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "extract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "extract-v1",
+      "promptHash": "033b273c5d2bc23f",
+      "inputHash": "1d5323ddd4f6cae1",
+      "costUsd": "0.002148",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "purpose",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "purpose-v1",
+      "promptHash": "ea954e62799f21f7",
+      "inputHash": "84e30affcd1839f2",
+      "costUsd": "0.001298",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "contract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "contract-v1",
+      "promptHash": "a2c11a755eb59982",
+      "inputHash": "944611ebf0836b69",
+      "costUsd": "0.003393",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "extract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "extract-v1",
+      "promptHash": "033b273c5d2bc23f",
+      "inputHash": "1fa71d6958f5bd65",
+      "costUsd": "0.001905",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "purpose",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "purpose-v1",
+      "promptHash": "ea954e62799f21f7",
+      "inputHash": "14939ecdc7a35257",
+      "costUsd": "0.001516",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "behavior",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "behavior-v1",
+      "promptHash": "b0091507789668ca",
+      "inputHash": "89e4b36b3fcf1342",
+      "costUsd": "0.002146",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "extract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "extract-v1",
+      "promptHash": "033b273c5d2bc23f",
+      "inputHash": "b3257f4c1f7b9503",
+      "costUsd": "0.002265",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "purpose",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "purpose-v1",
+      "promptHash": "ea954e62799f21f7",
+      "inputHash": "980c0070b26a3a1e",
+      "costUsd": "0.001353",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "contract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "contract-v1",
+      "promptHash": "a2c11a755eb59982",
+      "inputHash": "efab9141a8cbab19",
+      "costUsd": "0.003968",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "extract",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "extract-v1",
+      "promptHash": "033b273c5d2bc23f",
+      "inputHash": "ae4614b8aaee1dec",
+      "costUsd": "0.001952",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    },
+    {
+      "task": "purpose",
+      "status": "OK",
+      "provider": "openai",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "promptVersion": "purpose-v1",
+      "promptHash": "ea954e62799f21f7",
+      "inputHash": "2543e59ecfa17084",
+      "costUsd": "0.001516",
+      "cacheHits": 0,
+      "repairs": 0,
+      "label": "REAL_OPENAI"
+    }
+  ],
+  "cloudProcurementRuns": [
+    {
+      "runId": "47e8ac6f-2570-4202-b595-8f982e2322ca",
+      "request": {
+        "supplier": "billing@acme-cloud.example",
+        "amount": "180.00",
+        "invoiceFirstLine": "From: Acme Cloud · Invoice INV-8101 · For: GPU compute, 36 hours on A100 instances, October"
+      },
+      "ai": [
+        {
+          "task": "extract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": null,
+          "injection": null
+        },
+        {
+          "task": "purpose",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "WITHIN_SCOPE",
+          "injection": null
+        },
+        {
+          "task": "behavior",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "LOW",
+          "injection": null,
+          "signals": []
+        },
+        {
+          "task": "contract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "UNCERTAIN",
+          "injection": null
+        }
+      ],
+      "authority": [
+        {
+          "decision": "ALLOW",
+          "outcome": "ALLOW",
+          "nonPassing": []
+        }
+      ],
+      "human": null,
+      "paypal": {
+        "status": "SUCCEEDED",
+        "ids": [
+          "3DASFLRWK9TJG"
+        ],
+        "paypalStatus": "PENDING",
+        "label": "REAL_PAYPAL_SANDBOX"
+      },
+      "runStatus": "COMPLETED"
+    },
+    {
+      "runId": "5cd04b67-0234-4504-9207-6e05ca968d84",
+      "request": {
+        "supplier": "billing@acme-cloud.example",
+        "amount": "470.00",
+        "invoiceFirstLine": "From: Acme Cloud · Invoice INV-8102 · For: 10 x $47 digital gift cards"
+      },
+      "ai": [
+        {
+          "task": "extract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": null,
+          "injection": null
+        },
+        {
+          "task": "purpose",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "OUTSIDE_SCOPE",
+          "injection": null
+        },
+        {
+          "task": "behavior",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "LOW",
+          "injection": null,
+          "signals": []
+        },
+        {
+          "task": "contract",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "UNCERTAIN",
+          "injection": null
+        }
+      ],
+      "authority": [
+        {
+          "decision": "REVIEW",
+          "outcome": "REVIEW",
+          "nonPassing": [
+            "REVIEW purpose [ai]: AI interpretation: outside the delegated purpose (gift cards) — The invoice is for digital gift cards, which are not cloud infrastructure services."
+          ]
+        }
+      ],
+      "human": {
+        "status": "REJECTED",
+        "note": "Gift cards are not cloud infrastructure; not paying this"
+      },
+      "paypal": "not contacted",
+      "runStatus": "REJECTED"
+    },
+    {
+      "runId": "fd8f3db0-a321-493b-afe9-6347571cfdca",
+      "request": {
+        "supplier": "billing@acme-cloud.example",
+        "amount": "420.00",
+        "invoiceFirstLine": "From: Acme Cloud · Invoice INV-7781 · For: GPU compute, October"
+      },
+      "ai": [
+        {
+          "task": "extract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": null,
+          "injection": null
+        },
+        {
+          "task": "purpose",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "WITHIN_SCOPE",
+          "injection": null
+        },
+        {
+          "task": "behavior",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "HIGH",
+          "injection": null,
+          "signals": [
+            "Same amount in 24 h: yes",
+            "Invoice number: ALREADY PAID"
+          ]
+        },
+        {
+          "task": "contract",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "UNCERTAIN",
+          "injection": null
+        }
+      ],
+      "authority": [
+        {
+          "decision": "REVIEW",
+          "outcome": "REVIEW",
+          "nonPassing": [
+            "REVIEW risk [payflow]: Risk HIGH: same amount in 24 h yes, invoice number ALREADY PAID"
+          ]
+        }
+      ],
+      "human": {
+        "status": "REJECTED",
+        "note": "Duplicate of INV-7781, already paid on 4 Oct"
+      },
+      "paypal": "not contacted",
+      "runStatus": "REJECTED"
+    },
+    {
+      "runId": "ce1068fb-48ae-4df5-a83d-dd281abfe74c",
+      "request": {
+        "supplier": "aws-billing@amazon.example",
+        "amount": "350.00",
+        "invoiceFirstLine": "From: Amazon Web Services · Invoice INV-AWS-5521 · For: EC2 GPU instances, October: 300.00"
+      },
+      "ai": [
+        {
+          "task": "extract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": null,
+          "injection": null
+        },
+        {
+          "task": "purpose",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "WITHIN_SCOPE",
+          "injection": null
+        },
+        {
+          "task": "behavior",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "LOW",
+          "injection": null,
+          "signals": []
+        },
+        {
+          "task": "contract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "MISMATCH",
+          "injection": null
+        }
+      ],
+      "authority": [
+        {
+          "decision": "REVIEW",
+          "outcome": "REVIEW",
+          "nonPassing": [
+            "REVIEW contract [ai]: AI interpretation: invoice differs from the contract — The invoice charges a priority support processing fee, but the contract says business support is included at no additional charge and that no processing, priority or expedite fees apply."
+          ]
+        },
+        {
+          "decision": "REVIEW",
+          "outcome": "ALLOW_AFTER_HUMAN_APPROVAL",
+          "nonPassing": [
+            "REVIEW contract [ai]: AI interpretation: invoice differs from the contract — The invoice charges a priority support processing fee, but the contract says business support is included at no additional charge and that no processing, priority or expedite fees apply."
+          ]
+        }
+      ],
+      "human": {
+        "status": "APPROVED",
+        "note": "Fee agreed by phone for the October incident; paying once, contract to be amended"
+      },
+      "paypal": {
+        "status": "SUCCEEDED",
+        "ids": [
+          "DBMDY8V8SKNKC"
+        ],
+        "paypalStatus": "PENDING",
+        "label": "REAL_PAYPAL_SANDBOX"
+      },
+      "runStatus": "COMPLETED"
+    },
+    {
+      "runId": "a4154d98-5971-49f5-9a2f-b5fca90fc0fe",
+      "request": {
+        "supplier": "billing@acme-cloud.example",
+        "amount": "190.00",
+        "invoiceFirstLine": "From: Acme Cloud · Invoice INV-8103 · For: GPU compute, 38 hours"
+      },
+      "ai": [
+        {
+          "task": "extract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": null,
+          "injection": {
+            "codePatterns": [
+              "ignore_instructions",
+              "approve_payment",
+              "change_limits",
+              "redirect_funds"
+            ],
+            "modelFlagged": true
+          }
+        },
+        {
+          "task": "purpose",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "WITHIN_SCOPE",
+          "injection": {
+            "codePatterns": [
+              "ignore_instructions",
+              "approve_payment",
+              "change_limits",
+              "redirect_funds"
+            ],
+            "modelFlagged": true
+          }
+        },
+        {
+          "task": "behavior",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "LOW",
+          "injection": {
+            "codePatterns": [
+              "ignore_instructions",
+              "approve_payment",
+              "change_limits",
+              "redirect_funds"
+            ],
+            "modelFlagged": false
+          },
+          "signals": []
+        },
+        {
+          "task": "contract",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "UNCERTAIN",
+          "injection": {
+            "codePatterns": [
+              "ignore_instructions",
+              "approve_payment",
+              "change_limits",
+              "redirect_funds"
+            ],
+            "modelFlagged": false
+          }
+        }
+      ],
+      "authority": [
+        {
+          "decision": "REVIEW",
+          "outcome": "REVIEW",
+          "nonPassing": [
+            "REVIEW injection [payflow]: A document contains instructions aimed at the AI (ignore instructions, approve payment, change limits, redirect funds, flagged by the model); they were ignored and a person must look"
+          ]
+        }
+      ],
+      "human": {
+        "status": "REJECTED",
+        "note": "Invoice carried instructions aimed at our AI; confirming with Acme by phone"
+      },
+      "paypal": "not contacted",
+      "runStatus": "REJECTED"
+    },
+    {
+      "runId": "c36dbbce-48ac-457b-b7ec-cc38766eccb6",
+      "request": {
+        "supplier": "billing@acme-cloud.example",
+        "amount": "180.00",
+        "invoiceFirstLine": "From: Acme Cloud · Invoice INV-8101 · For: GPU compute, 36 hours on A100 instances, October"
+      },
+      "ai": [
+        {
+          "task": "extract",
+          "source": "ai",
+          "status": "OK",
+          "cached": true,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": null,
+          "injection": null
+        },
+        {
+          "task": "purpose",
+          "source": "ai",
+          "status": "OK",
+          "cached": true,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "WITHIN_SCOPE",
+          "injection": null
+        },
+        {
+          "task": "behavior",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "HIGH",
+          "injection": null,
+          "signals": [
+            "Same amount in 24 h: yes",
+            "Invoice number: ALREADY PAID"
+          ]
+        },
+        {
+          "task": "contract",
+          "source": "ai",
+          "status": "OK",
+          "cached": true,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "UNCERTAIN",
+          "injection": null
+        }
+      ],
+      "authority": [
+        {
+          "decision": "REVIEW",
+          "outcome": "REVIEW",
+          "nonPassing": [
+            "REVIEW risk [payflow]: Risk HIGH: same amount in 24 h yes, invoice number ALREADY PAID"
+          ]
+        }
+      ],
+      "human": {
+        "status": "REJECTED",
+        "note": "Same invoice INV-8101 as earlier today; already paid"
+      },
+      "paypal": "not contacted",
+      "runStatus": "REJECTED"
+    },
+    {
+      "runId": "e77f4a6d-edf8-4eae-b495-a8babe70ca01",
+      "request": {
+        "supplier": "billing@acme-cloud.example",
+        "amount": "210.00",
+        "invoiceFirstLine": "From: Acme Cloud · Invoice INV-8104 · For: Object storage, 40 TB, October"
+      },
+      "ai": [
+        {
+          "task": "extract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": null,
+          "injection": null
+        },
+        {
+          "task": "purpose",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "WITHIN_SCOPE",
+          "injection": null
+        },
+        {
+          "task": "behavior",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "LOW",
+          "injection": null,
+          "signals": []
+        },
+        {
+          "task": "contract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "UNCERTAIN",
+          "injection": {
+            "codePatterns": [
+              "ignore_instructions",
+              "role_claim"
+            ],
+            "modelFlagged": true
+          }
+        }
+      ],
+      "authority": [
+        {
+          "decision": "REVIEW",
+          "outcome": "REVIEW",
+          "nonPassing": [
+            "REVIEW injection [payflow]: A document contains instructions aimed at the AI (ignore instructions, role claim, flagged by the model); they were ignored and a person must look"
+          ]
+        }
+      ],
+      "human": {
+        "status": "REJECTED",
+        "note": "Not paying until clarified with the supplier"
+      },
+      "paypal": "not contacted",
+      "runStatus": "REJECTED"
+    },
+    {
+      "runId": "37dd0acf-865b-4c04-bfa7-60a731cc5c19",
+      "request": {
+        "supplier": "billing@acme-cloud.example",
+        "amount": "230.00",
+        "invoiceFirstLine": "From: Acme Cloud · Invoice INV-8105 · For: Professional services, Q4 engagement"
+      },
+      "ai": [
+        {
+          "task": "extract",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": null,
+          "injection": null
+        },
+        {
+          "task": "purpose",
+          "source": "ai",
+          "status": "OK",
+          "cached": false,
+          "model": "gpt-5.4-mini-2026-03-17",
+          "verdict": "UNCERTAIN",
+          "injection": null
+        },
+        {
+          "task": "behavior",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "LOW",
+          "injection": null,
+          "signals": []
+        },
+        {
+          "task": "contract",
+          "source": "payflow",
+          "status": "NOT_REQUIRED",
+          "cached": false,
+          "model": null,
+          "verdict": "UNCERTAIN",
+          "injection": null
+        }
+      ],
+      "authority": [
+        {
+          "decision": "REVIEW",
+          "outcome": "REVIEW",
+          "nonPassing": [
+            "REVIEW purpose [ai]: AI could not tell whether this is within the delegated purpose — The invoice only says \"Professional services, Q4 engagement\" and does not identify cloud infrastructure, compute, storage, networking, databases, or support for those services."
+          ]
+        }
+      ],
+      "human": {
+        "status": "REJECTED",
+        "note": "Not paying until clarified with the supplier"
+      },
+      "paypal": "not contacted",
+      "runStatus": "REJECTED"
+    }
+  ],
+  "auditChain": {
+    "ok": true,
+    "records": 606,
+    "head": "65b2ec79f0f74f2abf18e6baaf13ffc4675b6965f1e87535a595ce012fbd5d82"
+  },
+  "screenshots": [
+    "anomaly/01-manual-run-payload.png",
+    "anomaly/02-run-settled.png",
+    "anomaly/03-approvals-queue.png",
+    "anomaly/04-rejected-paypal-not-contacted.png",
+    "anomaly/05-approvals-decided.png",
+    "cache/01-manual-run-payload.png",
+    "cache/02-run-settled.png",
+    "cache/03-approvals-queue.png",
+    "cache/04-rejected-paypal-not-contacted.png",
+    "cache/05-approvals-decided.png",
+    "contract-mismatch/01-manual-run-payload.png",
+    "contract-mismatch/02-run-settled.png",
+    "contract-mismatch/03-approvals-queue.png",
+    "contract-mismatch/04-approved-once-and-executed.png",
+    "contract-mismatch/05-approvals-decided.png",
+    "injection-contract/01-manual-run-payload.png",
+    "injection-contract/02-run-settled.png",
+    "injection-contract/03-approvals-queue.png",
+    "injection-contract/04-rejected-paypal-not-contacted.png",
+    "injection-contract/05-approvals-decided.png",
+    "injection/01-manual-run-payload.png",
+    "injection/02-run-settled.png",
+    "injection/03-approvals-queue.png",
+    "injection/04-rejected-paypal-not-contacted.png",
+    "injection/05-approvals-decided.png",
+    "ledger/01-authority-with-purpose.png",
+    "ledger/02-approvals-decided.png",
+    "ledger/03-transactions.png",
+    "ledger/04-audit.png",
+    "normal/01-manual-run-payload.png",
+    "normal/02-run-settled.png",
+    "purpose-ambiguous/01-manual-run-payload.png",
+    "purpose-ambiguous/02-run-settled.png",
+    "purpose-ambiguous/03-approvals-queue.png",
+    "purpose-ambiguous/04-rejected-paypal-not-contacted.png",
+    "purpose-ambiguous/05-approvals-decided.png",
+    "purpose-outside/01-manual-run-payload.png",
+    "purpose-outside/02-run-settled.png",
+    "purpose-outside/03-approvals-queue.png",
+    "purpose-outside/04-rejected-paypal-not-contacted.png",
+    "purpose-outside/05-approvals-decided.png",
+    "setup/01-draft-before-activation.png",
+    "setup/02-activated-by-owner.png",
+    "setup/03-purpose-and-ai-policy.png",
+    "setup/04-authority-with-purpose.png",
+    "setup/05-edit-budget.png",
+    "setup/06-authority-new-budget.png"
+  ]
+}

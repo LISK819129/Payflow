@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import type { z } from "zod";
 import { compileUserMessage, patchUserMessage, systemPrompt } from "../workflow/compiler/prompt";
-import { CompileEnvelope, PatchEnvelope, type AIProvider, type AIResult, type CompileRequest, type PatchRequest, type Usage } from "./types";
+import { CompileEnvelope, PatchEnvelope, type AIProvider, type AIResult, type AnalysisRequest, type CompileRequest, type PatchRequest, type Usage } from "./types";
 
 /**
  * OpenAI implementation of AIProvider (Responses API, strict structured
@@ -34,17 +34,27 @@ export class OpenAIProvider implements AIProvider {
     return this.call(PatchEnvelope, "payflow_patch", patchUserMessage(req));
   }
 
-  private async call<T>(schema: z.ZodType<T>, formatName: string, userMessage: string): Promise<AIResult<T>> {
+  /** Execution-time analysis: small, low-effort, its own prompt-cache key per task. */
+  analyze<T>(req: AnalysisRequest<T>) {
+    return this.call(req.schema, req.schemaName, req.input, { instructions: req.instructions, cacheKey: `payflow-${req.task}-v1`, effort: "low", maxOutputTokens: 3000 });
+  }
+
+  private async call<T>(
+    schema: z.ZodType<T>,
+    formatName: string,
+    userMessage: string,
+    o: { instructions?: string; cacheKey?: string; effort?: "low" | "medium" | "high"; maxOutputTokens?: number } = {},
+  ): Promise<AIResult<T>> {
     let response: OpenAI.Responses.Response;
     try {
       response = await this.client.responses.create({
         model: this.model,
-        instructions: systemPrompt(),
+        instructions: o.instructions ?? systemPrompt(),
         input: userMessage,
-        reasoning: { effort: this.opts.effort ?? "medium" },
+        reasoning: { effort: o.effort ?? this.opts.effort ?? "medium" },
         text: { format: zodTextFormat(schema as never, formatName) },
-        max_output_tokens: this.opts.maxOutputTokens ?? 16_000,
-        prompt_cache_key: "payflow-compiler-v1",
+        max_output_tokens: o.maxOutputTokens ?? this.opts.maxOutputTokens ?? 16_000,
+        prompt_cache_key: o.cacheKey ?? "payflow-compiler-v1",
         store: false,
       });
     } catch (err) {

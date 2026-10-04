@@ -13,6 +13,9 @@ import { EXECUTORS, notImplemented } from "./executors";
 import { describeOutcome } from "./outcome";
 import { describeExecution } from "../../actions/describe";
 import { prepareExecution, runAction } from "../../actions/execute";
+import { collectEvidence } from "../../intelligence/evidence";
+import { aiNodeResult } from "../../intelligence/node";
+import { runAnalysis } from "../../intelligence/runner";
 import { gatewayFor } from "../../actions/paypal-gateway";
 import { isActionNode, prepareIntent } from "../../actions/prepare";
 import type { NodeResult, RunContext, RunRow, RuntimeDeps, StepRow, WorkflowRow } from "./types";
@@ -33,7 +36,7 @@ export function buildContext(run: RunRow, steps: StepRow[], workflow: WorkflowRo
   return { trigger: run.triggerPayload as Record<string, unknown>, nodes, workflow: { id: workflow.id, name: workflow.name } };
 }
 
-type StepOutcome = { continue: boolean; wakeAt?: Date; execute?: string };
+type StepOutcome = { continue: boolean; wakeAt?: Date; execute?: string; analyze?: string };
 
 /** Delay before replaying an action whose last attempt got no definitive answer. */
 const ACTION_RETRY_MS = 15_000;
@@ -49,6 +52,15 @@ export async function advanceRun(runId: string, deps: RuntimeDeps): Promise<RunR
   for (let i = 0; i < MAX_STEPS_PER_ADVANCE; i++) {
     const r = await db().transaction((tx) => step(tx, runId, deps));
     if (r.wakeAt) await deps.enqueueAdvance(runId, { startAfter: r.wakeAt });
+    if (r.analyze) {
+      // The model call happens outside any transaction; the step then reads the stored, validated result.
+      const res = await runAnalysis(r.analyze);
+      if (res === "busy") {
+        await deps.enqueueAdvance(runId, { startAfter: new Date(deps.now().getTime() + 10_000) });
+        break;
+      }
+      continue;
+    }
     if (r.execute) {
       // The external call happens here, outside any transaction, under the execution's lease.
       const res = await runAction(r.execute);
@@ -103,9 +115,11 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
   const exec = EXECUTORS[node.type];
   const title = node.label ?? SPEC_BY_TYPE[node.type]?.title ?? node.type;
 
-  let result: NodeResult | { kind: "execute"; executionId: string; explanation: string; output: unknown };
+  let result: NodeResult | { kind: "execute"; executionId: string; explanation: string; output: unknown } | { kind: "analyze"; analysisId: string; explanation: string; output: unknown };
   try {
-    if (isActionNode(node.type) && (SPEC_BY_TYPE[node.type]?.implementedIn ?? 99) <= RUNTIME_PHASE) {
+    if (SPEC_BY_TYPE[node.type]?.isAI && (SPEC_BY_TYPE[node.type]?.implementedIn ?? 99) <= RUNTIME_PHASE) {
+      result = await aiNodeResult(tx, { node, ctx, run, waiting, now });
+    } else if (isActionNode(node.type) && (SPEC_BY_TYPE[node.type]?.implementedIn ?? 99) <= RUNTIME_PHASE) {
       result = await actionResult(tx, { node, ctx, run, steps, title, workflow, now });
     } else {
       result = exec ? await exec({ tx, node, ctx, run, workflow, waiting, now }) : notImplemented(node.type);
@@ -124,6 +138,11 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
       await tx.insert(runSteps).values({ runId: run.id, seq: nextSeq, nodeId: node.id, nodeType: node.type, status: "OK", ...values });
     }
   };
+
+  if (result.kind === "analyze") {
+    if (!waiting) await writeStep({ status: "WAITING", output: result.output, explanation: result.explanation });
+    return { continue: false, analyze: result.analysisId };
+  }
 
   if (result.kind === "execute") {
     // Record the execution id on the step (also when it was waiting on an authority review).
@@ -244,7 +263,7 @@ const REVIEW_HOURS = 24;
  */
 async function authorityGate(
   tx: Tx,
-  a: { node: GraphNode; run: RunRow; title: string; workflow: WorkflowRow; now: Date },
+  a: { node: GraphNode; run: RunRow; steps: StepRow[]; title: string; workflow: WorkflowRow; now: Date },
   intent: ActionIntent,
 ): Promise<{ authz: AuthorityResult } | { result: NodeResult }> {
   const req: AuthorityRequest = {
@@ -258,6 +277,7 @@ async function authorityGate(
     counterparty: intent.counterparty,
     target: intent.target,
     movesMoney: intent.movesMoney,
+    evidence: collectEvidence(a.steps),
   };
   const [review] = await tx.select().from(approvals).where(and(eq(approvals.runId, a.run.id), eq(approvals.nodeId, a.node.id)));
   if (review?.status === "PENDING") {
@@ -279,7 +299,7 @@ async function authorityGate(
         kind: "end",
         outcome: "blocked",
         explanation: authz.reason,
-        headline: `Denied by authority at “${a.title}”: ${authz.reason}. PayPal was not contacted`,
+        headline: `Denied by authority at “${a.title}”: ${authz.reason.replace(/[.\s]+$/, "")}. PayPal was not contacted`,
         stepError: { code: "AUTHORITY_DENIED", message: authz.reason },
       },
     };
@@ -329,7 +349,7 @@ async function authorityGate(
         waitFor: "approval",
         wakeAt: expiresAt,
         output: { authorityReview: created.id, decisionId: authz.decisionId },
-        explanation: `Needs a person: ${authz.reason}. PayPal has not been contacted`,
+        explanation: `Needs a person: ${authz.reason.replace(/[.\s]+$/, "")}. PayPal has not been contacted`,
       },
     };
   }

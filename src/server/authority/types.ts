@@ -1,5 +1,6 @@
 import type { Tx } from "../db/client";
 import type { approvals, authorities } from "../db/schema";
+import type { EvidenceSet } from "../intelligence/evidence";
 import type { PeriodWindow } from "./periods";
 
 export type AuthorityRow = typeof authorities.$inferSelect;
@@ -20,16 +21,21 @@ export type AuthorityRequest = {
   counterparty: string | null;
   target: { type: string; id: string } | null;
   movesMoney: boolean;
+  /** Phase 7: AI evidence produced earlier in the run. Input to policy; never itself a permission. */
+  evidence?: EvidenceSet;
 };
 
 export type CheckResult = "pass" | "review" | "deny";
 
 /** One rule, its verdict and a sentence a person can read. */
 export type Evaluation = {
-  check: "authority" | "status" | "validity" | "action" | "counterparty" | "currency" | "per_transaction" | "budget" | "frequency" | "state";
+  check: "authority" | "status" | "validity" | "action" | "counterparty" | "currency" | "per_transaction" | "budget" | "frequency" | "state" | "purpose" | "risk" | "contract" | "injection" | "extraction";
   result: CheckResult;
   detail: string;
   authorityId?: string;
+  /** Where the input came from: PayFlow's own calculation, or an AI interpretation (shown differently, never as fact). */
+  source?: "payflow" | "ai";
+  analysisId?: string | null;
 };
 
 export type BudgetSnapshot = {

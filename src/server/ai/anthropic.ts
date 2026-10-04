@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { z } from "zod";
 import { compileUserMessage, patchUserMessage, systemPrompt } from "../workflow/compiler/prompt";
-import { CompileEnvelope, PatchEnvelope, type AIProvider, type AIResult, type CompileRequest, type PatchRequest, type Usage } from "./types";
+import { CompileEnvelope, PatchEnvelope, type AIProvider, type AIResult, type AnalysisRequest, type CompileRequest, type PatchRequest, type Usage } from "./types";
 
 /**
  * Anthropic implementation of AIProvider. Uses structured outputs so the
@@ -33,17 +33,21 @@ export class AnthropicProvider implements AIProvider {
     return this.call(PatchEnvelope, patchUserMessage(req));
   }
 
-  private async call<T>(schema: z.ZodType<T>, userMessage: string): Promise<AIResult<T>> {
+  analyze<T>(req: AnalysisRequest<T>) {
+    return this.call(req.schema, req.input, { system: req.instructions, effort: "low", maxTokens: 3000 });
+  }
+
+  private async call<T>(schema: z.ZodType<T>, userMessage: string, o: { system?: string; effort?: "low" | "medium" | "high"; maxTokens?: number } = {}): Promise<AIResult<T>> {
     let response: Anthropic.Message;
     try {
       response = await this.client.messages.create({
         model: this.model,
-        max_tokens: this.opts.maxTokens ?? 16_000,
-        // Stable system prompt, cached: repeated compiles pay ~10% for it.
-        system: [{ type: "text", text: systemPrompt(), cache_control: { type: "ephemeral" } }],
+        max_tokens: o.maxTokens ?? this.opts.maxTokens ?? 16_000,
+        // Stable system prompt, cached: repeated calls pay ~10% for it.
+        system: [{ type: "text", text: o.system ?? systemPrompt(), cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: userMessage }],
         thinking: { type: "adaptive" },
-        output_config: { effort: this.opts.effort ?? "medium", format: zodOutputFormat(schema) },
+        output_config: { effort: o.effort ?? this.opts.effort ?? "medium", format: zodOutputFormat(schema) },
       });
     } catch (err) {
       if (err instanceof Anthropic.RateLimitError) return { ok: false, code: "RATE_LIMITED", message: "The AI provider is rate limiting requests; try again shortly", model: this.model };

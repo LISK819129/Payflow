@@ -20,6 +20,16 @@ export async function spentUsd(): Promise<string> {
  * every real model request; there is no override in code.
  */
 export async function assertWithinBudget(worstCaseUsd: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  // Optional phase cap (AI_PHASE_CAP_USD since AI_PHASE_SINCE): a tighter ceiling for one stretch of work.
+  const cap = process.env.AI_PHASE_CAP_USD;
+  const since = process.env.AI_PHASE_SINCE;
+  if (cap && since && /^\d+(\.\d+)?$/.test(cap) && !Number.isNaN(Date.parse(since))) {
+    const { rows } = await db().execute<{ total: string }>(sql`select coalesce(sum(cost_usd::numeric), 0)::text as total from ai_usage where at >= ${new Date(since).toISOString()}`);
+    const phase = rows[0]?.total ?? "0";
+    if (compareDecimal((Number(phase) + Number(worstCaseUsd)).toFixed(6), cap) > 0) {
+      return { ok: false, message: `AI phase cap: $${Number(phase).toFixed(4)} of $${cap} spent since ${since}; this call could cost up to $${Number(worstCaseUsd).toFixed(4)}` };
+    }
+  }
   const spent = await spentUsd();
   const projected = (Number(spent) + Number(worstCaseUsd)).toFixed(6);
   if (compareDecimal(projected, aiBudgetUsd()) > 0) {

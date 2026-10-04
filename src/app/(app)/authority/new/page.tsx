@@ -31,6 +31,8 @@ export default async function NewAuthorityPage() {
           countPeriod: "",
           validFrom: "",
           expiresAt: "",
+          purposeScope: "",
+          policy: {},
         }}
       />
     </>

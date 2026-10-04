@@ -327,41 +327,92 @@ export const NODE_SPECS = [
     refKeys: ["paymentRef", "invoiceIdRef"],
   }),
 
-  // ── AI (output is evidence for policy/condition nodes, never an instruction) ─
+  // ── AI (output is evidence for the authority engine, policy and condition nodes — never an instruction) ─
+  // Every AI node reads untrusted documents as fenced data, returns PayFlow-schema evidence with provenance,
+  // and has no PayPal access. Its output can never feed a money node's config (validator: ai_feeds_money)
+  // and it is not a gate: money still needs a policy/approval gate and the action's delegated authority.
   spec({
-    type: "ai.invoice_match",
+    type: "ai.invoice_extract",
     category: "ai",
-    title: "AI invoice match",
-    description: "Finds the open invoice this payment settles, with confidence and evidence.",
-    config: z.object({ paymentRef: Ref, counterpartyRef: Ref.optional() }).strict(),
+    title: "AI invoice reading",
+    description:
+      "Reads an invoice or payment request and extracts counterparty, invoice number, amount, currency, due date, purpose, terms and line items. Each value is SOURCE PROVIDED (from the given refs), AI EXTRACTED (with a quote verified in the document) or NOT FOUND; conflicts between source and document are reported. Never invents values.",
+    config: z
+      .object({ documentRef: Ref, amountRef: Ref.optional(), counterpartyRef: Ref.optional(), invoiceNumberRef: Ref.optional(), dueDateRef: Ref.optional() })
+      .strict(),
     ports: ["done", "error"],
     requiredPorts: ["done"],
     implementedIn: 7,
     isAI: true,
-    refKeys: ["paymentRef", "counterpartyRef"],
+    refKeys: ["documentRef", "amountRef", "counterpartyRef", "invoiceNumberRef", "dueDateRef"],
+  }),
+  spec({
+    type: "ai.contract_match",
+    category: "ai",
+    title: "AI contract check",
+    description: "Compares an invoice with the supplied contract (service, price, fees, parties, term). Verdict MATCH / MISMATCH / UNCERTAIN with quoted findings. MATCH is evidence, not authorization.",
+    config: z.object({ invoiceRef: Ref, contractRef: Ref, amountRef: Ref, counterpartyRef: Ref.optional() }).strict(),
+    ports: ["done", "error"],
+    requiredPorts: ["done"],
+    implementedIn: 7,
+    isAI: true,
+    refKeys: ["invoiceRef", "contractRef", "amountRef", "counterpartyRef"],
+  }),
+  spec({
+    type: "ai.invoice_match",
+    category: "ai",
+    title: "AI invoice match",
+    description: "Finds which open PayFlow invoice a payment settles: exact deterministic match first; the AI only chooses among several candidates. Output MATCH / NO_MATCH / UNCERTAIN.",
+    config: z.object({ paymentRef: Ref, counterpartyRef: Ref.optional(), noteRef: Ref.optional() }).strict(),
+    ports: ["done", "error"],
+    requiredPorts: ["done"],
+    implementedIn: 7,
+    isAI: true,
+    refKeys: ["paymentRef", "counterpartyRef", "noteRef"],
   }),
   spec({
     type: "ai.behavior_analysis",
     category: "ai",
     title: "AI behaviour analysis",
-    description: "Compares this transaction with the counterparty's history; returns a risk level and anomalies.",
-    config: z.object({ paymentRef: Ref, counterpartyRef: Ref }).strict(),
+    description:
+      "Compares this request with PayFlow's payment history. Signals (amount deviation, new counterparty, currency change, frequency, duplicate invoice) are calculated by code; the AI only explains them when they fire and may raise — never lower — the risk level. Output LOW / ELEVATED / HIGH / UNCERTAIN with evidence.",
+    config: z
+      .object({
+        paymentRef: Ref,
+        counterpartyRef: Ref,
+        descriptionRef: Ref.optional(),
+        invoiceNumberRef: Ref.optional(),
+        action: z.enum(["paypal.payout", "paypal.refund", "paypal.order_capture", "paypal.invoice_send"]).default("paypal.payout"),
+        explain: z.enum(["when_flagged", "always"]).default("when_flagged"),
+      })
+      .strict(),
     ports: ["done", "error"],
     requiredPorts: ["done"],
     implementedIn: 7,
     isAI: true,
-    refKeys: ["paymentRef", "counterpartyRef"],
+    refKeys: ["paymentRef", "counterpartyRef", "descriptionRef", "invoiceNumberRef"],
   }),
   spec({
     type: "ai.purpose_classification",
     category: "ai",
-    title: "AI purpose classification",
-    description: "Classifies what a request is for against an allowed category list.",
-    config: z.object({ textRefs: z.array(Ref).min(1).max(5), categories: z.array(z.string().min(1).max(60)).min(2).max(30) }).strict(),
+    title: "AI purpose check",
+    description:
+      "Classifies what a payment is FOR against the purpose scope of the authority that covers this action (or an explicit scope): WITHIN_SCOPE / OUTSIDE_SCOPE / UNCERTAIN, with quoted evidence. The authority's policy decides what each answer causes.",
+    config: z
+      .object({
+        textRefs: z.array(Ref).min(1).max(5),
+        amountRef: Ref.optional(),
+        counterpartyRef: Ref.optional(),
+        action: z.enum(["paypal.payout", "paypal.refund", "paypal.order_capture", "paypal.invoice_send"]).default("paypal.payout"),
+        scope: z.string().min(3).max(600).optional(),
+        categories: z.array(z.string().min(1).max(60)).max(30).optional(),
+      })
+      .strict(),
     ports: ["done", "error"],
     requiredPorts: ["done"],
     implementedIn: 7,
     isAI: true,
+    refKeys: ["amountRef", "counterpartyRef"],
   }),
 ] as const satisfies readonly NodeSpec[];
 

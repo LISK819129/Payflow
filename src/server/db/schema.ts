@@ -506,6 +506,10 @@ export const authorities = pgTable(
     validFrom: timestamp("valid_from", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     version: integer("version").notNull().default(1),
+    /** Phase 7: what the money may be FOR, in plain words; AI classifies requests against it (evidence only). */
+    purposeScope: text("purpose_scope"),
+    /** Phase 7: what each kind of AI evidence causes. Deterministic; the AI never chooses this. */
+    intelligencePolicy: jsonb("intelligence_policy").$type<Record<string, string>>().notNull().default({}),
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -607,3 +611,47 @@ export const workerHeartbeats = pgTable("worker_heartbeats", {
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ── AI financial intelligence (Phase 7) ─────────────────────────────────────
+
+export const analysisStatus = pgEnum("analysis_status", ["PENDING", "OK", "FAILED"]);
+
+/**
+ * One execution-time AI analysis, content-addressed: the same task, prompt and
+ * schema version, model and exact inputs share one row, so a repeat is a cache
+ * hit, not a second paid call. Holds the provenance (provider, model, prompt
+ * hash, input hashes, validated output, usage, cost) — never chain-of-thought,
+ * never credentials. Authority decisions are never cached; they read this.
+ */
+export const aiAnalyses = pgTable(
+  "ai_analyses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    task: text("task").notNull(),
+    cacheKey: text("cache_key").notNull(),
+    status: analysisStatus("status").notNull().default("PENDING"),
+    attempts: integer("attempts").notNull().default(0),
+    leaseUntil: timestamp("lease_until", { withTimezone: true, precision: 3 }),
+    provider: text("provider"),
+    model: text("model").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    promptHash: text("prompt_hash").notNull(),
+    schemaName: text("schema_name").notNull(),
+    inputHash: text("input_hash").notNull(),
+    /** Trusted context sent to the model and the hash of every untrusted document (not the documents). */
+    request: jsonb("request").notNull(),
+    output: jsonb("output"),
+    validation: jsonb("validation"),
+    usage: jsonb("usage"),
+    costUsd: text("cost_usd"),
+    error: text("error"),
+    hits: integer("hits").notNull().default(0),
+    lastHitAt: timestamp("last_hit_at", { withTimezone: true, precision: 3 }),
+    createdAt: createdAt(),
+    completedAt: timestamp("completed_at", { withTimezone: true, precision: 3 }),
+  },
+  (t) => [uniqueIndex("ai_analyses_cache_uq").on(t.workspaceId, t.cacheKey), index("ai_analyses_task_idx").on(t.task, t.createdAt)],
+);

@@ -210,5 +210,7 @@ function snapshot(a: AuthorityRow) {
     countPeriod: a.countPeriod,
     validFrom: a.validFrom,
     expiresAt: a.expiresAt,
+    purposeScope: a.purposeScope,
+    intelligencePolicy: a.intelligencePolicy,
   };
 }

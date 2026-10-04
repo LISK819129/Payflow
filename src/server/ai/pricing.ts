@@ -9,6 +9,7 @@ import type { Usage } from "./types";
  */
 const PRICES: Record<string, { input: number; output: number }> = {
   "gpt-5.4-mini": { input: 0.75, output: 4.5 },
+  "mock-analyst-1": { input: 0, output: 0 },
   "gpt-5.4-nano": { input: 0.2, output: 1.25 },
   "gpt-5.4": { input: 2.5, output: 15 },
   "claude-sonnet-5": { input: 2, output: 10 },

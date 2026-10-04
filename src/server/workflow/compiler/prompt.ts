@@ -118,7 +118,7 @@ Workflows read data through dotted references:
 - trigger.payer.email, trigger.payer.name, trigger.payer.payerId
 - trigger.invoiceId, trigger.orderId, trigger.resourceId (the PayPal id of the capture/invoice/payout/dispute), trigger.eventType, trigger.summary
 - trigger.<field> for a manual trigger: whatever fields the person supplies (e.g. trigger.dueDate, trigger.supplier, trigger.amount)
-- nodes.<nodeId>.output.<field> — output of an earlier node. Policy nodes output { passed }, conditions output { result }; AI nodes output e.g. { risk: "LOW"|"MEDIUM"|"HIGH", confidence, category, matchedInvoiceId, anomalies }.
+- nodes.<nodeId>.output.<field> — output of an earlier node. Policy nodes output { passed }, conditions output { result }; AI nodes output evidence: ai.behavior_analysis → { level: "LOW"|"ELEVATED"|"HIGH"|"UNCERTAIN" }; ai.purpose_classification → { classification: "WITHIN_SCOPE"|"OUTSIDE_SCOPE"|"UNCERTAIN" }; ai.contract_match → { verdict: "MATCH"|"MISMATCH"|"UNCERTAIN" }; ai.invoice_match → { verdict, matchedInvoiceId }; ai.invoice_extract → { extraction.fields.<name>.value }.
 
 # Conditions (Expr)
 An Expr is a JSON tree, evaluated by a fixed interpreter (never code):

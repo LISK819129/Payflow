@@ -3,6 +3,7 @@ import { z } from "zod";
 import { appendAudit } from "../audit/audit";
 import { db } from "../db/client";
 import { authorities, workflows } from "../db/schema";
+import { INTELLIGENCE_POLICY_DEFAULTS, NEVER_ALLOW } from "./evaluate";
 
 /**
  * Creating, editing, suspending and revoking delegated authority. Every change
@@ -32,12 +33,21 @@ export const AuthorityInput = z
     countPeriod: z.enum(["hour", "day", "week", "month"]).nullable().default(null),
     validFrom: z.coerce.date().nullable().default(null),
     expiresAt: z.coerce.date().nullable().default(null),
+    /** What the money may be FOR, in plain words. AI purpose checks are judged against exactly this text. */
+    purposeScope: z.string().trim().min(10).max(600).nullable().default(null),
+    /** What each kind of AI evidence causes. Missing keys use the safe defaults. */
+    intelligencePolicy: z
+      .partialRecord(z.enum(Object.keys(INTELLIGENCE_POLICY_DEFAULTS) as [keyof typeof INTELLIGENCE_POLICY_DEFAULTS, ...(keyof typeof INTELLIGENCE_POLICY_DEFAULTS)[]]), z.enum(["allow", "review", "deny"]))
+      .default({}),
   })
   .superRefine((v, ctx) => {
     if (v.counterpartyRule === "allowlist" && v.counterparties.length === 0) ctx.addIssue({ code: "custom", path: ["counterparties"], message: "an allowlist needs at least one counterparty" });
     if (!!v.budgetAmount !== !!v.budgetPeriod) ctx.addIssue({ code: "custom", path: ["budgetPeriod"], message: "a budget needs both an amount and a period" });
     if (!!v.maxCount !== !!v.countPeriod) ctx.addIssue({ code: "custom", path: ["countPeriod"], message: "a frequency limit needs both a count and a period" });
     if (v.validFrom && v.expiresAt && v.expiresAt <= v.validFrom) ctx.addIssue({ code: "custom", path: ["expiresAt"], message: "expiry must be after the start" });
+    for (const k of NEVER_ALLOW) {
+      if ((v.intelligencePolicy as Record<string, string>)[k] === "allow") ctx.addIssue({ code: "custom", path: ["intelligencePolicy", k], message: "ambiguity can only lead to review or deny, never to permission" });
+    }
   });
 export type AuthorityInput = z.input<typeof AuthorityInput>;
 
@@ -71,6 +81,8 @@ const fieldsOf = (v: z.output<typeof AuthorityInput>) => ({
   countPeriod: v.countPeriod,
   validFrom: v.validFrom,
   expiresAt: v.expiresAt,
+  purposeScope: v.purposeScope,
+  intelligencePolicy: v.intelligencePolicy as Record<string, string>,
 });
 
 export async function createAuthority(input: { workspaceId: string; userId: string; data: unknown }): Promise<Result> {

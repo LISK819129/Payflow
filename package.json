@@ -36,7 +36,9 @@
     "worker:stop": "tsx scripts/worker-control.ts stop",
     "worker:fresh": "tsx scripts/worker-control.ts stop && tsx src/worker/index.ts",
     "db:seed:phase6": "tsx scripts/seed-phase6.ts",
-    "evidence:manifest:phase6": "tsx scripts/evidence/manifest-phase6.ts"
+    "evidence:manifest:phase6": "tsx scripts/evidence/manifest-phase6.ts",
+    "db:seed:phase7": "tsx scripts/seed-phase7.ts",
+    "evidence:manifest:phase7": "tsx scripts/evidence/manifest-phase7.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

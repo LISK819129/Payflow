@@ -44,7 +44,10 @@ function Checks({ items }: { items: Evaluation[] }) {
       {items.map((e, i) => (
         <li key={i} className={`flex items-start gap-1.5 text-body-sm ${e.result === "pass" ? "text-ink-2" : e.result === "review" ? "text-warn" : "text-danger"}`}>
           <span className="mt-[3px] shrink-0">{icon[e.result]}</span>
-          <span>{e.detail}</span>
+          <span>
+            {e.detail}
+            {e.source === "ai" && <span className="ml-1.5 text-label font-semibold uppercase tracking-[0.06em] text-marker-ink">AI evidence</span>}
+          </span>
         </li>
       ))}
     </ul>

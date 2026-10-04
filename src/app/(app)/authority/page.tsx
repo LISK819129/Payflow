@@ -2,7 +2,9 @@ import { Check, CircleAlert, CircleX, Plus } from "lucide-react";
 import Link from "next/link";
 import { BudgetBar } from "@/components/authority/decision-trace";
 import { buttonClass, Empty, formatClock, formatDay, PageHeader, Section } from "@/components/ui";
-import { ACTION_LABEL, money } from "@/server/authority/evaluate";
+import { ACTION_LABEL, intelligencePolicy, money } from "@/server/authority/evaluate";
+
+const POLICY_LABEL: Record<string, string> = { purposeOutside: "outside purpose", purposeUncertain: "unsure of purpose", riskElevated: "elevated risk", riskHigh: "high risk", contractMismatch: "contract mismatch", injection: "injected instructions" };
 import { listAuthorities, uncoveredActions, type AuthorityView } from "@/server/authority/queries";
 import { requireUser } from "@/server/auth/current";
 import { addDecimal } from "@/server/workflow/dsl/decimal";
@@ -111,6 +113,24 @@ function Charter({ a, isOwner }: { a: AuthorityView; isOwner: boolean }) {
           {a.validFrom && <div className="text-body-sm text-muted">from {fmtDate(a.validFrom)}</div>}
         </Clause>
       </dl>
+
+      {a.purposeScope && (
+        <div className="mt-5 grid gap-x-8 gap-y-2 border-t border-line pt-4 lg:grid-cols-[1fr_1fr]">
+          <div>
+            <div className="pf-label">For what</div>
+            <p className="mt-1.5 text-body text-ink">{a.purposeScope}</p>
+          </div>
+          <div>
+            <div className="pf-label">AI evidence → policy</div>
+            <p className="mt-1.5 text-body-sm text-ink-2">
+              {Object.entries(intelligencePolicy(a))
+                .filter(([k]) => ["purposeOutside", "purposeUncertain", "riskElevated", "riskHigh", "contractMismatch", "injection"].includes(k))
+                .map(([k, v]) => `${POLICY_LABEL[k]}: ${v === "allow" ? "continue" : v === "review" ? "ask a person" : "refuse"}`)
+                .join(" · ")}
+            </p>
+          </div>
+        </div>
+      )}
 
       {(a.budgetUsage || a.countUsage) && (
         <div className="mt-6 grid gap-8 border-t border-line pt-5 md:grid-cols-2">

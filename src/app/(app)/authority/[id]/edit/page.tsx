@@ -39,6 +39,8 @@ export default async function EditAuthorityPage(props: PageProps<"/authority/[id
           countPeriod: a.countPeriod ?? "",
           validFrom: day(a.validFrom),
           expiresAt: day(a.expiresAt),
+          purposeScope: a.purposeScope ?? "",
+          policy: a.intelligencePolicy ?? {},
         }}
       />
     </>

@@ -309,6 +309,45 @@ async function editAuthorityAllowlist(scenario: string, name: string, allow: str
   }
 }
 
+/** Owner adds a purpose scope and AI-evidence policy to an authority in the Edit form (new audited version). */
+async function editAuthorityPurpose(scenario: string, name: string, scope: string, policyJson: string) {
+  const policy = JSON.parse(policyJson) as Record<string, "allow" | "review" | "deny">;
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/authority`);
+    const card = page.getByRole("article", { name: `Authority ${name}` });
+    await Promise.all([page.waitForURL(/\/authority\/.+\/edit$/), card.getByRole("link", { name: "Edit" }).click()]);
+    await page.getByLabel(/^For what/).fill(scope);
+    const labels: Record<string, string> = { purposeOutside: "AI says outside the purpose", riskElevated: "Elevated risk signals", riskHigh: "High risk signals", contractMismatch: "Invoice differs from contract", injection: "Document tries to instruct the AI" };
+    for (const [k, v] of Object.entries(policy)) await page.getByRole("combobox", { name: labels[k] }).selectOption(v);
+    await shot(page, "purpose-and-ai-policy", true);
+    await Promise.all([page.waitForURL(`${BASE}/authority`), page.getByRole("button", { name: "Save as a new version" }).click()]);
+    await page.waitForTimeout(1500);
+    await shot(page, "authority-with-purpose", true);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Owner changes an authority's monthly budget in the Edit form (new audited version). */
+async function editAuthorityBudget(scenario: string, name: string, amount: string) {
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/authority`);
+    const card = page.getByRole("article", { name: `Authority ${name}` });
+    await Promise.all([page.waitForURL(/\/authority\/.+\/edit$/), card.getByRole("link", { name: "Edit" }).click()]);
+    await page.getByLabel(/^Budget/).fill(amount);
+    await shot(page, "edit-budget", true);
+    await Promise.all([page.waitForURL(`${BASE}/authority`), page.getByRole("button", { name: "Save as a new version" }).click()]);
+    await page.waitForTimeout(1500);
+    await shot(page, "authority-new-budget", true);
+  } finally {
+    await browser.close();
+  }
+}
+
 /** Owner creates a delegated authority through the Authority form. */
 async function newAuthority(scenario: string, spec: string) {
   const v = JSON.parse(spec) as { name: string; workflow: string; actions: string[]; allow: string; deny?: string; perTx?: string; budget?: string; period?: string; expires?: string };
@@ -386,6 +425,10 @@ async function main() {
       return approveTwice(a, b);
     case "reject":
       return approve(a, b, c, "reject");
+    case "authority-budget":
+      return editAuthorityBudget(a, b, c);
+    case "authority-purpose":
+      return editAuthorityPurpose(a, b, c, process.argv[6] ?? "{}");
     case "authority-allow":
       return editAuthorityAllowlist(a, b, c);
     case "authority":

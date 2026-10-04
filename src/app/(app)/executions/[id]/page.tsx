@@ -2,6 +2,9 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionCard } from "@/components/flow/action-card";
+import { IntelligencePanel } from "@/components/intelligence/intelligence-panel";
+import type { Evaluation } from "@/server/authority/types";
+import type { AINodeOutput } from "@/server/intelligence/node";
 import { RunGraph } from "@/components/flow/run-graph";
 import { CopyId, ProvenanceTag, Section, Status, formatClock, formatMoney } from "@/components/ui";
 import { canAuthorize, requireUser } from "@/server/auth/current";
@@ -59,6 +62,16 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
           <ApprovalCard v={pending} canDecide={canAuthorize(user)} now={new Date()} />
         </div>
       )}
+
+      {(() => {
+        const outputs = steps.filter((s) => SPEC_BY_TYPE[s.nodeType]?.isAI && s.status === "OK" && s.output).map((s) => s.output as AINodeOutput);
+        const d = data.decisions.at(-1);
+        return outputs.length ? (
+          <div className="mt-8">
+            <IntelligencePanel outputs={outputs} analyses={data.analyses} decision={d ? { evaluations: d.evaluations as Evaluation[], outcome: d.outcome } : null} />
+          </div>
+        ) : null;
+      })()}
 
       <div className="mt-10 grid gap-x-12 gap-y-10 xl:grid-cols-[1.25fr_1fr]">
         <Section label="Path through the flow">

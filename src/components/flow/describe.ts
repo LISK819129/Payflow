@@ -35,6 +35,18 @@ export function summarizeNode(n: GraphNode): string {
       return `${((c.allowed as string[]) ?? []).length} approved counterparties`;
     case "policy.budget":
       return `${money(c.budget)} per ${c.period}`;
+    case "policy.frequency":
+      return `≤ ${String(c.max)} per ${String(c.period)}`;
+    case "ai.purpose_classification":
+      return c.scope ? "purpose vs stated scope" : "purpose vs the authority's scope";
+    case "ai.invoice_extract":
+      return "read the invoice · evidence only";
+    case "ai.contract_match":
+      return "invoice vs contract · evidence only";
+    case "ai.behavior_analysis":
+      return "history signals by code · AI explains";
+    case "ai.invoice_match":
+      return "match payment to open invoice";
     case "paypal.payout":
       return `pay ${String(c.amountRef ?? "").replace(/^trigger\./, "")} to ${String(c.receiverRef ?? "").replace(/^trigger\./, "")}`;
     case "paypal.refund":

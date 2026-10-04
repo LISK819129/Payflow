@@ -97,14 +97,26 @@ export type PatchRequest = {
 };
 
 /**
+ * One execution-time analysis (Phase 7): fixed instructions, an input message in
+ * which untrusted documents are fenced as data, and a PayFlow-owned schema the
+ * answer must match. No tools are ever offered to the model.
+ */
+export type AnalysisRequest<T> = {
+  task: string;
+  instructions: string;
+  input: string;
+  schema: z.ZodType<T>;
+  schemaName: string;
+};
+
+/**
  * A language-model provider. Implementations call a model and return a value
- * that parses as the envelope; PayFlow re-parses it anyway. Later phases add
- * analyzeTransaction, classifyPurpose, explainDecision, analyzeBehavior and
- * analyzeSimulation to this interface.
+ * that parses as the envelope; PayFlow re-parses it anyway.
  */
 export interface AIProvider {
   readonly name: string;
   readonly model: string;
   compileWorkflow(req: CompileRequest): Promise<AIResult<CompileEnvelope>>;
   patchWorkflow(req: PatchRequest): Promise<AIResult<PatchEnvelope>>;
+  analyze<T>(req: AnalysisRequest<T>): Promise<AIResult<T>>;
 }

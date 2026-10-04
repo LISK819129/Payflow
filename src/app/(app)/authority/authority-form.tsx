@@ -21,7 +21,21 @@ export type AuthorityFormValue = {
   countPeriod: "" | "hour" | "day" | "week" | "month";
   validFrom: string;
   expiresAt: string;
+  purposeScope: string;
+  policy: Record<string, string>;
 };
+
+/** What each kind of AI evidence causes. Ambiguity can only be review or deny. */
+const POLICY: { key: string; label: string; options: ("allow" | "review" | "deny")[] }[] = [
+  { key: "purposeOutside", label: "AI says outside the purpose", options: ["review", "deny"] },
+  { key: "purposeUncertain", label: "AI is unsure about the purpose", options: ["review", "deny"] },
+  { key: "riskElevated", label: "Elevated risk signals", options: ["allow", "review", "deny"] },
+  { key: "riskHigh", label: "High risk signals", options: ["review", "deny"] },
+  { key: "contractMismatch", label: "Invoice differs from contract", options: ["review", "deny"] },
+  { key: "contractUncertain", label: "Contract missing or unclear", options: ["allow", "review"] },
+  { key: "injection", label: "Document tries to instruct the AI", options: ["review", "deny"] },
+];
+const DEFAULTS: Record<string, string> = { purposeOutside: "review", purposeUncertain: "review", riskElevated: "allow", riskHigh: "review", contractMismatch: "review", contractUncertain: "allow", injection: "review" };
 
 const ACTIONS: [string, string][] = [
   ["paypal.payout", "Payout"],
@@ -83,6 +97,8 @@ export function AuthorityForm({ id, initial, workflows }: { id?: string; initial
         countPeriod: v.countPeriod || null,
         validFrom: v.validFrom ? `${v.validFrom}T00:00:00Z` : null,
         expiresAt: v.expiresAt ? `${v.expiresAt}T23:59:59Z` : null,
+        purposeScope: v.purposeScope.trim() || null,
+        intelligencePolicy: v.policy,
       };
       const r = id ? await updateAuthorityAction(id, data) : await createAuthorityAction(data);
       if (!r.ok) setError(r.error);
@@ -176,6 +192,35 @@ export function AuthorityForm({ id, initial, workflows }: { id?: string; initial
             <option value="month">month</option>
           </select>
         </L>
+      </section>
+
+      <section className="space-y-5">
+        <L label="For what — purpose scope (optional)" hint="Plain words. AI purpose checks compare each request with exactly this text; the policy below decides what their answer causes.">
+          <textarea className={`${input} h-20`} value={v.purposeScope} onChange={(e) => set({ purposeScope: e.target.value })} placeholder="Cloud infrastructure for our own systems: compute (including GPU), storage, networking, managed databases." />
+        </L>
+        <fieldset>
+          <legend className="pf-label">AI evidence policy</legend>
+          <p className="mt-1 text-meta text-muted">AI interprets; this policy decides. Uncertainty can never become permission.</p>
+          <div className="mt-2 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+            {POLICY.map((p) => (
+              <label key={p.key} className="flex items-center justify-between gap-3 text-body">
+                <span>{p.label}</span>
+                <select
+                  aria-label={p.label}
+                  className="border-0 border-b border-field bg-transparent pb-0.5 text-body outline-none focus:border-ink"
+                  value={v.policy[p.key] ?? DEFAULTS[p.key]}
+                  onChange={(e) => set({ policy: { ...v.policy, [p.key]: e.target.value } })}
+                >
+                  {p.options.map((o) => (
+                    <option key={o} value={o}>
+                      {o === "allow" ? "continue" : o === "review" ? "ask a person" : "refuse"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </section>
 
       <section className="grid gap-6 sm:grid-cols-3">

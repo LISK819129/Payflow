@@ -70,6 +70,18 @@ function defaultConfig(type: string): Record<string, unknown> {
       return { days: 7 };
     case "ledger.reconcile":
       return { paymentRef: "trigger.amount", invoiceIdRef: "trigger.invoiceId" };
+    case "ai.invoice_extract":
+      return { documentRef: "trigger.invoice", amountRef: "trigger.amount" };
+    case "ai.purpose_classification":
+      return { textRefs: ["trigger.invoice"], amountRef: "trigger.amount", counterpartyRef: "trigger.supplierEmail", action: "paypal.payout" };
+    case "ai.behavior_analysis":
+      return { paymentRef: "trigger.amount", counterpartyRef: "trigger.supplierEmail", descriptionRef: "trigger.invoice", action: "paypal.payout", explain: "when_flagged" };
+    case "ai.contract_match":
+      return { invoiceRef: "trigger.invoice", contractRef: "trigger.contract", amountRef: "trigger.amount", counterpartyRef: "trigger.supplierEmail" };
+    case "ai.invoice_match":
+      return { paymentRef: "trigger.amount", counterpartyRef: "trigger.payer.email" };
+    case "policy.frequency":
+      return { max: 20, period: "day", key: "payments" };
     default:
       return {};
   }

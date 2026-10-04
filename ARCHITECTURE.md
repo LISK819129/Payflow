@@ -196,3 +196,35 @@ action node ──► prepareIntent ──► authorityProvider().authorize ─�
 ### Development: stale workers
 
 A worker logs its git commit and a content hash of its source when it starts and writes a heartbeat (`worker_heartbeats`, shown in Settings). Before every job it checks that the source on disk is unchanged; if not, it hands the job back to the queue for a fresh worker and exits (code 75), so edited code can never run as old code. `pnpm worker:status` / `worker:stop` / `worker:fresh` find and stop only processes whose command line contains this checkout's path *and* `src/worker/index.ts`.
+
+## 13. AI financial intelligence (Phase 7)
+
+**AI = financial analyst. Authority engine = financial controller. Person = reviewer. PayPal = settlement.** The model interprets, classifies, compares and explains; it never permits money to move.
+
+```
+AI node ─► prepare (code: resolve inputs, history signals, injection scan, skip the model if not needed)
+        ─► ensureAnalysis (content-addressed cache; single-flight) ─► runAnalysis (outside any tx)
+        ─► provider.analyze(fenced input, PayFlow schema) ─► validate · ≤1 repair ─► post-process (verify quotes)
+        ─► step output = EVIDENCE ─► action node ─► authority: evaluateEvidence under the authority's own policy
+```
+
+**Five executable AI nodes** (`src/server/intelligence/`):
+- `ai.invoice_extract` — counterparty, invoice number, amount, currency, due date, purpose, terms, line items; each field is `SOURCE_PROVIDED`, `AI_EXTRACTED` (only if its quote is verbatim in the document and the value is in the quote) or `NOT_FOUND`. Source vs document disagreements are deterministic **conflicts**.
+- `ai.contract_match` — invoice vs supplied contract: `MATCH / MISMATCH / UNCERTAIN` with quoted findings. No contract → no call, UNCERTAIN.
+- `ai.purpose_classification` — `WITHIN_SCOPE / OUTSIDE_SCOPE / UNCERTAIN` against the **covering authority's own purpose text** (its hash is recorded; a changed scope makes old evidence stale).
+- `ai.behavior_analysis` — signals are **calculated by code** from PayFlow's payment history (`signals.ts`: new counterparty, deviation from median, currency change, frequency burst with a history minimum, duplicate invoice number, same amount in 24 h; levels `LOW / ELEVATED / HIGH / UNCERTAIN` by stated rules, no scores). The model is called only when a signal fires, to explain in plain words and judge consistency with earlier invoices; it may **raise** the level to ELEVATED, never lower it.
+- `ai.invoice_match` — exact deterministic match first; the model only chooses among several candidates, and its choice must be one of them.
+
+**Policy decides.** Each authority has a purpose scope and an `intelligencePolicy` (owner-set, audited): outside purpose → review/deny; uncertain purpose → review/deny; elevated risk → allow/review/deny; high risk → review/deny; contract mismatch → review/deny; contract uncertain → allow/review; injection → review/deny; extraction conflict → review; AI unavailable → review/deny. Ambiguity (uncertain purpose, injection, AI unavailable) can **never** be set to allow. Evidence must describe this exact request (amount, counterparty) or it is ignored as stale and the request is reviewed. AI-derived checks are marked `source: "ai"` and shown as interpretation, never as fact.
+
+**Untrusted content.** Documents reach the model only inside fences carrying a random per-call nonce; fence-like text inside a document is neutralised. A fixed preamble tells the model that fenced content is data, never instructions. Independently, `scanForInjection` flags text that tries to instruct an AI (ignore instructions, approve, change limits, redirect funds, exfiltrate, call tools, rewrite workflow, spoof output); any hit is evidence the policy acts on — the protection holds even if the model is fooled (tested by disabling the scanner: the test fails).
+
+**Structured outputs only.** Every task has a flat, all-required PayFlow schema with enum verdicts (`schemas.ts`), enforced by the provider's strict mode and re-parsed by PayFlow. Malformed → one controlled repair; still malformed or provider error → the analysis fails → **UNCERTAIN → review**. Contradictions (MATCH with a MISMATCH finding) and unverifiable quotes are downgraded deterministically. No tools are ever offered; the AI and intelligence modules import no PayPal or action code (checked by a test).
+
+**Provenance and cost.** `ai_analyses` stores provider, model, prompt version and hash (instructions + JSON schema), input hash, the trusted context and documents, the validated output, validation result (repairs, injection patterns), usage, cost and cache hits — never chain-of-thought or credentials. Every call goes through the metered provider (lifetime budget) plus an optional phase cap (`AI_PHASE_CAP_USD` since `AI_PHASE_SINCE`).
+
+**Cache.** Key = task + prompt/schema version + model + exact inputs. Same key → the validated result is reused (audited `ai.analysis.cache_hit`); a changed character → a new analysis. Concurrent runs that need the same analysis share one call (lease + wait). **Authority decisions are never cached**: each request is decided afresh over the (possibly cached) evidence.
+
+### GatePal seam
+
+The intelligence pieces are plain modules with PayFlow-owned types — intent (`AuthorityRequest`), purpose evidence, contract evidence, behavioural signals, risk evidence — and the authority engine consumes them through `AuthorityRequest.evidence`. An external authority service could receive the same evidence (or compute its own) behind `AuthorityProvider`; PayFlow does not depend on it.
