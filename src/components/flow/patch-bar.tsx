@@ -33,6 +33,12 @@ function ChangeLine({ c }: { c: GraphChange }) {
           Removes <span className="font-medium text-ink">{c.title}</span>
         </span>
       );
+    case "label_changed":
+      return (
+        <span>
+          <span className="text-muted">Label</span> “{c.before}” <span aria-hidden>→</span> <span className="font-medium text-ink">“{c.after}”</span>
+        </span>
+      );
     case "edges_changed":
       return (
         <span className="text-muted">
@@ -134,6 +140,27 @@ export function PatchBar({ workflowId, aiConfigured, disabledReason }: { workflo
                     {result.changes.map((c, i) => (
                       <li key={i}>
                         <ChangeLine c={c} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {result.corrections.length > 0 && (
+                  <ul className="mt-3 space-y-1 text-body-sm text-ink-2">
+                    {result.corrections.map((c, i) => (
+                      <li key={i} className="flex gap-1.5">
+                        <CircleAlert size={14} className="mt-0.5 shrink-0 text-warn" aria-hidden />
+                        <span>
+                          <span className="font-medium">PayFlow corrected a boundary:</span> {c}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {result.staleMentions.length > 0 && (
+                  <ul className="mt-3 space-y-1 text-body-sm text-muted">
+                    {result.staleMentions.map((m, i) => (
+                      <li key={i}>
+                        Note: “{m.text}” in another step still mentions {m.value} — check it still makes sense.
                       </li>
                     ))}
                   </ul>

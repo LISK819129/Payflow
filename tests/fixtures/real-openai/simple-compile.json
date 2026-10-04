@@ -1,0 +1,114 @@
+{
+  "evidenceType": "REAL_OPENAI (recorded output, replayed in tests at $0)",
+  "compilationId": "e0312663-4ba0-4158-836f-64e6748948be",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "recordedAt": "2026-10-03T16:14:50.991Z",
+  "instruction": "When a client pays us through PayPal, accept it straight away if it's under $2,500 and in US dollars. If it's in another currency, or $2,500 or more, hold it and ask me first. If I reject it, mark it as rejected.",
+  "output": {
+    "status": "compiled",
+    "workflow": {
+      "name": "paypal_payment_review",
+      "edges": [
+        {
+          "to": "usd_only",
+          "from": "payment_received",
+          "port": "next"
+        },
+        {
+          "to": "under_limit",
+          "from": "usd_only",
+          "port": "pass"
+        },
+        {
+          "to": "owner_approval",
+          "from": "usd_only",
+          "port": "block"
+        },
+        {
+          "to": "needs_review",
+          "from": "usd_only",
+          "port": "error"
+        },
+        {
+          "to": "accepted",
+          "from": "under_limit",
+          "port": "pass"
+        },
+        {
+          "to": "owner_approval",
+          "from": "under_limit",
+          "port": "block"
+        },
+        {
+          "to": "needs_review",
+          "from": "under_limit",
+          "port": "error"
+        },
+        {
+          "to": "accepted",
+          "from": "owner_approval",
+          "port": "approved"
+        },
+        {
+          "to": "rejected",
+          "from": "owner_approval",
+          "port": "rejected"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "payment_received",
+          "type": "trigger.paypal_event",
+          "label": "PayPal payment received",
+          "config_json": "{\"eventTypes\":[\"PAYMENT.CAPTURE.COMPLETED\"]}"
+        },
+        {
+          "id": "usd_only",
+          "type": "policy.currency",
+          "label": "USD only?",
+          "config_json": "{\"amountRef\":\"trigger.amount\",\"allowed\":[\"USD\"]}"
+        },
+        {
+          "id": "under_limit",
+          "type": "policy.amount_limit",
+          "label": "Under $2,500?",
+          "config_json": "{\"amountRef\":\"trigger.amount\",\"max\":{\"value\":\"2500.00\",\"currency\":\"USD\"}}"
+        },
+        {
+          "id": "owner_approval",
+          "type": "control.approval",
+          "label": "Ask me",
+          "config_json": "{\"reason\":\"Review PayPal payment that is not in USD or is $2,500 or more.\",\"amountRef\":\"trigger.amount\"}"
+        },
+        {
+          "id": "accepted",
+          "type": "control.terminal",
+          "label": "Accepted",
+          "config_json": "{\"outcome\":\"completed\",\"message\":\"Accepted automatically.\"}"
+        },
+        {
+          "id": "rejected",
+          "type": "control.terminal",
+          "label": "Rejected",
+          "config_json": "{\"outcome\":\"rejected\",\"message\":\"Rejected after review.\"}"
+        },
+        {
+          "id": "needs_review",
+          "type": "control.terminal",
+          "label": "Needs review",
+          "config_json": "{\"outcome\":\"needs_review\",\"message\":\"Could not verify the payment amount or currency.\"}"
+        }
+      ],
+      "description": "Auto-accept incoming PayPal payments only when they are USD and under $2,500; otherwise ask for approval."
+    },
+    "questions": [],
+    "assumptions": [
+      "I treated the incoming payment as a PAYMENT.CAPTURE.COMPLETED event.",
+      "I used the approval step for both non-USD payments and payments of $2,500 or more.",
+      "I interpreted “under $2,500” as strictly less than $2,500, so exactly $2,500 goes to approval.",
+      "No quoted or pasted instructions needed to be ignored."
+    ],
+    "unsupported": [],
+    "interpretation": "When a PayPal client payment arrives, automatically accept it only if it is in US dollars and under $2,500. If it is in any other currency or is $2,500 or more, hold it for my approval first. If I reject it, mark it as rejected."
+  }
+}

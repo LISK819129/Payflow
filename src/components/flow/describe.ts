@@ -28,7 +28,7 @@ export function summarizeNode(n: GraphNode): string {
     case "control.terminal":
       return `${String(c.outcome ?? "").replace("_", " ")} · ${c.message ?? ""}`;
     case "policy.amount_limit":
-      return `≤ ${money(c.max)}`;
+      return `${c.comparison === "lt" ? "<" : "≤"} ${money(c.max)}`;
     case "policy.currency":
       return `${((c.allowed as string[]) ?? []).join(", ")} only`;
     case "policy.counterparty":

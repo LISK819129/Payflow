@@ -54,19 +54,21 @@ const condition: Executor = async ({ node, ctx }) => {
 };
 
 const amountLimit: Executor = async ({ node, ctx }) => {
-  const { amountRef, max } = node.config as Cfg<{ amountRef: string; max: Money }>;
+  const { amountRef, max, comparison = "lte" } = node.config as Cfg<{ amountRef: string; max: Money; comparison?: "lte" | "lt" }>;
   const amount = readMoney(resolveRef(ctxRecord(ctx), amountRef));
   if (typeof amount === "string") return { kind: "error", code: "NO_AMOUNT", message: amount, explanation: `Amount limit: ${amount} at ${amountRef}` };
   const limit = { value: max.value, currency: max.currency };
   if (amount.currency !== limit.currency) {
-    return { kind: "next", port: "block", output: { amount, limit, reason: "currency" }, explanation: `Blocked: amount is in ${amount.currency}, limit is defined in ${limit.currency}` };
+    return { kind: "next", port: "block", output: { amount, limit, comparison, reason: "currency" }, explanation: `Blocked: amount is in ${amount.currency}, limit is defined in ${limit.currency}` };
   }
-  const ok = compareDecimal(amount.value, limit.value) <= 0;
+  const c = compareDecimal(amount.value, limit.value);
+  const ok = comparison === "lt" ? c < 0 : c <= 0;
+  const rule = comparison === "lt" ? `below ${fmt(limit)}` : `at or below ${fmt(limit)}`;
   return {
     kind: "next",
     port: ok ? "pass" : "block",
-    output: { amount, limit, passed: ok },
-    explanation: ok ? `${fmt(amount)} is within the ${fmt(limit)} limit` : `Blocked: ${fmt(amount)} exceeds the ${fmt(limit)} limit`,
+    output: { amount, limit, comparison, passed: ok },
+    explanation: ok ? `${fmt(amount)} is ${rule}` : `Blocked: ${fmt(amount)} is not ${rule}`,
   };
 };
 

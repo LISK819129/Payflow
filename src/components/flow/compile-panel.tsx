@@ -229,6 +229,11 @@ function Verdict({ result }: { result: Exclude<CompileActionResult, { status: "S
                 </Line>
               ))
             )}
+            {result.corrections.map((c, i) => (
+              <Line key={`c${i}`} tone="warn">
+                PayFlow corrected a boundary: {c}
+              </Line>
+            ))}
             {result.attempts > 1 && <Line tone="warn">The first answer failed validation; this is the one permitted repair</Line>}
           </ul>
           <p className="mt-4 text-body-sm text-muted">Saved as a draft. Nothing is active until you activate it.</p>

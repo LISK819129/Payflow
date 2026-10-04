@@ -1,0 +1,211 @@
+{
+  "evidenceType": "REAL_OPENAI (recorded output, replayed in tests at $0)",
+  "compilationId": "8572946e-c465-415b-81a1-4c600de3da96",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "recordedAt": "2026-10-03T16:37:03.116Z",
+  "instruction": "Change the auto-accept limit from $2,500 to $1,000, except for payments from ap@novalabs.example, which can still go up to $2,500.",
+  "output": {
+    "status": "patched",
+    "questions": [],
+    "operations": [
+      {
+        "op": "set_label",
+        "to": "",
+        "from": "",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "",
+        "port": "",
+        "label": "Under $1,000?",
+        "node_id": "under_limit",
+        "value_json": ""
+      },
+      {
+        "op": "set_config",
+        "to": "",
+        "from": "",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "max.value",
+        "port": "",
+        "label": "",
+        "node_id": "under_limit",
+        "value_json": "\"1000.00\""
+      },
+      {
+        "op": "set_config",
+        "to": "",
+        "from": "",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "reason",
+        "port": "",
+        "label": "",
+        "node_id": "owner_approval",
+        "value_json": "\"Review PayPal payment that is not in USD, from ap@novalabs.example above $2,500, or from other senders above $1,000.\""
+      },
+      {
+        "op": "add_node",
+        "to": "",
+        "from": "",
+        "node": {
+          "id": "novalabs_gate",
+          "type": "policy.counterparty",
+          "label": "From ap@novalabs.example?",
+          "config_json": "{\"ref\":\"trigger.payer.email\",\"allowed\":[\"ap@novalabs.example\"]}"
+        },
+        "path": "",
+        "port": "",
+        "label": "",
+        "node_id": "",
+        "value_json": ""
+      },
+      {
+        "op": "add_node",
+        "to": "",
+        "from": "",
+        "node": {
+          "id": "novalabs_limit",
+          "type": "policy.amount_limit",
+          "label": "Up to $2,500?",
+          "config_json": "{\"amountRef\":\"trigger.amount\",\"max\":{\"value\":\"2500.00\",\"currency\":\"USD\"}}"
+        },
+        "path": "",
+        "port": "",
+        "label": "",
+        "node_id": "",
+        "value_json": ""
+      },
+      {
+        "op": "connect",
+        "to": "novalabs_gate",
+        "from": "usd_only",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "",
+        "port": "pass",
+        "label": "",
+        "node_id": "",
+        "value_json": ""
+      },
+      {
+        "op": "connect",
+        "to": "novalabs_limit",
+        "from": "novalabs_gate",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "",
+        "port": "pass",
+        "label": "",
+        "node_id": "",
+        "value_json": ""
+      },
+      {
+        "op": "connect",
+        "to": "under_limit",
+        "from": "novalabs_gate",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "",
+        "port": "block",
+        "label": "",
+        "node_id": "",
+        "value_json": ""
+      },
+      {
+        "op": "connect",
+        "to": "needs_review",
+        "from": "novalabs_gate",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "",
+        "port": "error",
+        "label": "",
+        "node_id": "",
+        "value_json": ""
+      },
+      {
+        "op": "connect",
+        "to": "accepted",
+        "from": "novalabs_limit",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "",
+        "port": "pass",
+        "label": "",
+        "node_id": "",
+        "value_json": ""
+      },
+      {
+        "op": "connect",
+        "to": "owner_approval",
+        "from": "novalabs_limit",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "",
+        "port": "block",
+        "label": "",
+        "node_id": "",
+        "value_json": ""
+      },
+      {
+        "op": "connect",
+        "to": "needs_review",
+        "from": "novalabs_limit",
+        "node": {
+          "id": "",
+          "type": "",
+          "label": "",
+          "config_json": ""
+        },
+        "path": "",
+        "port": "error",
+        "label": "",
+        "node_id": "",
+        "value_json": ""
+      }
+    ],
+    "assumptions": [
+      "I used trigger.payer.email as the counterparty field for the special-case sender.",
+      "I kept the existing approval step in place for payments that fail the currency or amount checks."
+    ],
+    "unsupported": [],
+    "interpretation": "Update the PayPal payment review workflow so most USD payments auto-accept only up to $1,000, while payments from ap@novalabs.example can still auto-accept up to $2,500."
+  }
+}

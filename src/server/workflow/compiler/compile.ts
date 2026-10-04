@@ -8,6 +8,8 @@ import type { WorkflowGraph } from "../dsl/nodes";
 import { validateGraph, type Issue } from "../dsl/validate";
 import { createWorkflow, saveDraft } from "../service";
 import { weakenedControls, type ControlChange } from "./assess";
+import { reviewBoundaries } from "./boundaries";
+import { refreshLabels, type StaleMention } from "./labels";
 import { graphForModel, wireToGraph } from "./convert";
 import { checkGrounding, type Ungrounded } from "./grounding";
 import { systemPrompt } from "./prompt";
@@ -20,7 +22,7 @@ const MAX_ATTEMPTS = 2;
 export type Interpretation = Pick<CompileEnvelope, "interpretation" | "assumptions" | "questions" | "unsupported">;
 
 export type CompileOutcome =
-  | { status: "COMPILED"; compilationId: string; workflowId: string; graph: WorkflowGraph; ai: Interpretation; validation: Issue[]; activationIssues: Issue[]; attempts: number }
+  | { status: "COMPILED"; compilationId: string; workflowId: string; graph: WorkflowGraph; ai: Interpretation; validation: Issue[]; activationIssues: Issue[]; attempts: number; corrections: string[] }
   | { status: "NEEDS_CLARIFICATION"; compilationId: string; ai: Interpretation; questions: { topic: string; question: string }[]; ungrounded: Ungrounded[]; graph?: WorkflowGraph; attempts: number }
   | { status: "UNSUPPORTED"; compilationId: string; ai: Interpretation; attempts: number }
   | { status: "INVALID"; compilationId: string; ai?: Interpretation; problems: string[]; graph?: WorkflowGraph; attempts: number }
@@ -37,6 +39,8 @@ export type PatchOutcome =
       weakened: ControlChange[];
       validation: Issue[];
       attempts: number;
+      corrections: string[];
+      staleMentions: StaleMention[];
     }
   | { status: "NEEDS_CLARIFICATION"; compilationId: string; ai: Interpretation; questions: { topic: string; question: string }[]; ungrounded: Ungrounded[]; attempts: number }
   | { status: "UNSUPPORTED"; compilationId: string; ai: Interpretation; attempts: number }
@@ -109,7 +113,21 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
       break;
     }
 
-    // Validated. Now: did the model invent any critical value?
+    // Validated. Exact boundaries next: "under $X" vs "up to $X" must land X on the stated side.
+    const bounded = structuredClone(v.graph!);
+    const boundaries = reviewBoundaries(bounded, instruction);
+    if (boundaries.questions.length > 0) {
+      const id = await record(input, { kind: "COMPILE", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, graph: v.graph, attempts: attempt, repairs });
+      return { status: "NEEDS_CLARIFICATION", compilationId: id, ai: interp(env), questions: [...env.questions, ...boundaries.questions], ungrounded: [], graph: v.graph, attempts: attempt };
+    }
+    const corrections = boundaries.corrections.map((c) => c.message);
+    if (corrections.length > 0) {
+      const again = validateGraph(bounded);
+      if (!again.ok) throw new Error("boundary correction produced an invalid graph"); // cannot happen: only operators change
+      v.graph!.nodes = again.graph!.nodes;
+    }
+
+    // Did the model invent any critical value?
     const ungrounded = checkGrounding(v.graph!, [instruction]);
     if (ungrounded.length > 0) {
       const id = await record(input, { kind: "COMPILE", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, graph: v.graph, grounding: ungrounded, attempts: attempt, repairs });
@@ -133,6 +151,7 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
       instruction,
       attempts: attempt,
       repairReasons: repairs,
+      boundaryCorrections: corrections,
       /** Identifies the exact system prompt version that produced this workflow. */
       promptHash: sha256Hex(systemPrompt()).slice(0, 16),
       interpretation: env.interpretation,
@@ -158,7 +177,7 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
       provider: input.provider,
       output: env,
       graph: v.graph,
-      validation: activation.issues,
+      validation: [...activation.issues, ...boundaries.corrections.map((c) => ({ severity: "warning", code: "boundary_corrected", message: c.message, nodeId: c.nodeId }))],
       grounding: [],
       attempts: attempt,
       repairs,
@@ -175,6 +194,7 @@ export async function compileInstruction(input: { workspaceId: string; userId: s
       validation: v.issues,
       activationIssues: activation.issues.filter((i) => i.severity === "error"),
       attempts: attempt,
+      corrections,
     };
   }
 
@@ -227,6 +247,8 @@ export async function proposePatch(input: { workspaceId: string; userId: string;
     }
 
     const applied = applyOps(before, env.operations);
+    // Keep each changed node's own wording consistent with its new values.
+    const labelReview = applied.ok ? refreshLabels(before, applied.graph) : { refreshed: [], stale: [] as StaleMention[] };
     let problems: string[] = applied.ok ? [] : applied.problems;
     let after: WorkflowGraph | undefined;
     let issues: Issue[] = [];
@@ -246,6 +268,13 @@ export async function proposePatch(input: { workspaceId: string; userId: string;
       }
       break;
     }
+
+    const boundaries = reviewBoundaries(after, instruction);
+    if (boundaries.questions.length > 0) {
+      const id = await record(ctx, { kind: "PATCH", status: "NEEDS_CLARIFICATION", provider: input.provider, output: env, graph: after, attempts: attempt, repairs });
+      return { status: "NEEDS_CLARIFICATION", compilationId: id, ai: interp(env), questions: [...env.questions, ...boundaries.questions], ungrounded: [], attempts: attempt };
+    }
+    const corrections = boundaries.corrections.map((c) => c.message);
 
     const ungrounded = checkGrounding(after, [instruction, JSON.stringify(before.nodes.map((n) => n.config))]);
     if (ungrounded.length > 0) {
@@ -270,11 +299,11 @@ export async function proposePatch(input: { workspaceId: string; userId: string;
       graph: after,
       validation: issues,
       grounding: [],
-      changes: { changes, weakened, model: r.model, requestId: r.requestId ?? null },
+      changes: { changes, weakened, corrections, staleMentions: labelReview.stale, model: r.model, requestId: r.requestId ?? null },
       attempts: attempt,
       repairs,
     });
-    return { status: "PROPOSED", compilationId: id, ai: interp(env), before, graph: after, changes, weakened, validation: issues, attempts: attempt };
+    return { status: "PROPOSED", compilationId: id, ai: interp(env), before, graph: after, changes, weakened, validation: issues, attempts: attempt, corrections, staleMentions: labelReview.stale };
   }
   const id = await record(ctx, { kind: "PATCH", status: "INVALID", provider: input.provider, output: lastEnv ?? null, error: { problems: lastProblems }, attempts: MAX_ATTEMPTS, repairs });
   return { status: "INVALID", compilationId: id, ai: lastEnv ? interp(lastEnv) : undefined, problems: lastProblems, attempts: MAX_ATTEMPTS };
@@ -416,6 +445,7 @@ export async function storedCompileOutcome(workspaceId: string, compilationId: s
         ai: ai!,
         validation: [],
         activationIssues: ((c.validation as Issue[] | null) ?? []).filter((i) => i.severity === "error"),
+        corrections: ((c.validation as Issue[] | null) ?? []).filter((i) => i.code === "boundary_corrected").map((i) => i.message),
       };
       break;
     case "NEEDS_CLARIFICATION": {

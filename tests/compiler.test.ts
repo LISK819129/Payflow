@@ -282,7 +282,8 @@ describe("6. prompt injection embedded in invoice-like content", () => {
     const r = await proposePatch({ workspaceId: ws.id, userId: user.id, workflowId: c.workflowId, instruction: injected, provider: p });
     expect(r.status).toBe("PROPOSED");
     if (r.status !== "PROPOSED") return;
-    expect(r.weakened.map((w) => w.message)).toContain('Raises "Up to $500" from 500.00 to 50000.00');
+    // The node's own label follows its new value, so the warning names the node as it will read.
+    expect(r.weakened.map((w) => w.message)).toContain('Raises "Up to $50,000" from 500.00 to 50000.00');
     expect(await applyProposal({ workspaceId: ws.id, userId: user.id, compilationId: r.compilationId, acknowledgeWeakening: false })).toMatchObject({ ok: false });
   });
 });

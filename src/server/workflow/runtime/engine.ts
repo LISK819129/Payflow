@@ -4,6 +4,7 @@ import { db, type Tx } from "../../db/client";
 import { approvals, runSteps, workflowRuns, workflows, workflowVersions } from "../../db/schema";
 import { SPEC_BY_TYPE, type WorkflowGraph } from "../dsl/nodes";
 import { EXECUTORS, notImplemented } from "./executors";
+import { describeOutcome } from "./outcome";
 import type { NodeResult, RunContext, RunRow, RuntimeDeps, StepRow, WorkflowRow } from "./types";
 
 const MAX_STEPS_PER_ADVANCE = 100;
@@ -108,9 +109,11 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
   }
 
   if (result.kind === "end") {
-    await writeStep({ status: "OK", port: null, explanation: result.explanation, finishedAt: now });
-    await finish(tx, run, outcomeStatus[result.outcome], result.explanation, now);
-    await audit("run.finished", `Run ${result.outcome.replace("_", " ")}: ${result.explanation}`, { nodeId: node.id, outcome: result.outcome });
+    // The run's outcome comes from its actual path; the end node's own wording is kept as a note.
+    const headline = describeOutcome(result.outcome, steps, graph);
+    await writeStep({ status: "OK", port: null, explanation: headline, output: { endNote: result.explanation }, finishedAt: now });
+    await finish(tx, run, outcomeStatus[result.outcome], headline, now);
+    await audit("run.finished", `Run ${result.outcome.replace("_", " ")}: ${headline}`, { nodeId: node.id, outcome: result.outcome, endNote: result.explanation });
     return { continue: false };
   }
 

@@ -5,6 +5,7 @@ export type GraphChange =
   | { kind: "node_added"; nodeId: string; title: string }
   | { kind: "node_removed"; nodeId: string; title: string }
   | { kind: "config_changed"; nodeId: string; title: string; path: string; before: unknown; after: unknown }
+  | { kind: "label_changed"; nodeId: string; title: string; before: string; after: string }
   | { kind: "edges_changed"; added: string[]; removed: string[] };
 
 /** Field-level diff between two graphs, used for review ("$500 → $350") and the audit record. */
@@ -22,6 +23,7 @@ export function diffGraphs(before: WorkflowGraph | null, after: WorkflowGraph): 
     }
     for (const c of diffValues(p.config, n.config, "")) changes.push({ kind: "config_changed", nodeId: id, title: title(n), ...c });
     if (p.type !== n.type) changes.push({ kind: "config_changed", nodeId: id, title: title(n), path: "type", before: p.type, after: n.type });
+    if ((p.label ?? "") !== (n.label ?? "")) changes.push({ kind: "label_changed", nodeId: id, title: title(n), before: p.label ?? "", after: n.label ?? "" });
   }
   for (const [id, p] of prev) if (!next.has(id)) changes.push({ kind: "node_removed", nodeId: id, title: title(p) });
 
@@ -55,6 +57,8 @@ export function describeChange(c: GraphChange): string {
       return `Removed ${c.title}`;
     case "config_changed":
       return `${c.title}: ${c.path} ${JSON.stringify(c.before)} → ${JSON.stringify(c.after)}`;
+    case "label_changed":
+      return `Label "${c.before}" → "${c.after}"`;
     case "edges_changed":
       return `Connections changed (+${c.added.length} / −${c.removed.length})`;
   }

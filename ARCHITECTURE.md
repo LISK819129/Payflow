@@ -123,3 +123,20 @@ pg-boss over Render Workflows for the core runtime: approvals can wait days, rem
 | Bryntum | Not planned (possible: overdue-invoice / approval timeline) | Trial licence only |
 
 A project can win at most one sponsor prize, so we optimise for one (AG Grid or Render or APIMatic) rather than sponsor stuffing.
+
+## 10. Compiler: known limit and the decomposition seam (Phase 4.1)
+
+Real-model testing showed that one paragraph can describe several automations (the Nova Labs instruction is really client-payment handling, an overdue-invoice reminder and a procurement-agent policy, with interlocking later-phase requirements). Compiling it as one graph made `gpt-5.4-mini` either ask design questions (correct) or exhaust its output budget (16k and 24k tokens, safely rejected as TRUNCATED). Raising the limit is not the fix.
+
+Planned (Phase 8 or later): a **plan stage** before compilation.
+
+```
+instruction → AIProvider.planInstruction() → Plan { automations: [{ title, intent, dependsOn }] }
+            → person reviews the plan ("I found 3 automations … [Review plan]")
+            → compileInstruction() once per automation (each small, cacheable, independently validated)
+            → workflows linked through `workflows.dependsOn` (freeze cascades already use it)
+```
+
+The seam already exists: `compileInstruction` takes one instruction and produces one draft; `dependsOn` links workflows; the envelope is provider-neutral. Adding `planInstruction` to `AIProvider` and a `PLAN` outcome is additive — no change to the validator, runtime or existing compile path.
+
+Deterministic post-compile passes (Phase 4.1), in order: structural validation → **boundary review** (exact amounts land on the side the instruction states: "under $X" puts X with the larger amounts, "up to $X" with the smaller; unanimous instructions are corrected and reported, contradictory ones become questions) → **grounding** → activation readiness. Edits additionally run **label refresh** (a changed node's own text follows its new values; other nodes still quoting the old value are flagged). Run outcome text is derived from the executed path, never from an end node's authored copy.

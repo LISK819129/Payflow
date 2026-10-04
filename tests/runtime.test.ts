@@ -85,7 +85,7 @@ describe("workflow runtime", () => {
     const runId = await run(workflowId, payment("4000.00"));
     expect(await advanceRun(runId, deps)).toBe("COMPLETED");
     expect(await path(runId)).toEqual(["t:next", "cur:pass", "lim:pass", "ok:end"]);
-    expect((await stepsOf(runId))[2].explanation).toMatch(/4000.00 USD is within the 5000.00 USD limit/);
+    expect((await stepsOf(runId))[2].explanation).toMatch(/4000.00 USD is at or below 5000.00 USD/);
     expect(await verifyChain(ws.id)).toMatchObject({ ok: true });
   });
 

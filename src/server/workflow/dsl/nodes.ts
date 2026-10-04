@@ -169,8 +169,9 @@ export const NODE_SPECS = [
     type: "policy.amount_limit",
     category: "policy",
     title: "Amount limit",
-    description: "Passes only if the amount is at or below the limit, in the same currency.",
-    config: z.object({ amountRef: Ref, max: Money }).strict(),
+    description:
+      'Passes only if the amount is within the limit, in the same currency. comparison "lt" = strictly below max ("under $X", "less than $X"); "lte" = at or below max ("up to $X", "at most $X", "no more than $X").',
+    config: z.object({ amountRef: Ref, max: Money, comparison: z.enum(["lte", "lt"]).default("lte") }).strict(),
     ports: ["pass", "block", "error"],
     requiredPorts: ["pass", "block"],
     implementedIn: 3,
