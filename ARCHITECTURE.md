@@ -166,3 +166,33 @@ runtime step ──► prepareIntent ──► ActionIntent ──► gatewayFor
 ### Operational note
 
 Workers must run the same code version as the web app. A stale worker from an earlier session once claimed a Phase 5 run and refused the refund node as "cannot run yet" — fail-closed, nothing was sent — before it was stopped (`evidence/phase5/incident-stale-worker/`). Restart the worker after every deploy.
+
+## 12. Financial authority (Phase 6)
+
+The question this layer answers: *even if a workflow (or an AI) wants this financial action, is it actually authorized?*
+
+```
+action node ──► prepareIntent ──► authorityProvider().authorize ──► ALLOW ──► prepareExecution ──► runAction ──► PayPal
+ (fail closed)                     CHECK + RESERVE, one tx           REVIEW ──► approval (Approve once / Reject)
+                                                                     DENY ────► run BLOCKED, PayPal not contacted
+```
+
+**Authority** (`authorities`) = WHO (workflows) may do WHAT (PayPal action kinds), to WHOM (allowlist or "anyone not denied", plus a deny list), for HOW MUCH (per transaction; budget per calendar day/week/month, UTC), HOW OFTEN (count per hour/day/week/month), UNTIL WHEN (valid-from / expires). Currencies are explicit; limits are in the first currency and a request in another currency is denied rather than converted. Every create, edit, suspend, resume and revoke is an audited act by an owner and bumps the version; decisions record the version they were made under.
+
+**Rules, failing closed.** Deny: authority not active, outside its validity window, action not permitted, counterparty denied, currency not permitted, a money action without an amount. Review (a person decides): no authority covers the action, more than one covers it and not all allow, counterparty not on the allowlist, per-transaction limit exceeded, budget or frequency exceeded, ledger state unreadable (lock timeout). Overlapping authorities must *all* allow. A person's approval can turn a REVIEW into an allow for that one request (fingerprinted: kind, amount, counterparty, target, run, node); it can never override a DENY, and approving never changes an authority — there is no "always allow".
+
+**CHECK → RESERVE → EXECUTE → COMMIT / RELEASE.** `authorize` locks every matching authority row `FOR UPDATE` (in id order), reads committed + reserved usage for the period, evaluates, writes the decision and — only if allowed — the reservation, all in the action node's step transaction. A concurrent request for the same budget waits on the lock and then sees the reservation, so two requests can never both be granted the last of a budget (proved by tests that fail when the lock is removed). The execution is then sent outside the transaction (Phase 5). PayPal success → COMMIT; PayPal's definitive refusal → RELEASE; no definitive answer → the reservation is HELD and keeps counting. Recovery after a lost reply re-uses the existing execution, which already carries its decision, so it is never re-authorized or re-reserved.
+
+**Just before sending,** the authority is re-checked: suspended/revoked/expired since the decision → if nothing was ever sent, the action is cancelled and the reservation released; if an attempt may already have reached PayPal, the outcome is UNKNOWN and the reservation held (never re-sent). A paused or frozen workflow defers the send and suspends the run.
+
+**Workflow-level `policy.budget` / `policy.frequency` nodes** use the same ledger with an advisory lock per key, and settle when the run ends: commit if a PayPal action on the run succeeded, release if none did, hold if any outcome is unknown.
+
+**Audit.** Each decision row (`authority_decisions`) stores the request, every check with a readable sentence, the budget snapshot (limit, spent, reserved, request, after), the authority snapshot and version, the human approval if any, and links to the reservation and the execution. The audit chain records `authority.decision`, `budget.committed/released/held`, `approval.approved/rejected`, and the PayPal result, so every payment reads as: requested by → workflow · authorized by → authority vN · checks → … · decision → ALLOW/REVIEW/DENY · person → … · executed through → PayPal · result → ids, status, debug_id.
+
+### GatePal seam
+
+`authorityProvider()` (`src/server/authority/index.ts`) is the single point that chooses who decides. Today it returns PayFlow's `InternalAuthorityProvider` (`PayFlow → PayFlow authority → PayPal`). An external authority service implements the same `AuthorityProvider` contract — `authorize` (check + reserve), `linkExecution`, `settle` (commit/release/hold), `usable` (pre-send re-check) — and is returned there instead (`PayFlow → GatePal → PayPal`). Decisions already record which provider made them. PayFlow does not depend on GatePal.
+
+### Development: stale workers
+
+A worker logs its git commit and a content hash of its source when it starts and writes a heartbeat (`worker_heartbeats`, shown in Settings). Before every job it checks that the source on disk is unchanged; if not, it hands the job back to the queue for a fresh worker and exits (code 75), so edited code can never run as old code. `pnpm worker:status` / `worker:stop` / `worker:fresh` find and stop only processes whose command line contains this checkout's path *and* `src/worker/index.ts`.

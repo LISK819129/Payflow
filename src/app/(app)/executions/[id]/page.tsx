@@ -8,7 +8,8 @@ import { canAuthorize, requireUser } from "@/server/auth/current";
 import { SPEC_BY_TYPE, type WorkflowGraph } from "@/server/workflow/dsl/nodes";
 import { getRun } from "@/server/workflow/queries";
 import { runLabel, runTone } from "@/components/flow/run-status";
-import { ApprovalPanel } from "./approval-panel";
+import { ApprovalCard } from "@/components/authority/approval-card";
+import { listApprovals } from "@/server/approvals/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,8 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
   const { run, wf, version, steps } = data;
   const graph = version.graph as WorkflowGraph;
   const amount = (run.triggerPayload as { amount?: { value?: string; currency_code?: string } }).amount;
-  const pending = data.approvals.find((a) => a.status === "PENDING");
+  const pendingRow = data.approvals.find((a) => a.status === "PENDING");
+  const pending = pendingRow ? (await listApprovals(user.workspaceId, { status: "PENDING", limit: 200 })).find((v) => v.id === pendingRow.id) : undefined;
 
   const overlay = Object.fromEntries(
     steps.map((s) => [s.nodeId, { state: s.status === "ERROR" ? ("error" as const) : s.status === "WAITING" ? ("waiting" as const) : ("ok" as const), port: s.port }]),
@@ -54,7 +56,7 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
 
       {pending && (
         <div className="mt-8">
-          <ApprovalPanel approval={{ id: pending.id, reason: pending.reason, summary: pending.summary as Record<string, unknown>, requestedAt: pending.requestedAt.toISOString() }} canDecide={canAuthorize(user)} />
+          <ApprovalCard v={pending} canDecide={canAuthorize(user)} now={new Date()} />
         </div>
       )}
 
@@ -97,7 +99,7 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
                   {data.actions
                     .filter((a) => a.nodeId === s.nodeId)
                     .map((a) => (
-                      <ActionCard key={a.id} ex={a} labels={Object.fromEntries(graph.nodes.map((n) => [n.id, n.label ?? n.id]))} />
+                      <ActionCard key={a.id} ex={a} decision={data.decisions.find((d) => d.id === a.decisionId) ?? null} labels={Object.fromEntries(graph.nodes.map((n) => [n.id, n.label ?? n.id]))} />
                     ))}
                   </div>
                 </li>

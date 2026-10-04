@@ -16,6 +16,7 @@
  *     manual <workflowId> <scenario> <json> [double]  owner starts a manual run in the UI
  *                                            (double: clicks Start twice) and waits for it to settle
  *     approve <runId> [scenario] [note]       as above, into a named scenario
+ *     authority <scenario> <json>            owner creates an authority in the Authority form
  *
  * Credentials are the seeded local test owner from .env.local; the browser only
  * talks to localhost. Screenshots never include env files or secrets.
@@ -188,26 +189,62 @@ async function capture(urlPath: string, scenario: string, label: string, full = 
   }
 }
 
-async function approve(runId: string, scenario = "e2e", note = "Checked with the client: legitimate larger payment") {
+async function approve(runId: string, scenario = "e2e", note = "Checked with the client: legitimate larger payment", decision: "approve" | "reject" = "approve") {
   const shot = shooter(scenario);
   const { browser, page } = await open();
   try {
+    // The decision is made from the Approvals queue, where the full context is shown.
+    await page.goto(`${BASE}/approvals`);
+    const card = page.locator("article").filter({ has: page.locator(`a[href="/executions/${runId}"]`) });
+    await card.waitFor();
+    await page.waitForTimeout(1200);
+    await shot(page, "approvals-queue", true);
+    await card.getByLabel(/^Note/).fill(note);
+    await card.getByRole("button", { name: decision === "approve" ? /^Approve once/ : /^Reject$/ }).click();
+    await card.waitFor({ state: "detached" });
     await page.goto(`${BASE}/executions/${runId}`);
-    await page.waitForSelector("section[aria-labelledby=approval-h]");
-    await page.waitForTimeout(1500);
-    await shot(page, "paused-awaiting-approval", true);
-    await page.locator("section[aria-labelledby=approval-h] input").fill(note);
-    await page.getByRole("button", { name: /^Approve/ }).click();
-    await page.waitForSelector("section[aria-labelledby=approval-h]", { state: "detached" });
-    // The worker resumes the run; poll the page until it reports completion.
-    for (let i = 0; i < 20; i++) {
-      await page.waitForTimeout(1500);
-      await page.reload();
+    // The worker resumes the run; poll until it settles.
+    for (let i = 0; i < 25; i++) {
       const status = await page.locator("[data-run-status]").first().getAttribute("data-run-status");
       if (status && !["RUNNING", "WAITING_APPROVAL", "WAITING_TIMER"].includes(status)) break;
+      await page.waitForTimeout(1500);
+      await page.reload();
     }
     await page.waitForTimeout(1500);
-    await shot(page, "resumed-and-completed", true);
+    await shot(page, decision === "approve" ? "approved-once-and-executed" : "rejected-paypal-not-contacted", true);
+    await page.goto(`${BASE}/approvals`);
+    await page.waitForTimeout(1200);
+    await shot(page, "approvals-decided", true);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Two tabs of the same owner click "Approve once" at the same moment: one decision, one PayPal action. */
+async function approveTwice(runId: string, scenario: string) {
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    const other = await page.context().newPage();
+    for (const p of [page, other]) {
+      await p.goto(`${BASE}/approvals`);
+      await p.locator("article").filter({ has: p.locator(`a[href="/executions/${runId}"]`) }).waitFor();
+    }
+    await shot(page, "same-approval-open-in-two-tabs", true);
+    const click = (p: Page) => p.locator("article").filter({ has: p.locator(`a[href="/executions/${runId}"]`) }).getByRole("button", { name: /^Approve once/ }).click();
+    await Promise.all([click(page), click(other)]);
+    await page.waitForTimeout(2500);
+    await other.waitForTimeout(500);
+    await shot(other, "second-tab-after-click", true);
+    await page.goto(`${BASE}/executions/${runId}`);
+    for (let i = 0; i < 25; i++) {
+      const status = await page.locator("[data-run-status]").first().getAttribute("data-run-status");
+      if (status && !["RUNNING", "WAITING_APPROVAL", "WAITING_TIMER"].includes(status)) break;
+      await page.waitForTimeout(1500);
+      await page.reload();
+    }
+    await page.waitForTimeout(1500);
+    await shot(page, "one-payout", true);
   } finally {
     await browser.close();
   }
@@ -249,6 +286,51 @@ async function manual(workflowId: string, scenario: string, payload: string, dou
     await settle(page);
     await page.waitForTimeout(1500);
     await shot(page, "run-settled", true);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Owner edits an authority's allowlist in the Edit form (saved as a new, audited version). */
+async function editAuthorityAllowlist(scenario: string, name: string, allow: string) {
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/authority`);
+    const card = page.getByRole("article", { name: `Authority ${name}` });
+    await Promise.all([page.waitForURL(/\/authority\/.+\/edit$/), card.getByRole("link", { name: "Edit" }).click()]);
+    await page.getByLabel(/^Allowed — one per line/).fill(allow.replaceAll(";", "\n"));
+    await shot(page, "edit-allowlist", true);
+    await Promise.all([page.waitForURL(`${BASE}/authority`), page.getByRole("button", { name: "Save as a new version" }).click()]);
+    await page.waitForTimeout(1500);
+    await shot(page, "authority-v2", true);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Owner creates a delegated authority through the Authority form. */
+async function newAuthority(scenario: string, spec: string) {
+  const v = JSON.parse(spec) as { name: string; workflow: string; actions: string[]; allow: string; deny?: string; perTx?: string; budget?: string; period?: string; expires?: string };
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/authority/new`);
+    await page.getByLabel("Name", { exact: true }).fill(v.name);
+    await page.getByLabel(v.workflow, { exact: true }).check();
+    for (const a of v.actions) await page.getByLabel(a, { exact: true }).check();
+    await page.getByLabel(/^Allowed — one per line/).fill(v.allow.replaceAll(";", "\n"));
+    if (v.deny) await page.getByLabel(/^Never pay/).fill(v.deny.replaceAll(";", "\n"));
+    if (v.perTx) await page.getByLabel(/^Per transaction/).fill(v.perTx);
+    if (v.budget) {
+      await page.getByLabel(/^Budget/).fill(v.budget);
+      await page.getByRole("combobox").first().selectOption(v.period ?? "month");
+    }
+    if (v.expires) await page.getByLabel(/^Expires/).fill(v.expires);
+    await shot(page, "new-authority-form", true);
+    await Promise.all([page.waitForURL(`${BASE}/authority`), page.getByRole("button", { name: "Create authority" }).click()]);
+    await page.waitForTimeout(1500);
+    await shot(page, "authority-created", true);
   } finally {
     await browser.close();
   }
@@ -300,6 +382,14 @@ async function main() {
       return capture(`/executions/${a}`, "e2e", b ?? "execution");
     case "approve":
       return approve(a, b, c);
+    case "approve-twice":
+      return approveTwice(a, b);
+    case "reject":
+      return approve(a, b, c, "reject");
+    case "authority-allow":
+      return editAuthorityAllowlist(a, b, c);
+    case "authority":
+      return newAuthority(a, b);
     case "manual":
       return manual(a, b, c, process.argv[6] === "double");
     case "edit":

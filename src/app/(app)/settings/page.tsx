@@ -4,10 +4,17 @@ import { env, integrationStatus } from "@/server/config/env";
 import { describeConnection } from "@/server/paypal/capabilities";
 import { compileModel, fastModel } from "@/server/ai";
 import { usageSummary } from "@/server/ai/usage";
+import { db } from "@/server/db/client";
+import { workerHeartbeats } from "@/server/db/schema";
+import { gitInfo, sourceHash } from "@/server/dev/version";
+import { desc, gt } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  const code = { sourceHash: sourceHash(), ...gitInfo() };
+  const now = new Date();
+  const workers = await db().select().from(workerHeartbeats).where(gt(workerHeartbeats.lastSeenAt, new Date(now.getTime() - 3_600_000))).orderBy(desc(workerHeartbeats.lastSeenAt)).limit(8);
   await requireUser();
   const status = integrationStatus();
   const e = env();
@@ -97,6 +104,31 @@ export default async function SettingsPage() {
               <p className="mt-2 text-body-sm text-muted">
                 {usage.calls} call{usage.calls === 1 ? "" : "s"} · {usage.input.toLocaleString()} input · {usage.output.toLocaleString()} output · {usage.cache_read.toLocaleString()} cached tokens. Calls that could cross the budget are refused before they are made.
               </p>
+            </div>
+          </Section>
+          <Section label="Workers" aside={`app code ${code.sourceHash}${code.commit ? ` · ${code.commit}` : ""}`}>
+            <div className="py-4">
+              {workers.length === 0 ? (
+                <Status tone="warn">No worker has reported in the last hour</Status>
+              ) : (
+                <ul className="space-y-1.5">
+                  {workers.map((w) => {
+                    const live = w.status === "RUNNING" && w.lastSeenAt.getTime() > now.getTime() - 60_000;
+                    const stale = w.sourceHash !== code.sourceHash;
+                    return (
+                      <li key={w.id} className="flex flex-wrap items-center gap-x-3 font-mono text-meta">
+                        {!live ? <Status tone="neutral">stopped</Status> : stale ? <Status tone="danger">stale code</Status> : <Status tone="ok">current code</Status>}
+                        <span className="text-ink-2">
+                          {w.id} · source {w.sourceHash}
+                          {w.commit ? ` · ${w.commit}${w.dirty ? "*" : ""}` : ""}
+                        </span>
+                        {w.stopReason && <span className="text-muted">{w.stopReason}</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <p className="mt-2 text-body-sm text-muted">A worker stops itself before running a job if the code changed after it started. Restart with pnpm worker:fresh.</p>
             </div>
           </Section>
           <Section label="Webhook simulator events">

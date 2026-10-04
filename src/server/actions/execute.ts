@@ -1,7 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { appendAudit } from "../audit/audit";
 import { db, type Tx } from "../db/client";
-import { actionExecutions, paypalEvents } from "../db/schema";
+import { actionExecutions, paypalEvents, workflowRuns, workflows } from "../db/schema";
+import { authorityProvider } from "../authority";
 import { eventStatus } from "./event-link";
 import { gatewayFor } from "./paypal-gateway";
 import type { ActionIntent } from "./types";
@@ -58,7 +59,54 @@ export async function prepareExecution(tx: Tx, intent: ActionIntent, executor: s
   return existing;
 }
 
-export type RunActionResult = "settled" | "busy" | "retry_later";
+/** "halted": the workflow is paused or frozen, so nothing was sent; the run suspends and resumes later. */
+export type RunActionResult = "settled" | "busy" | "retry_later" | "halted";
+
+/**
+ * Last check before PayPal is contacted. A paused/frozen workflow defers the
+ * send. An authority that was suspended, revoked or expired after the decision
+ * stops it: if nothing was ever sent, the action is cancelled and its budget
+ * released; if an earlier attempt may have reached PayPal, the outcome is
+ * UNKNOWN and the budget stays held (fail closed, never re-sent).
+ */
+async function preflight(executionId: string): Promise<RunActionResult | null> {
+  const [row] = await db()
+    .select({ ex: actionExecutions, wf: workflows })
+    .from(actionExecutions)
+    .innerJoin(workflowRuns, eq(workflowRuns.id, actionExecutions.runId))
+    .innerJoin(workflows, eq(workflows.id, workflowRuns.workflowId))
+    .where(eq(actionExecutions.id, executionId));
+  if (!row || !["PREPARED", "SUBMITTING"].includes(row.ex.status)) return null;
+  const { ex, wf } = row;
+  if (wf.state === "PAUSED" || (wf.state === "FROZEN" && wf.frozenByRunId !== ex.runId)) return "halted";
+  const authorityIds = (ex.intent as ActionIntent).authorization.authority?.authorityIds ?? [];
+  if (authorityIds.length === 0) return null;
+  return db().transaction(async (tx) => {
+    const ok = await authorityProvider().usable(tx, authorityIds, new Date());
+    if (ok.ok) return null;
+    const neverSent = ex.attempts === 0;
+    const [changed] = await tx
+      .update(actionExecutions)
+      .set(
+        neverSent
+          ? { status: "FAILED", error: { code: "AUTHORITY_WITHDRAWN", message: ok.reason }, completedAt: new Date(), leaseUntil: null }
+          : { status: "UNKNOWN", error: { code: "AUTHORITY_WITHDRAWN_AFTER_SEND", message: `${ok.reason}; an earlier attempt may have reached PayPal, so it is not re-sent` }, completedAt: new Date(), leaseUntil: null },
+      )
+      .where(and(eq(actionExecutions.id, executionId), eq(actionExecutions.attempts, ex.attempts), sql`${actionExecutions.status} in ('PREPARED','SUBMITTING')`))
+      .returning({ id: actionExecutions.id });
+    if (!changed) return "busy" as const; // another worker moved it on; let it finish
+    await authorityProvider().settle(tx, executionId, neverSent ? "release" : "hold", neverSent ? `Not sent: ${ok.reason}` : `Outcome unknown: ${ok.reason}`);
+    await appendAudit(tx, {
+      workspaceId: ex.workspaceId,
+      actor: "system",
+      kind: neverSent ? "action.cancelled" : "action.unknown",
+      summary: `${ex.kind} ${neverSent ? "cancelled before PayPal was contacted" : "stopped; outcome unknown"}: ${ok.reason}`,
+      payload: { executionId, authorityIds, attempts: ex.attempts },
+      runId: ex.runId,
+    });
+    return "settled" as const;
+  });
+}
 
 /**
  * Performs (or resumes) one prepared action. Only the caller that claims the
@@ -66,6 +114,8 @@ export type RunActionResult = "settled" | "busy" | "retry_later";
  * the next attempt replays the same idempotency key, which PayPal deduplicates.
  */
 export async function runAction(executionId: string): Promise<RunActionResult> {
+  const stop = await preflight(executionId);
+  if (stop) return stop;
   const [claimed] = await db()
     .update(actionExecutions)
     .set({
@@ -95,6 +145,7 @@ export async function runAction(executionId: string): Promise<RunActionResult> {
     await db().transaction(async (tx) => {
       await tx.update(actionExecutions).set({ status: "UNKNOWN", leaseUntil: null, completedAt: new Date() }).where(eq(actionExecutions.id, executionId));
       await audit(tx, "action.unknown", `${claimed.kind}: no definitive answer from PayPal after ${MAX_ACTION_ATTEMPTS} attempts; needs review`, { lastError: claimed.error });
+      await authorityProvider().settle(tx, executionId, "hold", "No definitive answer from PayPal; still counted against the budget");
     });
     return "settled";
   }
@@ -133,6 +184,8 @@ export async function runAction(executionId: string): Promise<RunActionResult> {
         attempt: claimed.attempts,
       });
       await bindEarlierEvents(tx, { workspaceId: claimed.workspaceId, executionId, refs: outcome.paypalRefs });
+      // COMMIT: the money (or message) really went out.
+      await authorityProvider().settle(tx, executionId, "commit", `PayPal ${outcome.paypalStatus ?? "accepted"} · ${outcome.paypalRefs[0] ?? ""}`.trim());
     });
     return "settled";
   }
@@ -156,6 +209,13 @@ export async function runAction(executionId: string): Promise<RunActionResult> {
       error: outcome.error,
       attempt: claimed.attempts,
     });
+    // RELEASE on PayPal's definitive refusal; HOLD when we cannot know whether it happened.
+    await authorityProvider().settle(
+      tx,
+      executionId,
+      finalStatus === "FAILED" ? "release" : "hold",
+      finalStatus === "FAILED" ? `PayPal refused: ${outcome.error.code}` : `Outcome unknown: ${outcome.error.code}`,
+    );
   });
   return "settled";
 }

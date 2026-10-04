@@ -31,7 +31,12 @@
     "paypal:sandbox:invoice-paid": "tsx scripts/paypal-sandbox-invoice-paid.ts",
     "paypal:sandbox:order": "tsx scripts/paypal-sandbox-order.ts",
     "paypal:idempotency:check": "tsx scripts/paypal-idempotency-check.ts",
-    "evidence:manifest:phase5": "tsx scripts/evidence/manifest-phase5.ts"
+    "evidence:manifest:phase5": "tsx scripts/evidence/manifest-phase5.ts",
+    "worker:status": "tsx scripts/worker-control.ts status",
+    "worker:stop": "tsx scripts/worker-control.ts stop",
+    "worker:fresh": "tsx scripts/worker-control.ts stop && tsx src/worker/index.ts",
+    "db:seed:phase6": "tsx scripts/seed-phase6.ts",
+    "evidence:manifest:phase6": "tsx scripts/evidence/manifest-phase6.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

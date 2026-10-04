@@ -19,7 +19,15 @@ export type EndOutcome = "completed" | "blocked" | "rejected" | "needs_review";
 export type NodeResult =
   | { kind: "next"; port: string; output?: unknown; explanation: string }
   | { kind: "wait"; waitFor: "approval" | "timer"; wakeAt?: Date; output?: unknown; explanation: string }
-  | { kind: "end"; outcome: EndOutcome; explanation: string }
+  | {
+      kind: "end";
+      outcome: EndOutcome;
+      explanation: string;
+      /** Overrides the path-derived outcome text (e.g. a decision made at an action node). */
+      headline?: string;
+      /** Marks the ending node's step as an error (e.g. an authority DENY). */
+      stepError?: { code: string; message: string };
+    }
   | { kind: "error"; code: string; message: string; explanation: string; debugId?: string | null };
 
 export type ExecutorArgs = {

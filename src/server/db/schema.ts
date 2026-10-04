@@ -5,6 +5,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -434,6 +435,9 @@ export const actionExecutions = pgTable(
     /** The latest PayPal webhook about this action and the status it reported (e.g. a payout item going UNCLAIMED). */
     lastEventType: text("last_event_type"),
     lastEventStatus: text("last_event_status"),
+    /** Phase 6: the authority decision that permitted this action, and its budget reservation. */
+    authorityId: uuid("authority_id"),
+    decisionId: uuid("decision_id"),
   },
   (t) => [
     uniqueIndex("action_executions_key_uq").on(t.idempotencyKey),
@@ -463,3 +467,143 @@ export const reconciliations = pgTable(
   },
   (t) => [uniqueIndex("reconciliations_invoice_run_uq").on(t.invoiceId, t.runId)],
 );
+
+// ── Financial authority (Phase 6) ───────────────────────────────────────────
+
+export const authorityStatus = pgEnum("authority_status", ["ACTIVE", "SUSPENDED", "REVOKED"]);
+
+/**
+ * Delegated financial authority: WHO (workflows) may do WHAT (PayPal action
+ * kinds), to WHOM (counterparties), for HOW MUCH (per transaction, per period),
+ * HOW OFTEN (count per period), UNTIL WHEN (validity window). Every protected
+ * PayPal action must be covered by exactly one ACTIVE authority, or a person
+ * decides. Each edit bumps `version` and is audited.
+ */
+export const authorities = pgTable(
+  "authorities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    name: text("name").notNull(),
+    description: text("description"),
+    status: authorityStatus("status").notNull().default("ACTIVE"),
+    statusReason: text("status_reason"),
+    workflowIds: jsonb("workflow_ids").$type<string[]>().notNull().default([]),
+    actions: jsonb("actions").$type<string[]>().notNull().default([]),
+    /** "allowlist": only listed counterparties; "any": any counterparty not denied. */
+    counterpartyRule: text("counterparty_rule").$type<"allowlist" | "any">().notNull().default("allowlist"),
+    counterparties: jsonb("counterparties").$type<{ id: string; name?: string }[]>().notNull().default([]),
+    deniedCounterparties: jsonb("denied_counterparties").$type<{ id: string; name?: string }[]>().notNull().default([]),
+    /** Permitted currencies; amount limits are expressed in the first one (no FX). */
+    currencies: jsonb("currencies").$type<string[]>().notNull().default(["USD"]),
+    perTransactionMax: numeric("per_transaction_max", { precision: 16, scale: 2 }),
+    budgetAmount: numeric("budget_amount", { precision: 16, scale: 2 }),
+    budgetPeriod: text("budget_period").$type<"day" | "week" | "month">(),
+    maxCount: integer("max_count"),
+    countPeriod: text("count_period").$type<"hour" | "day" | "week" | "month">(),
+    validFrom: timestamp("valid_from", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("authorities_ws_idx").on(t.workspaceId)],
+);
+
+export const reservationStatus = pgEnum("reservation_status", ["RESERVED", "COMMITTED", "RELEASED"]);
+
+/**
+ * Budget and frequency ledger. A reservation counts against its scope from the
+ * moment it is RESERVED (so concurrent requests see it), becomes COMMITTED when
+ * PayPal confirms the action, and is RELEASED when the action definitively did
+ * not happen. An unknown outcome keeps it RESERVED: fail closed.
+ */
+export const budgetReservations = pgTable(
+  "budget_reservations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    /** authority:<id> · budget:<key> · frequency:<key> */
+    scopeKey: text("scope_key").notNull(),
+    /** Calendar period in UTC: 2026-10 · 2026-W40 · 2026-10-04 · 2026-10-04T09 */
+    periodKey: text("period_key").notNull(),
+    authorityId: uuid("authority_id"),
+    amount: numeric("amount", { precision: 16, scale: 2 }),
+    currency: text("currency"),
+    status: reservationStatus("status").notNull().default("RESERVED"),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => workflowRuns.id),
+    nodeId: text("node_id").notNull(),
+    executionId: uuid("execution_id"),
+    decisionId: uuid("decision_id"),
+    /** A person approved this request although it exceeded a limit. */
+    override: boolean("override").notNull().default(false),
+    approvalId: uuid("approval_id"),
+    createdAt: createdAt(),
+    settledAt: timestamp("settled_at", { withTimezone: true, precision: 3 }),
+    settleReason: text("settle_reason"),
+  },
+  (t) => [
+    uniqueIndex("budget_reservations_scope_uq").on(t.runId, t.nodeId, t.scopeKey),
+    index("budget_reservations_exec_idx").on(t.executionId),
+    index("budget_reservations_usage_idx").on(t.scopeKey, t.periodKey, t.status),
+  ],
+);
+
+export const authorityDecisionKind = pgEnum("authority_decision", ["ALLOW", "REVIEW", "DENY"]);
+
+/** Every authority evaluation, with enough detail to reconstruct it. No secrets. */
+export const authorityDecisions = pgTable(
+  "authority_decisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => workflowRuns.id),
+    nodeId: text("node_id").notNull(),
+    workflowId: uuid("workflow_id").notNull(),
+    versionId: uuid("version_id").notNull(),
+    /** Who decided: "payflow-internal" today; an external authority service later. */
+    provider: text("provider").notNull(),
+    authorityId: uuid("authority_id"),
+    authorityVersion: integer("authority_version"),
+    authoritySnapshot: jsonb("authority_snapshot"),
+    request: jsonb("request").notNull(),
+    evaluations: jsonb("evaluations").notNull(),
+    budget: jsonb("budget"),
+    frequency: jsonb("frequency"),
+    decision: authorityDecisionKind("decision").notNull(),
+    /** The person's approval this evaluation relied on, when it overrides a REVIEW. */
+    approvalId: uuid("approval_id"),
+    /** ALLOW · ALLOW_AFTER_HUMAN_APPROVAL · REVIEW · DENY */
+    outcome: text("outcome").notNull(),
+    reservationId: uuid("reservation_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("authority_decisions_run_idx").on(t.runId), index("authority_decisions_authority_idx").on(t.authorityId, t.createdAt)],
+);
+
+// ── Development: worker versions ────────────────────────────────────────────
+
+/** One row per worker process, so a stale worker running old code is visible and stops itself. */
+export const workerHeartbeats = pgTable("worker_heartbeats", {
+  id: text("id").primaryKey(),
+  host: text("host").notNull(),
+  pid: integer("pid").notNull(),
+  commit: text("commit"),
+  dirty: boolean("dirty").notNull().default(false),
+  sourceHash: text("source_hash").notNull(),
+  status: text("status").$type<"RUNNING" | "STOPPED">().notNull().default("RUNNING"),
+  stopReason: text("stop_reason"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+});

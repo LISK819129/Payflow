@@ -18,7 +18,7 @@ import { and, eq } from "drizzle-orm";
 import { runAction } from "../src/server/actions/execute";
 import { closeDb, db } from "../src/server/db/client";
 import { stopBoss } from "../src/server/jobs/boss";
-import { actionExecutions, users, workflows } from "../src/server/db/schema";
+import { actionExecutions, budgetReservations, users, workflows } from "../src/server/db/schema";
 import { paypal } from "../src/server/paypal/client";
 import { advanceRun, startRun } from "../src/server/workflow/runtime/engine";
 import { runtimeDeps } from "../src/server/workflow/runtime/deps";
@@ -108,6 +108,17 @@ async function main() {
     pass: !!firstBatch && firstBatch === payoutAfter.paypalRefs[0] && itemsAfter.length === 1,
   };
 
+  // Phase 6: the authority reservation behind each action must exist once and be committed once.
+  for (const k of ["refund", "payout"] as const) {
+    const r = results[k] as { runId: string; pass: boolean };
+    const [ex] = await db().select().from(actionExecutions).where(eq(actionExecutions.runId, r.runId));
+    const rs = await db().select().from(budgetReservations).where(eq(budgetReservations.executionId, ex.id));
+    Object.assign(r, {
+      authorityDecisionId: ex.decisionId,
+      reservations: rs.map((x) => ({ amount: x.amount, status: x.status })),
+      pass: r.pass && rs.length === 1 && rs[0].status === "COMMITTED",
+    });
+  }
   console.log(JSON.stringify(results, null, 2));
 }
 

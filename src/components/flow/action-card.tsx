@@ -1,5 +1,7 @@
 import { CopyId, ProvenanceTag, Status, formatClock, formatMoney, type StatusTone } from "@/components/ui";
-import type { actionExecutions } from "@/server/db/schema";
+import { DecisionTrace } from "@/components/authority/decision-trace";
+import type { AuthorityOutcome, BudgetSnapshot, Evaluation, FrequencySnapshot } from "@/server/authority/types";
+import type { actionExecutions, authorityDecisions } from "@/server/db/schema";
 
 type Execution = typeof actionExecutions.$inferSelect;
 
@@ -24,7 +26,7 @@ const short = (id: string) => (id.length > 30 ? `${id.slice(0, 28)}…` : id);
  * returned, when, and under which authorization. Never shows credentials,
  * tokens or raw request headers.
  */
-export function ActionCard({ ex, labels = {} }: { ex: Execution; labels?: Record<string, string> }) {
+export function ActionCard({ ex, labels = {}, decision = null }: { ex: Execution; labels?: Record<string, string>; decision?: typeof authorityDecisions.$inferSelect | null }) {
   const err = ex.error as { code?: string; message?: string; status?: number } | null;
   const gates = (ex.authorization as { gates?: { nodeId: string; port: string }[] } | null)?.gates ?? [];
   const intent = ex.intent as { movesMoney?: boolean; external?: boolean } | null;
@@ -106,7 +108,7 @@ export function ActionCard({ ex, labels = {} }: { ex: Execution; labels?: Record
             </dd>
           </>
         )}
-        <dt className="text-muted">Authorised by</dt>
+        <dt className="text-muted">Workflow gates</dt>
         <dd className="text-body-sm">{gates.map((g) => `${labels[g.nodeId] ?? g.nodeId} → ${g.port}`).join(" · ") || (gated ? "—" : "Not required: moves no money and contacts no one")}</dd>
         <dt className="text-muted">Idempotency key</dt>
         <dd>
@@ -130,6 +132,28 @@ export function ActionCard({ ex, labels = {} }: { ex: Execution; labels?: Record
           </>
         )}
       </dl>
+      {decision && (
+        <div className="mt-4 border-t border-line pt-3">
+          <div className="pf-label mb-2">Why it was allowed</div>
+          <DecisionTrace
+            t={{
+              request: { kind: ex.kind, amount: ex.amountValue ? { value: ex.amountValue, currency: ex.currency ?? "USD" } : null, counterparty: ex.counterparty, target: ex.targetRef ? { type: "target", id: ex.targetRef } : null },
+              authorities: ((decision.authoritySnapshot as { id: string; name: string; version: number }[] | null) ?? []).map((a) => ({ id: a.id, name: a.name, version: a.version })),
+              evaluations: decision.evaluations as Evaluation[],
+              budget: (decision.budget as BudgetSnapshot[]) ?? [],
+              frequency: (decision.frequency as FrequencySnapshot[]) ?? [],
+              outcome: decision.outcome as AuthorityOutcome,
+              human: decision.approvalId ? { decision: "APPROVED" } : null,
+              paypal: {
+                contacted: ex.attempts > 0,
+                status: ex.paypalStatus,
+                refs: ex.paypalRefs,
+                failure: ex.status === "FAILED" ? (err?.code ?? "failed") : null,
+              },
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

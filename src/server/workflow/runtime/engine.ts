@@ -1,7 +1,12 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { appendAudit } from "../../audit/audit";
 import { db, type Tx } from "../../db/client";
-import { actionExecutions, approvals, runSteps, workflowRuns, workflows, workflowVersions } from "../../db/schema";
+import { actionExecutions, approvals, authorityDecisions, runSteps, workflowRuns, workflows, workflowVersions } from "../../db/schema";
+import { authorityProvider } from "../../authority";
+import { requestFingerprint } from "../../authority/internal";
+import { settleRunReservations } from "../../authority/ledger";
+import type { AuthorityRequest, AuthorityResult } from "../../authority/types";
+import type { ActionIntent } from "../../actions/types";
 import { SPEC_BY_TYPE, type GraphNode, type WorkflowGraph } from "../dsl/nodes";
 import { RUNTIME_PHASE } from "../dsl/validate";
 import { EXECUTORS, notImplemented } from "./executors";
@@ -52,7 +57,7 @@ export async function advanceRun(runId: string, deps: RuntimeDeps): Promise<RunR
         break;
       }
       if (res === "busy") break; // another worker holds the lease and will advance the run
-      continue;
+      continue; // "settled" or "halted": the next step reads the outcome (or suspends the run)
     }
     if (!r.continue) break;
   }
@@ -101,7 +106,7 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
   let result: NodeResult | { kind: "execute"; executionId: string; explanation: string; output: unknown };
   try {
     if (isActionNode(node.type) && (SPEC_BY_TYPE[node.type]?.implementedIn ?? 99) <= RUNTIME_PHASE) {
-      result = await actionResult(tx, { node, ctx, run, steps, waiting, title });
+      result = await actionResult(tx, { node, ctx, run, steps, title, workflow, now });
     } else {
       result = exec ? await exec({ tx, node, ctx, run, workflow, waiting, now }) : notImplemented(node.type);
     }
@@ -121,7 +126,8 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
   };
 
   if (result.kind === "execute") {
-    if (!waiting) await writeStep({ status: "WAITING", output: result.output, explanation: result.explanation });
+    // Record the execution id on the step (also when it was waiting on an authority review).
+    await writeStep({ status: "WAITING", output: { ...((waiting?.output as Record<string, unknown> | null) ?? {}), ...(result.output as Record<string, unknown>) }, explanation: result.explanation });
     await tx.update(workflowRuns).set({ status: "RUNNING" }).where(eq(workflowRuns.id, run.id));
     return { continue: false, execute: result.executionId };
   }
@@ -138,8 +144,15 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
 
   if (result.kind === "end") {
     // The run's outcome comes from its actual path; the end node's own wording is kept as a note.
-    const headline = describeOutcome(result.outcome, steps, graph);
-    await writeStep({ status: "OK", port: null, explanation: headline, output: { endNote: result.explanation }, finishedAt: now });
+    const headline = result.headline ?? describeOutcome(result.outcome, steps, graph);
+    await writeStep({
+      status: result.stepError ? "ERROR" : "OK",
+      port: null,
+      explanation: headline,
+      output: { ...((waiting?.output as Record<string, unknown> | null) ?? {}), endNote: result.explanation },
+      error: result.stepError ?? null,
+      finishedAt: now,
+    });
     await finish(tx, run, outcomeStatus[result.outcome], headline, now);
     await audit("run.finished", `Run ${result.outcome.replace("_", " ")}: ${headline}`, { nodeId: node.id, outcome: result.outcome, endNote: result.explanation });
     return { continue: false };
@@ -172,32 +185,46 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
 }
 
 /**
- * Action nodes: the first visit prepares the intent (or refuses, failing
- * closed) and asks the caller to execute it; later visits turn the settled
- * execution into the node's result. Never calls PayPal itself.
+ * Action nodes. The first visit prepares the intent (or refuses, failing
+ * closed), asks the authority layer whether it is authorized — CHECK and
+ * RESERVE in this same transaction — and only then asks the caller to execute
+ * it. A REVIEW waits for a person; a DENY ends the run before PayPal is
+ * contacted. Later visits turn the settled execution into the node's result.
  */
 async function actionResult(
   tx: Tx,
-  a: { node: GraphNode; ctx: RunContext; run: RunRow; steps: StepRow[]; waiting: StepRow | null; title: string },
+  a: { node: GraphNode; ctx: RunContext; run: RunRow; steps: StepRow[]; title: string; workflow: WorkflowRow; now: Date },
 ): Promise<NodeResult | { kind: "execute"; executionId: string; explanation: string; output: unknown }> {
-  let executionId = (a.waiting?.output as { executionId?: string } | null)?.executionId;
-  if (!executionId) {
+  // Once an execution exists for this (run, node) it is the only source of truth: never authorize twice.
+  let [ex] = await tx.select().from(actionExecutions).where(and(eq(actionExecutions.runId, a.run.id), eq(actionExecutions.nodeId, a.node.id)));
+  if (!ex) {
     const p = prepareIntent({ node: a.node, ctx: a.ctx, run: a.run, steps: a.steps });
     if (!p.ok) return { kind: "error", code: p.code, message: p.message, explanation: `Refused before contacting PayPal: ${p.message}` };
-    const row = await prepareExecution(tx, p.intent, gatewayFor(p.intent).name);
-    executionId = row.id;
+    const intent = p.intent;
+    let authz: AuthorityResult | null = null;
+    if (intent.movesMoney || intent.external) {
+      const gate = await authorityGate(tx, a, intent);
+      if ("result" in gate) return gate.result;
+      authz = gate.authz;
+      intent.authorization.authority = { provider: authz.provider, decisionId: authz.decisionId, outcome: authz.outcome, authorityIds: authz.authorityIds, reason: authz.reason };
+    }
+    ex = await prepareExecution(tx, intent, gatewayFor(intent).name);
+    if (authz) await authorityProvider().linkExecution(tx, authz, ex.id);
   }
-  const [ex] = await tx.select().from(actionExecutions).where(eq(actionExecutions.id, executionId));
+  const authorityOutcome = (ex.intent as ActionIntent).authorization.authority?.outcome ?? null;
   switch (ex.status) {
     case "SUCCEEDED":
       return {
         kind: "next",
         port: "done",
-        output: { ...(ex.result as Record<string, unknown>), executionId: ex.id, paypalRefs: ex.paypalRefs, paypalStatus: ex.paypalStatus },
+        output: { ...(ex.result as Record<string, unknown>), executionId: ex.id, paypalRefs: ex.paypalRefs, paypalStatus: ex.paypalStatus, authorityOutcome },
         explanation: describeExecution(ex),
       };
     case "FAILED": {
       const e = ex.error as { code: string; message: string; debugId?: string | null };
+      if (e.code === "AUTHORITY_WITHDRAWN") {
+        return { kind: "end", outcome: "blocked", explanation: e.message, headline: `Blocked before PayPal was contacted: ${e.message}`, stepError: { code: e.code, message: e.message } };
+      }
       return { kind: "error", code: e.code, message: e.message, debugId: e.debugId ?? null, explanation: `PayPal refused: ${e.message}${e.debugId ? ` (debug_id ${e.debugId})` : ""}` };
     }
     case "UNKNOWN":
@@ -207,8 +234,112 @@ async function actionResult(
   }
 }
 
+/** How long a person has to decide an authority review before it lapses. */
+const REVIEW_HOURS = 24;
+
+/**
+ * The authority check for one protected action. Returns the decision when the
+ * action may proceed, or the node result that stops it: wait for a person
+ * (REVIEW), or end the run (DENY, rejection, expiry).
+ */
+async function authorityGate(
+  tx: Tx,
+  a: { node: GraphNode; run: RunRow; title: string; workflow: WorkflowRow; now: Date },
+  intent: ActionIntent,
+): Promise<{ authz: AuthorityResult } | { result: NodeResult }> {
+  const req: AuthorityRequest = {
+    workspaceId: a.run.workspaceId,
+    runId: a.run.id,
+    nodeId: a.node.id,
+    workflowId: a.run.workflowId,
+    versionId: a.run.versionId,
+    kind: intent.kind,
+    amount: intent.amount,
+    counterparty: intent.counterparty,
+    target: intent.target,
+    movesMoney: intent.movesMoney,
+  };
+  const [review] = await tx.select().from(approvals).where(and(eq(approvals.runId, a.run.id), eq(approvals.nodeId, a.node.id)));
+  if (review?.status === "PENDING") {
+    if (review.expiresAt && review.expiresAt <= a.now) {
+      await tx.update(approvals).set({ status: "EXPIRED", decidedAt: a.now }).where(eq(approvals.id, review.id));
+      return { result: { kind: "end", outcome: "rejected", explanation: "Authority review expired", headline: `Authority review at “${a.title}” expired without a decision; PayPal was not contacted` } };
+    }
+    return { result: { kind: "wait", waitFor: "approval", explanation: `Waiting for a person: ${review.reason}` } };
+  }
+  if (review && review.status !== "APPROVED") {
+    const why = review.status === "EXPIRED" ? "expired without a decision" : "was rejected by a person";
+    return { result: { kind: "end", outcome: "rejected", explanation: `Authority review ${why}`, headline: `Authority review at “${a.title}” ${why}; PayPal was not contacted` } };
+  }
+
+  const authz = await authorityProvider().authorize(tx, req, { approval: review ?? null, now: a.now });
+  if (authz.outcome === "DENY") {
+    return {
+      result: {
+        kind: "end",
+        outcome: "blocked",
+        explanation: authz.reason,
+        headline: `Denied by authority at “${a.title}”: ${authz.reason}. PayPal was not contacted`,
+        stepError: { code: "AUTHORITY_DENIED", message: authz.reason },
+      },
+    };
+  }
+  if (authz.outcome === "REVIEW") {
+    if (review) {
+      // Approved, yet the request no longer matches what the person saw: an approval is never stretched.
+      return {
+        result: {
+          kind: "end",
+          outcome: "blocked",
+          explanation: "Request changed after approval",
+          headline: `Blocked at “${a.title}”: the request no longer matches what was approved`,
+          stepError: { code: "APPROVAL_MISMATCH", message: authz.reason },
+        },
+      };
+    }
+    const expiresAt = new Date(a.now.getTime() + REVIEW_HOURS * 3_600_000);
+    const [version] = await tx.select({ version: workflowVersions.version }).from(workflowVersions).where(eq(workflowVersions.id, a.run.versionId));
+    const trigger = a.run.triggerPayload as { eventType?: string; resourceId?: string; amount?: unknown };
+    const [created] = await tx
+      .insert(approvals)
+      .values({
+        workspaceId: a.run.workspaceId,
+        runId: a.run.id,
+        nodeId: a.node.id,
+        reason: `Authority review: ${authz.reason}`,
+        summary: {
+          kind: "authority_review",
+          fingerprint: requestFingerprint(req),
+          decisionId: authz.decisionId,
+          action: { kind: intent.kind, label: a.title, amount: intent.amount, counterparty: intent.counterparty, target: intent.target },
+          authorityIds: authz.authorityIds,
+          evaluations: authz.evaluations,
+          budget: authz.budget,
+          frequency: authz.frequency,
+          workflow: { id: a.workflow.id, name: a.workflow.name, version: version?.version ?? null },
+          paypalContext: { triggerKind: a.run.triggerKind, eventType: trigger.eventType ?? null, resourceId: trigger.resourceId ?? null, triggerAmount: trigger.amount ?? null },
+        },
+        expiresAt,
+      })
+      .returning({ id: approvals.id });
+    await tx.update(authorityDecisions).set({ approvalId: created.id }).where(eq(authorityDecisions.id, authz.decisionId));
+    return {
+      result: {
+        kind: "wait",
+        waitFor: "approval",
+        wakeAt: expiresAt,
+        output: { authorityReview: created.id, decisionId: authz.decisionId },
+        explanation: `Needs a person: ${authz.reason}. PayPal has not been contacted`,
+      },
+    };
+  }
+  return { authz };
+}
+
 async function finish(tx: Tx, run: RunRow, status: RunRow["status"], outcome: string, now: Date) {
   await tx.update(workflowRuns).set({ status, outcome, finishedAt: now, wakeAt: null }).where(eq(workflowRuns.id, run.id));
+  // Workflow-level budget/frequency reservations are settled by how the run actually ended.
+  await settleRunReservations(tx, run.id);
 }
 
 /**

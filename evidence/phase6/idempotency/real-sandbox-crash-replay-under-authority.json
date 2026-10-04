@@ -1,0 +1,28 @@
+{
+  "label": "REAL_PAYPAL_SANDBOX",
+  "command": "pnpm paypal:idempotency:check 7B872764UT826153C 32N10786RS996335V",
+  "date": "2026-10-04",
+  "what": "Phase-5 crash-after-send replay, now with Phase-6 authority in the path. Each action is authorized and reserved once, sent, then rewound to 'reply lost' and recovered with the same PayPal-Request-Id / sender_batch_id. PayPal is then asked what exists, and the budget ledger is read.",
+  "refund": {
+    "runId": "8fa2344e-0629-4c33-a8f6-03dff18126c7",
+    "authority": "Customer refunds",
+    "firstRefundId": "2K0596106M3820243",
+    "replayRefundId": "2K0596106M3820243",
+    "attempts": 2,
+    "refundsOnOrder32N10786RS996335V": { "before": 3, "afterFirstSend": 4, "afterReplay": 4 },
+    "authorityDecisions": 1,
+    "reservations": [{ "amount": "10.00", "status": "COMMITTED" }],
+    "pass": true
+  },
+  "payout": {
+    "runId": "acae8aae-9037-4e0d-b82b-934ef925b135",
+    "authority": "Supplier payouts",
+    "firstBatchId": "456LR3WMWZVTA",
+    "replayBatchId": "456LR3WMWZVTA",
+    "attempts": 2,
+    "itemsInBatch": { "afterFirstSend": 1, "afterReplay": 1 },
+    "authorityDecisions": 1,
+    "reservations": [{ "amount": "15.00", "status": "COMMITTED" }],
+    "pass": true
+  }
+}

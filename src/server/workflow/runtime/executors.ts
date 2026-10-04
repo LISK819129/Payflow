@@ -1,7 +1,10 @@
 import { and, eq, or, sql } from "drizzle-orm";
 import { appendAudit } from "../../audit/audit";
-import { approvals, workflows } from "../../db/schema";
-import { compareDecimal } from "../dsl/decimal";
+import { approvals, budgetReservations, workflows } from "../../db/schema";
+import { money } from "../../authority/evaluate";
+import { lockScope, usageFor, withLedgerLock } from "../../authority/ledger";
+import { periodWindow, type Period } from "../../authority/periods";
+import { addDecimal, compareDecimal } from "../dsl/decimal";
 import { describeExpr, evaluate, ExpressionError, resolveRef, type Expr } from "../dsl/expression";
 import type { Money } from "../dsl/nodes";
 import type { Executor, NodeResult } from "./types";
@@ -125,7 +128,8 @@ const approval: Executor = async ({ tx, node, ctx, run, now }) => {
       },
       expiresAt: cfg.expiresAfterHours ? new Date(now.getTime() + cfg.expiresAfterHours * 3_600_000) : null,
     });
-    return { kind: "wait", waitFor: "approval", explanation: `Waiting for approval: ${cfg.reason}` };
+    const expiresAt = cfg.expiresAfterHours ? new Date(now.getTime() + cfg.expiresAfterHours * 3_600_000) : undefined;
+    return { kind: "wait", waitFor: "approval", wakeAt: expiresAt, explanation: `Waiting for approval: ${cfg.reason}` };
   }
 
   if (existing.status === "PENDING") {
@@ -192,6 +196,99 @@ const freeze: Executor = async ({ tx, node, run, workflow, now }) => {
   return { kind: "next", port: "next", output: { frozen: targets.map((t) => t.id) }, explanation: `Froze ${targets.length} workflow(s): ${cfg.reason}` };
 };
 
+/**
+ * Workflow-level budget: CHECK and RESERVE under an advisory lock on the budget
+ * key, so two runs racing for the last of a budget cannot both pass. The
+ * reservation is settled when the run ends (commit if a PayPal action on the
+ * run succeeded, release if none did, hold if an outcome is unknown).
+ */
+const budget: Executor = async ({ tx, node, ctx, run, now }) => {
+  const cfg = node.config as Cfg<{ amountRef: string; budget: Money; period: Period; budgetKey: string }>;
+  const scopeKey = `budget:${cfg.budgetKey}`;
+  const amount = readMoney(resolveRef(ctxRecord(ctx), cfg.amountRef));
+  if (typeof amount === "string") return { kind: "error", code: "NO_AMOUNT", message: amount, explanation: `Budget: ${amount} at ${cfg.amountRef}` };
+  const limit = { value: cfg.budget.value, currency: cfg.budget.currency };
+  const w = periodWindow(cfg.period, now);
+  if (amount.currency !== limit.currency) {
+    return { kind: "next", port: "block", output: { reason: "currency" }, explanation: `Blocked: amount is in ${amount.currency}; the “${cfg.budgetKey}” budget is in ${limit.currency}` };
+  }
+  const out = await withLedgerLock(tx, async (sp) => {
+    const [mine] = await sp.select().from(budgetReservations).where(and(eq(budgetReservations.runId, run.id), eq(budgetReservations.nodeId, node.id), eq(budgetReservations.scopeKey, scopeKey)));
+    if (mine) return { already: mine };
+    await lockScope(sp, run.workspaceId, scopeKey);
+    return { usage: await usageFor(sp, run.workspaceId, scopeKey, w) };
+  });
+  if (out === "unavailable") {
+    return { kind: "next", port: "block", output: { reason: "unavailable" }, explanation: `Blocked: the “${cfg.budgetKey}” budget could not be read, so nothing is spent against it` };
+  }
+  if ("already" in out && out.already) return { kind: "next", port: "pass", output: { reservationId: out.already.id }, explanation: `Already reserved ${money(amount.value, amount.currency)}` };
+  const usage = out.usage!;
+  const used = addDecimal(usage.committed, usage.reserved);
+  const after = addDecimal(used, amount.value);
+  const snapshot = { budgetKey: cfg.budgetKey, limit: limit.value, currency: limit.currency, period: cfg.period, periodKey: w.key, periodLabel: w.label, committed: usage.committed, reserved: usage.reserved, request: amount.value, after };
+  if (compareDecimal(after, limit.value) > 0) {
+    return {
+      kind: "next",
+      port: "block",
+      output: { ...snapshot, passed: false },
+      explanation: `Blocked: ${money(amount.value, amount.currency)} would bring ${w.label} to ${money(after, limit.currency)}, over the ${money(limit.value, limit.currency)} “${cfg.budgetKey}” budget`,
+    };
+  }
+  const [r] = await tx
+    .insert(budgetReservations)
+    .values({ workspaceId: run.workspaceId, scopeKey, periodKey: w.key, amount: amount.value, currency: amount.currency, runId: run.id, nodeId: node.id, createdAt: now })
+    .returning({ id: budgetReservations.id });
+  await appendAudit(tx, {
+    workspaceId: run.workspaceId,
+    actor: "system",
+    kind: "budget.reserved",
+    summary: `Reserved ${money(amount.value, amount.currency)} of the “${cfg.budgetKey}” budget for ${w.label}: ${money(after, limit.currency)} of ${money(limit.value, limit.currency)}`,
+    payload: { reservationId: r.id, ...snapshot },
+    workflowId: run.workflowId,
+    runId: run.id,
+  });
+  return {
+    kind: "next",
+    port: "pass",
+    output: { ...snapshot, passed: true, reservationId: r.id },
+    explanation: `Reserved ${money(amount.value, amount.currency)}: ${w.label} ${money(after, limit.currency)} of ${money(limit.value, limit.currency)}`,
+  };
+};
+
+/** Workflow-level frequency limit: same CHECK → RESERVE discipline, counting passes. */
+const frequency: Executor = async ({ tx, node, run, now }) => {
+  const cfg = node.config as Cfg<{ max: number; period: Period; key: string }>;
+  const scopeKey = `frequency:${cfg.key}`;
+  const w = periodWindow(cfg.period, now);
+  const out = await withLedgerLock(tx, async (sp) => {
+    const [mine] = await sp.select().from(budgetReservations).where(and(eq(budgetReservations.runId, run.id), eq(budgetReservations.nodeId, node.id), eq(budgetReservations.scopeKey, scopeKey)));
+    if (mine) return { already: mine };
+    await lockScope(sp, run.workspaceId, scopeKey);
+    return { usage: await usageFor(sp, run.workspaceId, scopeKey, w) };
+  });
+  if (out === "unavailable") return { kind: "next", port: "block", output: { reason: "unavailable" }, explanation: `Blocked: the “${cfg.key}” counter could not be read` };
+  if ("already" in out && out.already) return { kind: "next", port: "pass", output: { reservationId: out.already.id }, explanation: "Already counted" };
+  const after = out.usage!.count + 1;
+  const snapshot = { key: cfg.key, max: cfg.max, period: cfg.period, periodKey: w.key, periodLabel: w.label, used: out.usage!.count, after };
+  if (after > cfg.max) {
+    return { kind: "next", port: "block", output: { ...snapshot, passed: false }, explanation: `Blocked: this would be ${after} this ${cfg.period}; “${cfg.key}” allows ${cfg.max}` };
+  }
+  const [r] = await tx
+    .insert(budgetReservations)
+    .values({ workspaceId: run.workspaceId, scopeKey, periodKey: w.key, runId: run.id, nodeId: node.id, createdAt: now })
+    .returning({ id: budgetReservations.id });
+  await appendAudit(tx, {
+    workspaceId: run.workspaceId,
+    actor: "system",
+    kind: "budget.reserved",
+    summary: `Counted 1 of ${cfg.max} “${cfg.key}” for ${w.label} (${after} of ${cfg.max})`,
+    payload: { reservationId: r.id, ...snapshot },
+    workflowId: run.workflowId,
+    runId: run.id,
+  });
+  return { kind: "next", port: "pass", output: { ...snapshot, passed: true, reservationId: r.id }, explanation: `${after} of ${cfg.max} this ${cfg.period} (${w.label})` };
+};
+
 const terminal: Executor = async ({ node }) => {
   const cfg = node.config as Cfg<{ outcome: "completed" | "blocked" | "rejected" | "needs_review"; message: string }>;
   return { kind: "end", outcome: cfg.outcome, explanation: cfg.message };
@@ -210,6 +307,8 @@ export const EXECUTORS: Record<string, Executor> = {
   "policy.amount_limit": amountLimit,
   "policy.currency": currency,
   "policy.counterparty": counterparty,
+  "policy.budget": budget,
+  "policy.frequency": frequency,
 };
 
 export function notImplemented(type: string): NodeResult {

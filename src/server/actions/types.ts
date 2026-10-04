@@ -42,7 +42,11 @@ export type ActionIntent = {
   movesMoney: boolean;
   external: boolean;
   /** Why this action is allowed: every gate passed on the executed path. */
-  authorization: { gates: GateEvidence[] };
+  authorization: {
+    gates: GateEvidence[];
+    /** Phase 6: the delegated-authority decision that permitted this action (protected kinds only). */
+    authority?: { provider: string; decisionId: string; outcome: string; authorityIds: string[]; reason: string };
+  };
   provenance: "REAL_PAYPAL_SANDBOX";
 };
 

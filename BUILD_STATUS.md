@@ -21,6 +21,7 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | **3** | **Workflow DSL, validator, durable runtime, Flow Builder, Executions (2026-10-03)** | see Phase 3 evidence |
 | **4** | **AI workflow compiler — mock-validated and real-model validated (2026-10-03)** | see Phase 4 evidence · `evidence/phase4/` |
 | **4.1** | **Correctness pass (2026-10-04)**: amount limit gains explicit `lt`/`lte` and a boundary review that corrects AI graphs to the instruction's wording (or asks when it contradicts itself); run outcomes derived from the executed path; AI edits refresh the changed node's own labels and flag stale mentions elsewhere ($2,500 → $1,800 regression); the old Nova and Phase-3 demo flows paused; decomposition seam documented (ARCHITECTURE §10) | `tests/phase41.test.ts` incl. replays of recorded real gpt-5.4-mini outputs at $0; commit `6528bd2` |
+| **6** | **Financial authority, budgets and human control (2026-10-04)**: delegated authorities (who / what / to whom / how much / how often / until when), CHECK → RESERVE → EXECUTE → COMMIT/RELEASE under row locks, executable budget and frequency nodes, Approvals queue (approve once / reject), Authority pages, decision trace on every action, stale-worker protection | see Phase 6 evidence · `evidence/phase6/` |
 | **5** | **PayPal action nodes on the real US Sandbox (2026-10-04)**: refund, payout, order capture, invoice send, invoice reminder, PayPal lookup, transaction search, ledger reconcile — one execution boundary (ARCHITECTURE §11) | see Phase 5 evidence · `evidence/phase5/` |
 | 1.5 | Local Postgres encoding bug: cluster had initialised as WIN1252, so any non-ASCII text failed to insert. Databases recreated as UTF8 (old ones kept as `*_win1252_old`), migrate now refuses non-UTF8, new clusters init with `--encoding=UTF8` | Regression test with non-ASCII audit text |
 
@@ -39,6 +40,23 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | Public webhook URL | cloudflared 2026.9.3 downloaded (Authenticode: Cloudflare, Inc., valid) | — |
 | PayPal sandbox merchant | US Sandbox app with all features ✓ (India app retired) | — |
 | Order capture success path | A buyer must approve a Sandbox order in PayPal checkout with a Sandbox **personal** account: run `pnpm paypal:sandbox:order 64.00`, open the printed link, log in as the personal account, approve. Then start "Capture approved orders" with that order id | The capture *success* screenshot only — node and refusals are verified |
+
+## Phase 6 evidence (real PayPal US Sandbox + deterministic tests, 2026-10-04)
+
+Details and every id: `evidence/phase6/README.md`, database-generated `evidence/phase6/manifest.json`. AI spend in Phase 6: **$0.00** (0 calls).
+
+| Check | Result |
+|---|---|
+| Allowed payout: authority → budget reservation → PayPal → commit | $420 to Acme Cloud, batch `3TNM3WA79KHV8`, reservation committed |
+| Violation → review → person → resume | $850 unknown vendor rejected (PayPal not contacted); $650 AWS over limit approved once → batch `KFUCBL43DEV2W`, committed with override |
+| Deny list | Blocked Vendor denied, PayPal not contacted, nothing reserved |
+| Two tabs click Approve at once (real UI) | 2 requests, 1 approval, 1 execution, 1 reservation, batch `CRJ7QJKRQUDJY` |
+| Lost PayPal reply under authority (real Sandbox) | refund `2K0596106M3820243` and batch `456LR3WMWZVTA` unchanged on replay; one decision and one committed reservation each |
+| Concurrency (MOCK_TEST) | 2×$600 vs $1,000 → one granted; 5×$300 → three; both tests fail if the authority row lock is removed |
+| Your 12 test cases | `tests/authority.test.ts` (27 tests), all passing |
+| Audit chain | verified, `ok: true` |
+| Regression | 174 tests (15 files); typecheck, lint, `next build` clean |
+| Stale workers | worker logs commit + source hash, heartbeats, refuses jobs after a source change (stopped itself 4× this phase); `pnpm worker:status|stop|fresh` touch only this checkout's workers (unit-tested matcher) |
 
 ## Phase 5 evidence (real PayPal US Sandbox, 2026-10-04)
 
@@ -125,4 +143,4 @@ Nothing in Phase 2 is simulated. No simulator events were used.
 
 ## NEXT
 
-Waiting for approval of the Phase 5 checkpoint before Phase 6.
+Waiting for approval of the Phase 6 checkpoint before Phase 7.

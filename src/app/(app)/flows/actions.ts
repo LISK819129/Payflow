@@ -92,5 +92,6 @@ export async function decideApprovalAction(approvalId: string, decision: "APPROV
   const r = await decideApproval({ approvalId, workspaceId: user.workspaceId, userId: user.id, decision, note }, runtimeDeps);
   if (r.error) return { ok: false, error: r.error };
   revalidatePath("/executions");
+  revalidatePath("/approvals");
   return { ok: true, message: decision === "APPROVED" ? "Approved" : "Rejected" };
 }

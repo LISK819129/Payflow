@@ -50,6 +50,20 @@
       "when": 1791085487691,
       "tag": "0006_action_event_status",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791089750394,
+      "tag": "0007_financial_authority",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791089830781,
+      "tag": "0008_reservation_exec_index",
+      "breakpoints": true
     }
   ]
 }

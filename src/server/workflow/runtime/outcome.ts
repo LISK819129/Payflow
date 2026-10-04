@@ -23,7 +23,10 @@ export function describeOutcome(outcome: EndOutcome, steps: StepRow[], graph: Wo
   switch (outcome) {
     case "completed": {
       const actions = paypal.length ? ` · ${paypal.map((s) => label(s.nodeId)).join(", ")} done` : "";
-      if (approved.length) return `Completed after approval at “${approved.map((s) => label(s.nodeId)).join("”, “")}”${actions}`;
+      // A person's approval can come from an approval node or from an authority review at an action node.
+      const reviewed = paypal.filter((s) => (s.output as { authorityOutcome?: string } | null)?.authorityOutcome === "ALLOW_AFTER_HUMAN_APPROVAL");
+      const gates = [...approved.map((s) => `“${label(s.nodeId)}”`), ...reviewed.map((s) => `the authority review for “${label(s.nodeId)}”`)];
+      if (gates.length) return `Completed after approval at ${gates.join(", ")}${actions}`;
       if (errors.length) return `Completed after a handled error at “${label(errors.at(-1)!.nodeId)}”${actions}`;
       return `Completed automatically${actions}`;
     }

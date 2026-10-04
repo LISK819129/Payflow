@@ -1,0 +1,700 @@
+{
+  "phase": 6,
+  "generatedAt": "2026-10-04T08:16:14.069Z",
+  "environment": "PayPal US Sandbox — no real money",
+  "labels": {
+    "REAL_PAYPAL_SANDBOX": "sent to / returned by PayPal's Sandbox API",
+    "USER_PROVIDED": "run started by a person with a typed payload",
+    "MOCK_TEST": "automated test with a fake gateway (tests/authority.test.ts)"
+  },
+  "aiSpend": {
+    "phase6Calls": 0,
+    "phase6CostUsd": "0",
+    "lifetimeCalls": 13,
+    "lifetimeCostUsd": "0.347525"
+  },
+  "authorities": [
+    {
+      "name": "Checkout capture",
+      "version": 1,
+      "status": "ACTIVE",
+      "workflows": [
+        "Capture approved orders"
+      ],
+      "actions": [
+        "paypal.order_capture"
+      ],
+      "counterpartyRule": "any",
+      "counterparties": [],
+      "denied": [],
+      "currencies": [
+        "USD"
+      ],
+      "perTransactionMax": "1000.00",
+      "budget": null,
+      "frequency": null,
+      "expiresAt": null
+    },
+    {
+      "name": "Client billing",
+      "version": 1,
+      "status": "ACTIVE",
+      "workflows": [
+        "Client invoicing",
+        "Overdue invoice reminder"
+      ],
+      "actions": [
+        "paypal.invoice_send",
+        "paypal.invoice_remind"
+      ],
+      "counterpartyRule": "any",
+      "counterparties": [],
+      "denied": [],
+      "currencies": [
+        "USD"
+      ],
+      "perTransactionMax": "10000.00",
+      "budget": null,
+      "frequency": "50 per day",
+      "expiresAt": null
+    },
+    {
+      "name": "Cloud procurement",
+      "version": 2,
+      "status": "ACTIVE",
+      "workflows": [
+        "Cloud procurement"
+      ],
+      "actions": [
+        "paypal.payout"
+      ],
+      "counterpartyRule": "allowlist",
+      "counterparties": [
+        {
+          "id": "billing@acme-cloud.example",
+          "name": "Acme Cloud"
+        },
+        {
+          "id": "aws-billing@amazon.example",
+          "name": "AWS"
+        }
+      ],
+      "denied": [
+        {
+          "id": "payments@blocked-vendor.example",
+          "name": "Blocked Vendor"
+        }
+      ],
+      "currencies": [
+        "USD"
+      ],
+      "perTransactionMax": "500.00",
+      "budget": "2000.00 USD per month",
+      "frequency": null,
+      "expiresAt": "2026-12-31T23:59:59.000Z"
+    },
+    {
+      "name": "Customer refunds",
+      "version": 1,
+      "status": "ACTIVE",
+      "workflows": [
+        "Refund desk"
+      ],
+      "actions": [
+        "paypal.refund"
+      ],
+      "counterpartyRule": "any",
+      "counterparties": [],
+      "denied": [],
+      "currencies": [
+        "USD"
+      ],
+      "perTransactionMax": "500.00",
+      "budget": "1500.00 USD per month",
+      "frequency": null,
+      "expiresAt": null
+    },
+    {
+      "name": "Supplier payouts",
+      "version": 1,
+      "status": "ACTIVE",
+      "workflows": [
+        "Supplier payouts"
+      ],
+      "actions": [
+        "paypal.payout"
+      ],
+      "counterpartyRule": "allowlist",
+      "counterparties": [
+        {
+          "id": "billing@cloudhost.example",
+          "name": "CloudHost"
+        },
+        {
+          "id": "studio@type-foundry.example",
+          "name": "Type Foundry"
+        }
+      ],
+      "denied": [],
+      "currencies": [
+        "USD"
+      ],
+      "perTransactionMax": "1000.00",
+      "budget": "3000.00 USD per month",
+      "frequency": null,
+      "expiresAt": null
+    }
+  ],
+  "decisions": [
+    {
+      "at": "2026-10-04T08:09:54.534Z",
+      "workflow": "Cloud procurement",
+      "runId": "9a43d22f-b274-49eb-8a1e-958c07086092",
+      "provider": "payflow-internal",
+      "authorities": [
+        "Cloud procurement v2"
+      ],
+      "request": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "420.00",
+          "currency": "USD"
+        },
+        "counterparty": "billing@acme-cloud.example"
+      },
+      "checks": [
+        "PASS status: Authority “Cloud procurement” is active",
+        "PASS validity: Valid until 2026-12-31",
+        "PASS action: Payout permitted",
+        "PASS counterparty: Acme Cloud allowed",
+        "PASS currency: USD allowed",
+        "PASS per_transaction: Transaction $420.00 ≤ $500.00",
+        "PASS budget: October 2026 (UTC): $420.00 of $2,000.00 after this"
+      ],
+      "budget": [
+        {
+          "after": "420.00",
+          "limit": "2000.00",
+          "period": "month",
+          "request": "420.00",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "0",
+          "periodKey": "2026-10",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "periodLabel": "October 2026 (UTC)"
+        }
+      ],
+      "decision": "ALLOW",
+      "outcome": "ALLOW",
+      "humanApprovalId": null,
+      "paypal": {
+        "status": "SUCCEEDED",
+        "ids": [
+          "3TNM3WA79KHV8"
+        ],
+        "paypalStatus": "PENDING",
+        "debugId": "ca452b50a8e77",
+        "attempts": 1
+      }
+    },
+    {
+      "at": "2026-10-04T08:10:56.494Z",
+      "workflow": "Cloud procurement",
+      "runId": "c434974e-9771-4ee6-9e79-ccac1c6506f5",
+      "provider": "payflow-internal",
+      "authorities": [
+        "Cloud procurement v2"
+      ],
+      "request": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "850.00",
+          "currency": "USD"
+        },
+        "counterparty": "invoices@unknown-vendor.example"
+      },
+      "checks": [
+        "PASS status: Authority “Cloud procurement” is active",
+        "PASS validity: Valid until 2026-12-31",
+        "PASS action: Payout permitted",
+        "REVIEW counterparty: invoices@unknown-vendor.example is not an approved counterparty",
+        "PASS currency: USD allowed",
+        "REVIEW per_transaction: $850.00 exceeds the $500.00 per-transaction limit",
+        "PASS budget: October 2026 (UTC): $1,270.00 of $2,000.00 after this"
+      ],
+      "budget": [
+        {
+          "after": "1270.00",
+          "limit": "2000.00",
+          "period": "month",
+          "request": "850.00",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "420.00",
+          "periodKey": "2026-10",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "periodLabel": "October 2026 (UTC)"
+        }
+      ],
+      "decision": "REVIEW",
+      "outcome": "REVIEW",
+      "humanApprovalId": "bf2bc67f-8249-431b-8e64-541b4d5cc56d",
+      "paypal": "not contacted"
+    },
+    {
+      "at": "2026-10-04T08:11:40.630Z",
+      "workflow": "Cloud procurement",
+      "runId": "f616f581-7e4f-4bff-ace2-0f68c3a498f7",
+      "provider": "payflow-internal",
+      "authorities": [
+        "Cloud procurement v2"
+      ],
+      "request": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "650.00",
+          "currency": "USD"
+        },
+        "counterparty": "aws-billing@amazon.example"
+      },
+      "checks": [
+        "PASS status: Authority “Cloud procurement” is active",
+        "PASS validity: Valid until 2026-12-31",
+        "PASS action: Payout permitted",
+        "PASS counterparty: AWS allowed",
+        "PASS currency: USD allowed",
+        "REVIEW per_transaction: $650.00 exceeds the $500.00 per-transaction limit",
+        "PASS budget: October 2026 (UTC): $1,070.00 of $2,000.00 after this"
+      ],
+      "budget": [
+        {
+          "after": "1070.00",
+          "limit": "2000.00",
+          "period": "month",
+          "request": "650.00",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "420.00",
+          "periodKey": "2026-10",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "periodLabel": "October 2026 (UTC)"
+        }
+      ],
+      "decision": "REVIEW",
+      "outcome": "REVIEW",
+      "humanApprovalId": "9b32ab9b-f29f-4d4b-a76f-4283003281fc",
+      "paypal": "not contacted"
+    },
+    {
+      "at": "2026-10-04T08:11:52.525Z",
+      "workflow": "Cloud procurement",
+      "runId": "f616f581-7e4f-4bff-ace2-0f68c3a498f7",
+      "provider": "payflow-internal",
+      "authorities": [
+        "Cloud procurement v2"
+      ],
+      "request": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "650.00",
+          "currency": "USD"
+        },
+        "counterparty": "aws-billing@amazon.example"
+      },
+      "checks": [
+        "PASS status: Authority “Cloud procurement” is active",
+        "PASS validity: Valid until 2026-12-31",
+        "PASS action: Payout permitted",
+        "PASS counterparty: AWS allowed",
+        "PASS currency: USD allowed",
+        "REVIEW per_transaction: $650.00 exceeds the $500.00 per-transaction limit",
+        "PASS budget: October 2026 (UTC): $1,070.00 of $2,000.00 after this"
+      ],
+      "budget": [
+        {
+          "after": "1070.00",
+          "limit": "2000.00",
+          "period": "month",
+          "request": "650.00",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "420.00",
+          "periodKey": "2026-10",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "periodLabel": "October 2026 (UTC)"
+        }
+      ],
+      "decision": "REVIEW",
+      "outcome": "ALLOW_AFTER_HUMAN_APPROVAL",
+      "humanApprovalId": "9b32ab9b-f29f-4d4b-a76f-4283003281fc",
+      "paypal": {
+        "status": "SUCCEEDED",
+        "ids": [
+          "KFUCBL43DEV2W"
+        ],
+        "paypalStatus": "PENDING",
+        "debugId": "ca452b7eb3bd7",
+        "attempts": 1
+      }
+    },
+    {
+      "at": "2026-10-04T08:12:20.604Z",
+      "workflow": "Cloud procurement",
+      "runId": "9d7c0df3-f319-44f5-993b-74827a1aa6f4",
+      "provider": "payflow-internal",
+      "authorities": [
+        "Cloud procurement v2"
+      ],
+      "request": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "90.00",
+          "currency": "USD"
+        },
+        "counterparty": "payments@blocked-vendor.example"
+      },
+      "checks": [
+        "PASS status: Authority “Cloud procurement” is active",
+        "PASS validity: Valid until 2026-12-31",
+        "PASS action: Payout permitted",
+        "DENY counterparty: Blocked Vendor is on the deny list",
+        "PASS currency: USD allowed",
+        "PASS per_transaction: Transaction $90.00 ≤ $500.00",
+        "PASS budget: October 2026 (UTC): $1,160.00 of $2,000.00 after this"
+      ],
+      "budget": [
+        {
+          "after": "1160.00",
+          "limit": "2000.00",
+          "period": "month",
+          "request": "90.00",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "1070.00",
+          "periodKey": "2026-10",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "periodLabel": "October 2026 (UTC)"
+        }
+      ],
+      "decision": "DENY",
+      "outcome": "DENY",
+      "humanApprovalId": null,
+      "paypal": "not contacted"
+    },
+    {
+      "at": "2026-10-04T08:13:09.186Z",
+      "workflow": "Refund desk",
+      "runId": "8fa2344e-0629-4c33-a8f6-03dff18126c7",
+      "provider": "payflow-internal",
+      "authorities": [
+        "Customer refunds v1"
+      ],
+      "request": {
+        "kind": "paypal.refund",
+        "amount": {
+          "value": "10.00",
+          "currency": "USD"
+        },
+        "counterparty": null
+      },
+      "checks": [
+        "PASS status: Authority “Customer refunds” is active",
+        "PASS validity: No expiry set",
+        "PASS action: Refund permitted",
+        "PASS counterparty: No counterparty restriction",
+        "PASS currency: USD allowed",
+        "PASS per_transaction: Transaction $10.00 ≤ $500.00",
+        "PASS budget: October 2026 (UTC): $10.00 of $1,500.00 after this"
+      ],
+      "budget": [
+        {
+          "after": "10.00",
+          "limit": "1500.00",
+          "period": "month",
+          "request": "10.00",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "0",
+          "periodKey": "2026-10",
+          "authorityId": "93acb529-b4ae-4408-ad4c-511fb8ee2578",
+          "periodLabel": "October 2026 (UTC)"
+        }
+      ],
+      "decision": "ALLOW",
+      "outcome": "ALLOW",
+      "humanApprovalId": null,
+      "paypal": {
+        "status": "SUCCEEDED",
+        "ids": [
+          "2K0596106M3820243",
+          "7B872764UT826153C"
+        ],
+        "paypalStatus": "COMPLETED",
+        "debugId": "ca452b9d74c2b",
+        "attempts": 2
+      }
+    },
+    {
+      "at": "2026-10-04T08:13:14.966Z",
+      "workflow": "Supplier payouts",
+      "runId": "acae8aae-9037-4e0d-b82b-934ef925b135",
+      "provider": "payflow-internal",
+      "authorities": [
+        "Supplier payouts v1"
+      ],
+      "request": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "15.00",
+          "currency": "USD"
+        },
+        "counterparty": "studio@type-foundry.example"
+      },
+      "checks": [
+        "PASS status: Authority “Supplier payouts” is active",
+        "PASS validity: No expiry set",
+        "PASS action: Payout permitted",
+        "PASS counterparty: Type Foundry allowed",
+        "PASS currency: USD allowed",
+        "PASS per_transaction: Transaction $15.00 ≤ $1,000.00",
+        "PASS budget: October 2026 (UTC): $15.00 of $3,000.00 after this"
+      ],
+      "budget": [
+        {
+          "after": "15.00",
+          "limit": "3000.00",
+          "period": "month",
+          "request": "15.00",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "0",
+          "periodKey": "2026-10",
+          "authorityId": "a50dc6eb-ef5f-4e15-9ddc-4b325aefb987",
+          "periodLabel": "October 2026 (UTC)"
+        }
+      ],
+      "decision": "ALLOW",
+      "outcome": "ALLOW",
+      "humanApprovalId": null,
+      "paypal": {
+        "status": "SUCCEEDED",
+        "ids": [
+          "456LR3WMWZVTA"
+        ],
+        "paypalStatus": "PENDING",
+        "debugId": "ca452b9effa54",
+        "attempts": 2
+      }
+    },
+    {
+      "at": "2026-10-04T08:13:59.020Z",
+      "workflow": "Cloud procurement",
+      "runId": "9234b30a-eb7a-4707-8d53-cc88fdc7f2f2",
+      "provider": "payflow-internal",
+      "authorities": [
+        "Cloud procurement v2"
+      ],
+      "request": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "600.00",
+          "currency": "USD"
+        },
+        "counterparty": "billing@acme-cloud.example"
+      },
+      "checks": [
+        "PASS status: Authority “Cloud procurement” is active",
+        "PASS validity: Valid until 2026-12-31",
+        "PASS action: Payout permitted",
+        "PASS counterparty: Acme Cloud allowed",
+        "PASS currency: USD allowed",
+        "REVIEW per_transaction: $600.00 exceeds the $500.00 per-transaction limit",
+        "PASS budget: October 2026 (UTC): $1,670.00 of $2,000.00 after this"
+      ],
+      "budget": [
+        {
+          "after": "1670.00",
+          "limit": "2000.00",
+          "period": "month",
+          "request": "600.00",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "1070.00",
+          "periodKey": "2026-10",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "periodLabel": "October 2026 (UTC)"
+        }
+      ],
+      "decision": "REVIEW",
+      "outcome": "REVIEW",
+      "humanApprovalId": "dc5cecff-41ec-4657-ae82-89d3dfb22f99",
+      "paypal": "not contacted"
+    },
+    {
+      "at": "2026-10-04T08:14:11.051Z",
+      "workflow": "Cloud procurement",
+      "runId": "9234b30a-eb7a-4707-8d53-cc88fdc7f2f2",
+      "provider": "payflow-internal",
+      "authorities": [
+        "Cloud procurement v2"
+      ],
+      "request": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "600.00",
+          "currency": "USD"
+        },
+        "counterparty": "billing@acme-cloud.example"
+      },
+      "checks": [
+        "PASS status: Authority “Cloud procurement” is active",
+        "PASS validity: Valid until 2026-12-31",
+        "PASS action: Payout permitted",
+        "PASS counterparty: Acme Cloud allowed",
+        "PASS currency: USD allowed",
+        "REVIEW per_transaction: $600.00 exceeds the $500.00 per-transaction limit",
+        "PASS budget: October 2026 (UTC): $1,670.00 of $2,000.00 after this"
+      ],
+      "budget": [
+        {
+          "after": "1670.00",
+          "limit": "2000.00",
+          "period": "month",
+          "request": "600.00",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "1070.00",
+          "periodKey": "2026-10",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "periodLabel": "October 2026 (UTC)"
+        }
+      ],
+      "decision": "REVIEW",
+      "outcome": "ALLOW_AFTER_HUMAN_APPROVAL",
+      "humanApprovalId": "dc5cecff-41ec-4657-ae82-89d3dfb22f99",
+      "paypal": {
+        "status": "SUCCEEDED",
+        "ids": [
+          "CRJ7QJKRQUDJY"
+        ],
+        "paypalStatus": "PENDING",
+        "debugId": "ca452bb454a0d",
+        "attempts": 1
+      }
+    }
+  ],
+  "reservations": [
+    {
+      "scope": "authority Cloud procurement",
+      "period": "2026-10",
+      "amount": "420.00",
+      "status": "COMMITTED",
+      "override": false,
+      "settleReason": "PayPal PENDING · 3TNM3WA79KHV8",
+      "runId": "9a43d22f-b274-49eb-8a1e-958c07086092"
+    },
+    {
+      "scope": "authority Cloud procurement",
+      "period": "2026-10",
+      "amount": "650.00",
+      "status": "COMMITTED",
+      "override": true,
+      "settleReason": "PayPal PENDING · KFUCBL43DEV2W",
+      "runId": "f616f581-7e4f-4bff-ace2-0f68c3a498f7"
+    },
+    {
+      "scope": "authority Customer refunds",
+      "period": "2026-10",
+      "amount": "10.00",
+      "status": "COMMITTED",
+      "override": false,
+      "settleReason": "PayPal COMPLETED · 2K0596106M3820243",
+      "runId": "8fa2344e-0629-4c33-a8f6-03dff18126c7"
+    },
+    {
+      "scope": "authority Supplier payouts",
+      "period": "2026-10",
+      "amount": "15.00",
+      "status": "COMMITTED",
+      "override": false,
+      "settleReason": "PayPal PENDING · 456LR3WMWZVTA",
+      "runId": "acae8aae-9037-4e0d-b82b-934ef925b135"
+    },
+    {
+      "scope": "authority Cloud procurement",
+      "period": "2026-10",
+      "amount": "600.00",
+      "status": "COMMITTED",
+      "override": true,
+      "settleReason": "PayPal PENDING · CRJ7QJKRQUDJY",
+      "runId": "9234b30a-eb7a-4707-8d53-cc88fdc7f2f2"
+    }
+  ],
+  "approvals": [
+    {
+      "requestedAt": "2026-10-04T08:10:56.495Z",
+      "kind": "authority_review",
+      "status": "REJECTED",
+      "reason": "Authority review: invoices@unknown-vendor.example is not an approved counterparty; $850.00 exceeds the $500.00 per-transaction limit",
+      "decidedAt": "2026-10-04T08:11:12.360Z",
+      "note": "Not a vendor we use; invoice was unsolicited",
+      "runId": "c434974e-9771-4ee6-9e79-ccac1c6506f5"
+    },
+    {
+      "requestedAt": "2026-10-04T08:11:40.631Z",
+      "kind": "authority_review",
+      "status": "APPROVED",
+      "reason": "Authority review: $650.00 exceeds the $500.00 per-transaction limit",
+      "decidedAt": "2026-10-04T08:11:51.175Z",
+      "note": "One-off GPU training run, agreed in advance",
+      "runId": "f616f581-7e4f-4bff-ace2-0f68c3a498f7"
+    },
+    {
+      "requestedAt": "2026-10-04T08:13:59.021Z",
+      "kind": "authority_review",
+      "status": "APPROVED",
+      "reason": "Authority review: $600.00 exceeds the $500.00 per-transaction limit",
+      "decidedAt": "2026-10-04T08:14:09.366Z",
+      "note": null,
+      "runId": "9234b30a-eb7a-4707-8d53-cc88fdc7f2f2"
+    }
+  ],
+  "auditChain": {
+    "ok": true,
+    "records": 461,
+    "head": "0bebdff89ecb934c9fb3329fccb790e1335fbc483ee2c3a0697fe3b0c24923fe"
+  },
+  "screenshots": [
+    "allow-budget-commit/01-manual-run-payload.png",
+    "allow-budget-commit/02-run-settled.png",
+    "authority/01-overview.png",
+    "authority/02-draft-before-activation.png",
+    "authority/03-activated-by-owner.png",
+    "authority/04-new-authority-form.png",
+    "authority/05-authority-created.png",
+    "authority/06-edit-allowlist.png",
+    "authority/07-authority-v2.png",
+    "deny/01-manual-run-payload.png",
+    "deny/02-run-settled.png",
+    "double-approve/01-manual-run-payload.png",
+    "double-approve/02-same-approval-open-in-two-tabs.png",
+    "double-approve/03-second-tab-after-click.png",
+    "double-approve/04-one-payout.png",
+    "ledger/01-authority-after-runs.png",
+    "ledger/02-approvals-decided.png",
+    "ledger/03-transactions.png",
+    "ledger/04-audit.png",
+    "review-approve-once/01-manual-run-payload.png",
+    "review-approve-once/02-waiting-for-a-person.png",
+    "review-approve-once/03-approvals-queue.png",
+    "review-approve-once/04-approved-once-and-executed.png",
+    "review-approve-once/05-approvals-decided.png",
+    "review-reject/01-manual-run-payload.png",
+    "review-reject/02-waiting-for-a-person.png",
+    "review-reject/03-approvals-queue.png",
+    "review-reject/04-rejected-paypal-not-contacted.png",
+    "review-reject/05-approvals-decided.png",
+    "tooling/01-settings-workers.png"
+  ]
+}

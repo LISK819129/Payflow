@@ -16,6 +16,7 @@ import { PayPalApiError } from "@/server/paypal/errors";
 import { existingBatchFor } from "@/server/paypal/operations";
 import type { RuntimeDeps } from "@/server/workflow/runtime/types";
 import { activateLatest, createWorkflow } from "@/server/workflow/service";
+import { grantAuthority } from "./support/authority";
 import { createUser, createWorkspace, resetTestDb } from "./support/db";
 
 /** Behaves like PayPal for idempotency: the same key always yields the same object. */
@@ -89,11 +90,12 @@ function refundGraph(): WorkflowGraph {
   } as WorkflowGraph;
 }
 
-async function startRefund(payload: Record<string, unknown>, graph = refundGraph()) {
+async function startRefund(payload: Record<string, unknown>, graph = refundGraph(), withAuthority = true) {
   const c = await createWorkflow({ workspaceId: ws.id, userId: user.id, name: `refund-${Math.random()}`, graph });
   if (!c.ok) throw new Error(JSON.stringify(c));
   const a = await activateLatest({ workspaceId: ws.id, userId: user.id, workflowId: c.workflowId });
   if (!a.ok) throw new Error(JSON.stringify(a));
+  if (withAuthority) await grantAuthority(ws.id, user.id, [c.workflowId]);
   const r = await startRun({ workflowId: c.workflowId, triggerKind: "manual", triggerRef: `m-${Math.random()}`, triggerPayload: payload, provenance: "USER_PROVIDED" }, deps);
   return (r as { runId: string }).runId;
 }
@@ -254,6 +256,7 @@ describe("PayPal action nodes: no duplicate money movement", () => {
     const c = await createWorkflow({ workspaceId: ws.id, userId: user.id, name: "auto-refund", graph: g });
     if (!c.ok) throw new Error("setup");
     await activateLatest({ workspaceId: ws.id, userId: user.id, workflowId: c.workflowId });
+    await grantAuthority(ws.id, user.id, [c.workflowId]);
     const raw = { id: "WH-DUP", event_type: "PAYMENT.CAPTURE.COMPLETED", resource: { id: "CAP-DUP-1", amount: { value: "50.00", currency_code: "USD" } } };
     const [ev] = await db().insert(paypalEvents).values({ workspaceId: ws.id, eventId: raw.id, eventType: raw.event_type, resourceId: "CAP-DUP-1", verification: "SIMULATOR", provenance: "SIMULATED", raw }).returning();
     const http = { request: async () => Promise.reject(new Error("no")) };
