@@ -109,6 +109,9 @@ export function FlowNodeView({ data, selected }: NodeProps<FlowNode>) {
         {summarizeNode(node)}
       </div>
       {unavailable && <div className="mt-1 font-mono text-[10px] text-faint">runs from Phase {spec.implementedIn}</div>}
+      {!unavailable && spec?.category === "paypal" && (
+        <div className="mt-1 font-mono text-[10px] uppercase tracking-wide text-faint">PayPal Sandbox{spec.movesMoney ? " · moves money" : spec.external ? " · contacts recipient" : " · read-only"}</div>
+      )}
 
       {ports.map((p, i) => {
         const left = `${((i + 1) / (ports.length + 1)) * 100}%`;

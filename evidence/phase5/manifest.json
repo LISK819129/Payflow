@@ -1,0 +1,837 @@
+{
+  "phase": 5,
+  "generatedAt": "2026-10-04T04:14:42.503Z",
+  "environment": "PayPal US Sandbox — no real money",
+  "labels": {
+    "REAL_PAYPAL_SANDBOX": "created or read on PayPal's Sandbox API",
+    "USER_PROVIDED": "run started by a person with a typed payload",
+    "MOCK_TEST": "automated test with a fake gateway (see tests/actions.test.ts)"
+  },
+  "aiSpend": {
+    "phase5Calls": 0,
+    "phase5CostUsd": "0",
+    "lifetimeCalls": 13,
+    "lifetimeCostUsd": "0.347525"
+  },
+  "actions": [
+    {
+      "at": "2026-10-04T03:37:34.705Z",
+      "workflow": "Refund desk",
+      "kind": "paypal.refund",
+      "runId": "6b12d72c-b2cc-4513-aad2-7a05bd54dd0d",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Refund the customer done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": "80.00 USD",
+      "counterparty": null,
+      "target": "1BA746057B4088914",
+      "paypalIds": [
+        "9CL93909WG926700C",
+        "1BA746057B4088914"
+      ],
+      "paypalStatus": "COMPLETED",
+      "debugId": "f2926325c081f",
+      "failure": null,
+      "authorisedBy": [
+        "usd→pass",
+        "small→pass"
+      ],
+      "idempotencyKey": "pf:6b12d72c-b2cc-4513-aad2-7a05bd54dd0d:refund",
+      "confirmedBy": {
+        "eventId": "WH-4JY572487E0388304-52R656984E962235G",
+        "eventType": "PAYMENT.CAPTURE.REFUNDED"
+      },
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:41:35.087Z",
+      "workflow": "Refund desk",
+      "kind": "paypal.refund",
+      "runId": "3e974778-4b1f-4240-b004-e6d0df7cfe20",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed after approval at “Owner approves refunds over $100” · Refund the customer done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": "150.00 USD",
+      "counterparty": null,
+      "target": "7B872764UT826153C",
+      "paypalIds": [
+        "70387968X56817604",
+        "7B872764UT826153C"
+      ],
+      "paypalStatus": "COMPLETED",
+      "debugId": "f6034501d6d1e",
+      "failure": null,
+      "authorisedBy": [
+        "usd→pass",
+        "owner→approved"
+      ],
+      "idempotencyKey": "pf:3e974778-4b1f-4240-b004-e6d0df7cfe20:refund",
+      "confirmedBy": {
+        "eventId": "WH-9RB08547GM620410G-3LF34967V9081320B",
+        "eventType": "PAYMENT.CAPTURE.REFUNDED"
+      },
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:42:07.908Z",
+      "workflow": "Refund desk",
+      "kind": "paypal.refund",
+      "runId": "bc85b415-029e-4097-aa26-84dfb94ec761",
+      "runStatus": "NEEDS_REVIEW",
+      "runOutcome": "Needs review: PayPal refused: The requested action could not be performed, semantically incorrect, or failed business validation. (debug_id f784808e4ab59)",
+      "status": "FAILED",
+      "attempts": 1,
+      "amount": "20.00 USD",
+      "counterparty": null,
+      "target": "1BA746057B4088914",
+      "paypalIds": [],
+      "paypalStatus": null,
+      "debugId": "f784808e4ab59",
+      "failure": {
+        "code": "UNPROCESSABLE_ENTITY",
+        "status": 422
+      },
+      "authorisedBy": [
+        "usd→pass",
+        "small→pass"
+      ],
+      "idempotencyKey": "pf:bc85b415-029e-4097-aa26-84dfb94ec761:refund",
+      "confirmedBy": null,
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:43:04.849Z",
+      "workflow": "Refund desk",
+      "kind": "paypal.refund",
+      "runId": "db452566-d15c-4be0-9320-c019195b61cf",
+      "runStatus": "NEEDS_REVIEW",
+      "runOutcome": "Needs review: PayPal refused: The refund amount must be less than or equal to the capture amount that has not yet been refunded. (debug_id f59904661b3a7)",
+      "status": "FAILED",
+      "attempts": 1,
+      "amount": "95.00 USD",
+      "counterparty": null,
+      "target": "7B872764UT826153C",
+      "paypalIds": [],
+      "paypalStatus": null,
+      "debugId": "f59904661b3a7",
+      "failure": {
+        "code": "REFUND_AMOUNT_EXCEEDED",
+        "status": 422
+      },
+      "authorisedBy": [
+        "usd→pass",
+        "small→pass"
+      ],
+      "idempotencyKey": "pf:db452566-d15c-4be0-9320-c019195b61cf:refund",
+      "confirmedBy": null,
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:43:27.525Z",
+      "workflow": "Supplier payouts",
+      "kind": "paypal.payout",
+      "runId": "6b610d50-baaf-4124-8fcc-0e97f9972bbf",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Pay the supplier done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": "125.00 USD",
+      "counterparty": "billing@cloudhost.example",
+      "target": null,
+      "paypalIds": [
+        "2DSJUHUB3A8CN"
+      ],
+      "paypalStatus": "PENDING",
+      "debugId": "f800928a078ac",
+      "failure": null,
+      "authorisedBy": [
+        "known→pass",
+        "usd→pass",
+        "limit→pass"
+      ],
+      "idempotencyKey": "pf:6b610d50-baaf-4124-8fcc-0e97f9972bbf:payout",
+      "confirmedBy": {
+        "eventId": "WH-9HA09477XU7303338-2MT20744DT708163M",
+        "eventType": "PAYMENT.PAYOUTS-ITEM.UNCLAIMED"
+      },
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:46:39.487Z",
+      "workflow": "Client invoicing",
+      "kind": "paypal.invoice_send",
+      "runId": "6133fa9b-3f68-4339-977f-fbdcf4b35ad0",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Send the PayPal invoice done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": "1200.00 USD",
+      "counterparty": "accounts@novalabs.example",
+      "target": null,
+      "paypalIds": [
+        "INV2-XKNS-YUUN-4XJY-Q328"
+      ],
+      "paypalStatus": "SENT",
+      "debugId": "ca45133751f1d",
+      "failure": null,
+      "authorisedBy": [
+        "usd→pass",
+        "limit→pass"
+      ],
+      "idempotencyKey": "pf:6133fa9b-3f68-4339-977f-fbdcf4b35ad0:invoice",
+      "confirmedBy": {
+        "eventId": "WH-54P43870Y65757711-9ME70796DF5809706",
+        "eventType": "INVOICING.INVOICE.PAID"
+      },
+      "latestEvent": "INVOICING.INVOICE.PAID · MARKED_AS_PAID",
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:47:21.150Z",
+      "workflow": "Overdue invoice reminder",
+      "kind": "paypal.invoice_remind",
+      "runId": "c45ccde3-2a0f-4b01-a916-589f8fd4c49d",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed after approval at “Owner approves the reminder” · Send a polite reminder done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": null,
+      "counterparty": null,
+      "target": "INV2-XKNS-YUUN-4XJY-Q328",
+      "paypalIds": [
+        "INV2-XKNS-YUUN-4XJY-Q328"
+      ],
+      "paypalStatus": "REMINDER_SENT",
+      "debugId": "ca45134670d31",
+      "failure": null,
+      "authorisedBy": [
+        "owner→approved"
+      ],
+      "idempotencyKey": "pf:c45ccde3-2a0f-4b01-a916-589f8fd4c49d:remind",
+      "confirmedBy": {
+        "eventId": "WH-54P43870Y65757711-9ME70796DF5809706",
+        "eventType": "INVOICING.INVOICE.PAID"
+      },
+      "latestEvent": "INVOICING.INVOICE.PAID · MARKED_AS_PAID",
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:48:55.476Z",
+      "workflow": "Overdue invoice reminder",
+      "kind": "paypal.invoice_remind",
+      "runId": "d878443b-a135-4f4f-be64-bfedca46d7c6",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed after approval at “Owner approves the reminder” · Send a polite reminder done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": null,
+      "counterparty": null,
+      "target": "INV2-XKNS-YUUN-4XJY-Q328",
+      "paypalIds": [
+        "INV2-XKNS-YUUN-4XJY-Q328"
+      ],
+      "paypalStatus": "SENT",
+      "debugId": "ca45136bbaded",
+      "failure": null,
+      "authorisedBy": [
+        "owner→approved"
+      ],
+      "idempotencyKey": "pf:d878443b-a135-4f4f-be64-bfedca46d7c6:remind",
+      "confirmedBy": {
+        "eventId": "WH-54P43870Y65757711-9ME70796DF5809706",
+        "eventType": "INVOICING.INVOICE.PAID"
+      },
+      "latestEvent": "INVOICING.INVOICE.PAID · MARKED_AS_PAID",
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:49:39.526Z",
+      "workflow": "Reconcile paid invoices",
+      "kind": "ledger.reconcile",
+      "runId": "510a64d1-9066-460a-b706-6b1a52dd7669",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": "1200.00 USD",
+      "counterparty": null,
+      "target": "INV2-XKNS-YUUN-4XJY-Q328",
+      "paypalIds": [
+        "INV2-XKNS-YUUN-4XJY-Q328"
+      ],
+      "paypalStatus": "MARKED_AS_PAID",
+      "debugId": "ca45137c7793f",
+      "failure": null,
+      "authorisedBy": [],
+      "idempotencyKey": "pf:510a64d1-9066-460a-b706-6b1a52dd7669:reconcile",
+      "confirmedBy": null,
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:52:27.258Z",
+      "workflow": "Client invoicing",
+      "kind": "paypal.invoice_send",
+      "runId": "91c2b2e8-79db-43ab-ba10-c4c0696593cb",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Send the PayPal invoice done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": "850.00 USD",
+      "counterparty": "finance@orbitcafe.example",
+      "target": null,
+      "paypalIds": [
+        "INV2-3REM-EZJK-GY57-2WXL"
+      ],
+      "paypalStatus": "SENT",
+      "debugId": "f5376992d0c94",
+      "failure": null,
+      "authorisedBy": [
+        "usd→pass",
+        "limit→pass"
+      ],
+      "idempotencyKey": "pf:91c2b2e8-79db-43ab-ba10-c4c0696593cb:invoice",
+      "confirmedBy": {
+        "eventId": "WH-9SX44404VA044662S-4UV99033FM4493420",
+        "eventType": "INVOICING.INVOICE.PAID"
+      },
+      "latestEvent": "INVOICING.INVOICE.PAID · MARKED_AS_PAID",
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:53:21.164Z",
+      "workflow": "Reconcile paid invoices",
+      "kind": "ledger.reconcile",
+      "runId": "a09a6ea7-c3af-4b3e-8d0c-a324b0ac5c8e",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Match payment to invoice done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": "850.00 USD",
+      "counterparty": null,
+      "target": "INV2-3REM-EZJK-GY57-2WXL",
+      "paypalIds": [
+        "INV2-3REM-EZJK-GY57-2WXL"
+      ],
+      "paypalStatus": "MARKED_AS_PAID",
+      "debugId": "f30211171cc0c",
+      "failure": null,
+      "authorisedBy": [],
+      "idempotencyKey": "pf:a09a6ea7-c3af-4b3e-8d0c-a324b0ac5c8e:reconcile",
+      "confirmedBy": null,
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:58:01.008Z",
+      "workflow": "Capture approved orders",
+      "kind": "paypal.order_capture",
+      "runId": "b1f82905-c802-4fdd-b9e1-ae68b7a9b40e",
+      "runStatus": "NEEDS_REVIEW",
+      "runOutcome": "Needs review: PayPal refused: Order 5TY33142VT054491W is already captured (debug_id f419936a0fa8e)",
+      "status": "FAILED",
+      "attempts": 1,
+      "amount": "80.00 USD",
+      "counterparty": null,
+      "target": "5TY33142VT054491W",
+      "paypalIds": [],
+      "paypalStatus": null,
+      "debugId": "f419936a0fa8e",
+      "failure": {
+        "code": "ORDER_ALREADY_CAPTURED",
+        "status": null
+      },
+      "authorisedBy": [
+        "usd→pass",
+        "limit→pass"
+      ],
+      "idempotencyKey": "pf:b1f82905-c802-4fdd-b9e1-ae68b7a9b40e:capture",
+      "confirmedBy": null,
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:58:15.563Z",
+      "workflow": "Capture approved orders",
+      "kind": "paypal.order_capture",
+      "runId": "1928e882-12fb-4057-8a24-c1f6fbd27f5e",
+      "runStatus": "NEEDS_REVIEW",
+      "runOutcome": "Needs review: PayPal refused: Order is 64.00 USD; expected 60.00 USD (debug_id f32024298d6ab)",
+      "status": "FAILED",
+      "attempts": 1,
+      "amount": "60.00 USD",
+      "counterparty": null,
+      "target": "1JR68800AM761384H",
+      "paypalIds": [],
+      "paypalStatus": null,
+      "debugId": "f32024298d6ab",
+      "failure": {
+        "code": "AMOUNT_MISMATCH",
+        "status": null
+      },
+      "authorisedBy": [
+        "usd→pass",
+        "limit→pass"
+      ],
+      "idempotencyKey": "pf:1928e882-12fb-4057-8a24-c1f6fbd27f5e:capture",
+      "confirmedBy": null,
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:58:25.577Z",
+      "workflow": "Capture approved orders",
+      "kind": "paypal.order_capture",
+      "runId": "13b3b880-1610-4960-820d-ecfdbd78fe3f",
+      "runStatus": "NEEDS_REVIEW",
+      "runOutcome": "Needs review: PayPal refused: Payer has not yet approved the Order for payment. Please redirect the payer to the 'rel':'approve' url returned as part of the HATEOAS links within the Create Order call or provide a valid payment_source in the request. (debug_id f411739a42744)",
+      "status": "FAILED",
+      "attempts": 1,
+      "amount": "64.00 USD",
+      "counterparty": null,
+      "target": "1JR68800AM761384H",
+      "paypalIds": [],
+      "paypalStatus": null,
+      "debugId": "f411739a42744",
+      "failure": {
+        "code": "ORDER_NOT_APPROVED",
+        "status": 422
+      },
+      "authorisedBy": [
+        "usd→pass",
+        "limit→pass"
+      ],
+      "idempotencyKey": "pf:13b3b880-1610-4960-820d-ecfdbd78fe3f:capture",
+      "confirmedBy": null,
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:59:23.104Z",
+      "workflow": "Refund desk",
+      "kind": "paypal.refund",
+      "runId": "fca64317-1433-4615-83f6-281859176952",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Refund the customer done",
+      "status": "SUCCEEDED",
+      "attempts": 2,
+      "amount": "10.00 USD",
+      "counterparty": null,
+      "target": "7B872764UT826153C",
+      "paypalIds": [
+        "7SC15534GA776494K",
+        "7B872764UT826153C"
+      ],
+      "paypalStatus": "COMPLETED",
+      "debugId": "f433571d8b07c",
+      "failure": null,
+      "authorisedBy": [
+        "usd→pass",
+        "small→pass"
+      ],
+      "idempotencyKey": "pf:fca64317-1433-4615-83f6-281859176952:refund",
+      "confirmedBy": {
+        "eventId": "WH-2EK785701V827931S-4JW773078F3863614",
+        "eventType": "PAYMENT.CAPTURE.REFUNDED"
+      },
+      "latestEvent": "PAYMENT.CAPTURE.REFUNDED · COMPLETED",
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T03:59:29.268Z",
+      "workflow": "Supplier payouts",
+      "kind": "paypal.payout",
+      "runId": "5cfb83bb-f659-42ab-b113-cccc02d297c7",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Pay the supplier done",
+      "status": "SUCCEEDED",
+      "attempts": 2,
+      "amount": "15.00 USD",
+      "counterparty": "studio@type-foundry.example",
+      "target": null,
+      "paypalIds": [
+        "UM2QM3S7JCSDC"
+      ],
+      "paypalStatus": "SUCCESS",
+      "debugId": "f386237c83b5d",
+      "failure": null,
+      "authorisedBy": [
+        "known→pass",
+        "usd→pass",
+        "limit→pass"
+      ],
+      "idempotencyKey": "pf:5cfb83bb-f659-42ab-b113-cccc02d297c7:payout",
+      "confirmedBy": {
+        "eventId": "WH-5EJ396021G049222M-7WF765348E474894P",
+        "eventType": "PAYMENT.PAYOUTS-ITEM.UNCLAIMED"
+      },
+      "latestEvent": "PAYMENT.PAYOUTSBATCH.SUCCESS · SUCCESS",
+      "recoveredAfterLostReply": true,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T04:06:06.649Z",
+      "workflow": "Refund desk",
+      "kind": "paypal.refund",
+      "runId": "9a7a1714-f2fc-4088-9c7b-de4aa00497e9",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Refund the customer done",
+      "status": "SUCCEEDED",
+      "attempts": 2,
+      "amount": "10.00 USD",
+      "counterparty": null,
+      "target": "7B872764UT826153C",
+      "paypalIds": [
+        "3B5520949P604025P",
+        "7B872764UT826153C"
+      ],
+      "paypalStatus": "COMPLETED",
+      "debugId": "f244159a5b90f",
+      "failure": null,
+      "authorisedBy": [
+        "usd→pass",
+        "small→pass"
+      ],
+      "idempotencyKey": "pf:9a7a1714-f2fc-4088-9c7b-de4aa00497e9:refund",
+      "confirmedBy": {
+        "eventId": "WH-92V879675S744340W-0A4742390A048421T",
+        "eventType": "PAYMENT.CAPTURE.REFUNDED"
+      },
+      "latestEvent": "PAYMENT.CAPTURE.REFUNDED · COMPLETED",
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T04:06:12.998Z",
+      "workflow": "Supplier payouts",
+      "kind": "paypal.payout",
+      "runId": "d988ba36-7b47-4251-9ee0-f4f898fd2d11",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Pay the supplier done",
+      "status": "SUCCEEDED",
+      "attempts": 2,
+      "amount": "15.00 USD",
+      "counterparty": "studio@type-foundry.example",
+      "target": null,
+      "paypalIds": [
+        "SWKXBFQR2EWXY"
+      ],
+      "paypalStatus": "PENDING",
+      "debugId": "f40187780c83f",
+      "failure": null,
+      "authorisedBy": [
+        "known→pass",
+        "usd→pass",
+        "limit→pass"
+      ],
+      "idempotencyKey": "pf:d988ba36-7b47-4251-9ee0-f4f898fd2d11:payout",
+      "confirmedBy": {
+        "eventId": "WH-86N63123HV800243S-5U958355U96308439",
+        "eventType": "PAYMENT.PAYOUTS-ITEM.UNCLAIMED"
+      },
+      "latestEvent": "PAYMENT.PAYOUTSBATCH.SUCCESS · SUCCESS",
+      "recoveredAfterLostReply": true,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T04:07:20.577Z",
+      "workflow": "PayPal activity check",
+      "kind": "paypal.fetch",
+      "runId": "d4ae0050-c6f8-469e-a925-dd852e3175bc",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Look up the capture, Last 7 days of activity done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": null,
+      "counterparty": null,
+      "target": "1BA746057B4088914",
+      "paypalIds": [
+        "1BA746057B4088914"
+      ],
+      "paypalStatus": "REFUNDED",
+      "debugId": "f716589ca547e",
+      "failure": null,
+      "authorisedBy": [],
+      "idempotencyKey": "pf:d4ae0050-c6f8-469e-a925-dd852e3175bc:lookup",
+      "confirmedBy": null,
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    },
+    {
+      "at": "2026-10-04T04:07:21.852Z",
+      "workflow": "PayPal activity check",
+      "kind": "paypal.transaction_search",
+      "runId": "d4ae0050-c6f8-469e-a925-dd852e3175bc",
+      "runStatus": "COMPLETED",
+      "runOutcome": "Completed automatically · Look up the capture, Last 7 days of activity done",
+      "status": "SUCCEEDED",
+      "attempts": 1,
+      "amount": null,
+      "counterparty": null,
+      "target": null,
+      "paypalIds": [],
+      "paypalStatus": null,
+      "debugId": "f302671f328fa",
+      "failure": null,
+      "authorisedBy": [],
+      "idempotencyKey": "pf:d4ae0050-c6f8-469e-a925-dd852e3175bc:recent",
+      "confirmedBy": null,
+      "latestEvent": null,
+      "recoveredAfterLostReply": false,
+      "provenance": "REAL_PAYPAL_SANDBOX"
+    }
+  ],
+  "reconciliations": [
+    {
+      "invoiceId": "INV2-XKNS-YUUN-4XJY-Q328",
+      "invoiceStatus": "MARKED_AS_PAID",
+      "invoiceAmount": "1200.00",
+      "paymentAmount": "1200.00",
+      "currency": "USD",
+      "paymentRef": null,
+      "runId": "510a64d1-9066-460a-b706-6b1a52dd7669"
+    },
+    {
+      "invoiceId": "INV2-3REM-EZJK-GY57-2WXL",
+      "invoiceStatus": "MARKED_AS_PAID",
+      "invoiceAmount": "850.00",
+      "paymentAmount": "850.00",
+      "currency": "USD",
+      "paymentRef": "EXTR-69J92669RM121742T",
+      "runId": "a09a6ea7-c3af-4b3e-8d0c-a324b0ac5c8e"
+    }
+  ],
+  "paypalEventsReceived": [
+    {
+      "eventId": "WH-7L684875NM232141J-6ES209337A2952240",
+      "eventType": "CATALOG.PRODUCT.CREATED",
+      "resourceId": "PROD-4BK77578KX9509646",
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:31:19.281Z",
+      "routedAt": "2026-10-04T03:31:21.936Z"
+    },
+    {
+      "eventId": "WH-2G184212TD975120E-8RB28108DF6203308",
+      "eventType": "BILLING.PLAN.CREATED",
+      "resourceId": "P-8HL397848U3597748NLA4Q5Y",
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:31:21.707Z",
+      "routedAt": "2026-10-04T03:31:23.469Z"
+    },
+    {
+      "eventId": "WH-2WJ298189K326521G-6AB722299J0345425",
+      "eventType": "PAYMENT.CAPTURE.COMPLETED",
+      "resourceId": "1BA746057B4088914",
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:36:49.399Z",
+      "routedAt": "2026-10-04T03:36:50.718Z"
+    },
+    {
+      "eventId": "WH-6KJ06591YM705470X-14W08118XX439903T",
+      "eventType": "PAYMENT.CAPTURE.COMPLETED",
+      "resourceId": "7B872764UT826153C",
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:36:57.362Z",
+      "routedAt": "2026-10-04T03:36:58.785Z"
+    },
+    {
+      "eventId": "WH-4JY572487E0388304-52R656984E962235G",
+      "eventType": "PAYMENT.CAPTURE.REFUNDED",
+      "resourceId": "9CL93909WG926700C",
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:37:58.062Z",
+      "routedAt": "2026-10-04T03:37:59.670Z"
+    },
+    {
+      "eventId": "WH-9RB08547GM620410G-3LF34967V9081320B",
+      "eventType": "PAYMENT.CAPTURE.REFUNDED",
+      "resourceId": "70387968X56817604",
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:42:27.805Z",
+      "routedAt": "2026-10-04T03:42:30.312Z"
+    },
+    {
+      "eventId": "WH-9HA09477XU7303338-2MT20744DT708163M",
+      "eventType": "PAYMENT.PAYOUTS-ITEM.UNCLAIMED",
+      "resourceId": null,
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:44:02.990Z",
+      "routedAt": "2026-10-04T03:44:06.116Z"
+    },
+    {
+      "eventId": "WH-6FC402451M4195428-0XT315006E3472622",
+      "eventType": "PAYMENT.PAYOUTSBATCH.SUCCESS",
+      "resourceId": null,
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:44:16.752Z",
+      "routedAt": "2026-10-04T03:44:18.472Z"
+    },
+    {
+      "eventId": "WH-54P43870Y65757711-9ME70796DF5809706",
+      "eventType": "INVOICING.INVOICE.PAID",
+      "resourceId": null,
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:49:36.574Z",
+      "routedAt": "2026-10-04T03:49:38.109Z"
+    },
+    {
+      "eventId": "WH-9SX44404VA044662S-4UV99033FM4493420",
+      "eventType": "INVOICING.INVOICE.PAID",
+      "resourceId": null,
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:53:17.420Z",
+      "routedAt": "2026-10-04T03:53:20.814Z"
+    },
+    {
+      "eventId": "WH-2EK785701V827931S-4JW773078F3863614",
+      "eventType": "PAYMENT.CAPTURE.REFUNDED",
+      "resourceId": "7SC15534GA776494K",
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T03:59:37.057Z",
+      "routedAt": "2026-10-04T03:59:39.019Z"
+    },
+    {
+      "eventId": "WH-5EJ396021G049222M-7WF765348E474894P",
+      "eventType": "PAYMENT.PAYOUTS-ITEM.UNCLAIMED",
+      "resourceId": null,
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T04:00:06.804Z",
+      "routedAt": "2026-10-04T04:00:08.121Z"
+    },
+    {
+      "eventId": "WH-8VY95940VW8165706-5X647577BU660991B",
+      "eventType": "PAYMENT.PAYOUTSBATCH.SUCCESS",
+      "resourceId": null,
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T04:00:17.037Z",
+      "routedAt": "2026-10-04T04:00:18.560Z"
+    },
+    {
+      "eventId": "WH-92V879675S744340W-0A4742390A048421T",
+      "eventType": "PAYMENT.CAPTURE.REFUNDED",
+      "resourceId": "3B5520949P604025P",
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T04:06:27.886Z",
+      "routedAt": "2026-10-04T04:06:29.877Z"
+    },
+    {
+      "eventId": "WH-86N63123HV800243S-5U958355U96308439",
+      "eventType": "PAYMENT.PAYOUTS-ITEM.UNCLAIMED",
+      "resourceId": null,
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T04:06:47.885Z",
+      "routedAt": "2026-10-04T04:06:49.408Z"
+    },
+    {
+      "eventId": "WH-9RN24601PB5280313-9T4295600E800824L",
+      "eventType": "PAYMENT.PAYOUTSBATCH.SUCCESS",
+      "resourceId": null,
+      "verification": "SELF",
+      "provenance": "REAL_PAYPAL_SANDBOX",
+      "receivedAt": "2026-10-04T04:06:56.852Z",
+      "routedAt": "2026-10-04T04:06:59.412Z"
+    }
+  ],
+  "auditChain": {
+    "ok": true,
+    "records": 367,
+    "head": "5d48727767f373606b2234c0db0047870b57270fee002a1e6c9aefb2ee4365b4"
+  },
+  "screenshots": [
+    "activity-check/01-draft-before-activation.png",
+    "activity-check/02-activated-by-owner.png",
+    "activity-check/03-manual-run-payload.png",
+    "activity-check/04-run-settled.png",
+    "client-invoicing/01-draft-before-activation.png",
+    "client-invoicing/02-activated-by-owner.png",
+    "client-invoicing/03-manual-run-payload.png",
+    "client-invoicing/04-run-settled.png",
+    "client-invoicing/05-manual-run-payload.png",
+    "client-invoicing/06-run-settled.png",
+    "client-invoicing/07-invoice-sent-then-paid.png",
+    "idempotency/01-payout-recovered-after-lost-reply.png",
+    "idempotency/02-refund-replayed-same-id.png",
+    "idempotency/03-payout-replayed-same-batch.png",
+    "incident-stale-worker/01-manual-run-payload.png",
+    "incident-stale-worker/02-stale-worker-refused-fail-closed.png",
+    "invoice-reminder/01-draft-before-activation.png",
+    "invoice-reminder/02-activated-by-owner.png",
+    "invoice-reminder/03-manual-run-payload.png",
+    "invoice-reminder/04-waits-for-owner.png",
+    "invoice-reminder/05-paused-awaiting-approval.png",
+    "invoice-reminder/06-resumed-and-completed.png",
+    "ledger/01-transactions-page.png",
+    "ledger/02-audit-chain.png",
+    "ledger/03-paypal-events.png",
+    "order-capture/01-draft-before-activation.png",
+    "order-capture/02-activated-by-owner.png",
+    "order-capture/03-manual-run-payload.png",
+    "order-capture/04-run-settled.png",
+    "order-capture/05-manual-run-payload.png",
+    "order-capture/06-run-settled.png",
+    "order-capture/07-manual-run-payload.png",
+    "order-capture/08-run-settled.png",
+    "reconcile/01-draft-before-activation.png",
+    "reconcile/02-activated-by-owner.png",
+    "reconcile/03-draft-before-activation.png",
+    "reconcile/04-activated-by-owner.png",
+    "reconcile/05-paid-webhook-reconciled.png",
+    "refund-desk/01-draft-before-activation.png",
+    "refund-desk/02-activated-by-owner.png",
+    "refund-desk/03-manual-run-payload.png",
+    "refund-desk/04-auto-refund-confirmed-by-webhook.png",
+    "refund-desk/05-manual-run-payload.png",
+    "refund-desk/06-over-limit-waits-for-owner.png",
+    "refund-desk/07-paused-awaiting-approval.png",
+    "refund-desk/08-resumed-and-completed.png",
+    "refund-failure/01-manual-run-payload.png",
+    "refund-failure/02-run-settled.png",
+    "refund-failure/03-manual-run-payload.png",
+    "refund-failure/04-run-settled.png",
+    "supplier-payouts/01-draft-before-activation.png",
+    "supplier-payouts/02-activated-by-owner.png",
+    "supplier-payouts/03-manual-run-payload.png",
+    "supplier-payouts/04-run-settled.png",
+    "supplier-payouts/05-manual-run-payload.png",
+    "supplier-payouts/06-run-settled.png",
+    "supplier-payouts/07-payout-confirmed-by-webhook.png"
+  ]
+}

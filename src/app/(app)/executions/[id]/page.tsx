@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ActionCard } from "@/components/flow/action-card";
 import { RunGraph } from "@/components/flow/run-graph";
 import { CopyId, ProvenanceTag, Section, Status, formatClock, formatMoney } from "@/components/ui";
 import { canAuthorize, requireUser } from "@/server/auth/current";
@@ -41,7 +42,9 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
             {amount?.value ? formatMoney(amount.value, amount.currency_code ?? "USD") : run.triggerKind.replace("_", " ")}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <Status tone={runTone[run.status] ?? "neutral"}>{runLabel(run.status)}</Status>
+            <span data-run-status={run.status}>
+              <Status tone={runTone[run.status] ?? "neutral"}>{runLabel(run.status)}</Status>
+            </span>
             <ProvenanceTag value={run.provenance} />
             <CopyId value={run.triggerRef} />
           </div>
@@ -73,7 +76,8 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
                 <li key={s.id} className="relative grid grid-cols-[72px_24px_1fr] pb-6 last:pb-0">
                   <time className="pt-0.5 font-mono text-meta text-muted">{formatClock(s.startedAt)}</time>
                   <span aria-hidden className={`relative z-10 ml-[7px] mt-1.5 size-[9px] rounded-full border-[1.5px] ${dot}`} />
-                  <details className="group min-w-0">
+                  <div className="min-w-0">
+                  <details className="group">
                     <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                       <div className="pf-label text-ink">{node?.label ?? spec?.title ?? s.nodeType}</div>
                       <div className="mt-0.5 text-body text-ink-2">{s.explanation}</div>
@@ -90,6 +94,12 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
                       )}
                     </div>
                   </details>
+                  {data.actions
+                    .filter((a) => a.nodeId === s.nodeId)
+                    .map((a) => (
+                      <ActionCard key={a.id} ex={a} labels={Object.fromEntries(graph.nodes.map((n) => [n.id, n.label ?? n.id]))} />
+                    ))}
+                  </div>
                 </li>
               );
             })}

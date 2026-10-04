@@ -54,9 +54,11 @@ export async function setStateAction(workflowId: string, to: "PAUSED" | "ACTIVE"
 }
 
 /** Manual run with a user-provided payload. Labelled USER_PROVIDED everywhere. */
-export async function manualRunAction(workflowId: string, payloadJson: string): Promise<ActionResult & { runId?: string }> {
+export async function manualRunAction(workflowId: string, payloadJson: string, submissionKey: string): Promise<ActionResult & { runId?: string }> {
   const user = await requireUser();
   if (!canAuthorize(user)) return { ok: false, error: "Only owners and approvers can start runs" };
+  // The dialog's key makes the start idempotent: a resubmission returns the same run, never a second one.
+  if (!/^[0-9a-f-]{36}$/.test(submissionKey)) return { ok: false, error: "Missing submission key" };
   let payload: unknown;
   try {
     payload = JSON.parse(payloadJson || "{}");
@@ -73,7 +75,7 @@ export async function manualRunAction(workflowId: string, payloadJson: string): 
     {
       workflowId,
       triggerKind: "manual",
-      triggerRef: `manual:${crypto.randomUUID()}`,
+      triggerRef: `manual:${submissionKey}`,
       triggerPayload: payload as Record<string, unknown>,
       provenance: "USER_PROVIDED",
       startedBy: user.id,
@@ -81,7 +83,7 @@ export async function manualRunAction(workflowId: string, payloadJson: string): 
     runtimeDeps,
   );
   if (!("runId" in r)) return { ok: false, error: `Not started: ${r.skipped}` };
-  return { ok: true, runId: r.runId, message: "Run started" };
+  return { ok: true, runId: r.runId, message: r.created ? "Run started" : "Already started — showing the existing run" };
 }
 
 export async function decideApprovalAction(approvalId: string, decision: "APPROVED" | "REJECTED", note?: string): Promise<ActionResult> {

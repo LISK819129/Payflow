@@ -252,9 +252,9 @@ describe("workflow runtime", () => {
     const ws = await createWorkspace("PixelForge");
     const user = await createUser(ws.id);
     const g = novaGraph();
-    g.nodes.push({ id: "refund", type: "paypal.refund", config: { captureIdRef: "trigger.resourceId", note: "x" } });
+    g.nodes.push({ id: "refund", type: "ai.behavior_analysis", config: { paymentRef: "trigger.amount", counterpartyRef: "trigger.payer.email" } });
     g.edges = g.edges.map((e) => (e.from === "appr" && e.port === "rejected" ? { ...e, to: "refund" } : e));
-    g.edges.push({ from: "refund", to: "rejected", port: "done" }, { from: "refund", to: "bad_currency", port: "error" });
+    g.edges.push({ from: "refund", to: "rejected", port: "done" }, { from: "refund", to: "bad_currency", port: "error" }); // a Phase 7 node
     const c = await createWorkflow({ workspaceId: ws.id, userId: user.id, name: "x", graph: g });
     if (!c.ok) throw new Error("setup");
     const a = await activateLatest({ workspaceId: ws.id, userId: user.id, workflowId: c.workflowId });

@@ -36,9 +36,17 @@ export function summarizeNode(n: GraphNode): string {
     case "policy.budget":
       return `${money(c.budget)} per ${c.period}`;
     case "paypal.payout":
-      return `pay ${String(c.receiverRef ?? "").replace(/^trigger\./, "")}`;
+      return `pay ${String(c.amountRef ?? "").replace(/^trigger\./, "")} to ${String(c.receiverRef ?? "").replace(/^trigger\./, "")}`;
     case "paypal.refund":
-      return "refund the capture";
+      return `refund ${String(c.amountRef ?? "").replace(/^trigger\./, "")} of ${String(c.captureIdRef ?? "").replace(/^trigger\./, "")}`;
+    case "paypal.order_capture":
+      return `capture ${String(c.orderIdRef ?? "").replace(/^trigger\./, "")} if ${String(c.amountRef ?? "").replace(/^trigger\./, "")}`;
+    case "paypal.invoice_send":
+      return `invoice ${String(c.recipientRef ?? "").replace(/^trigger\./, "")} · ${String(c.description ?? "")}`;
+    case "paypal.invoice_remind":
+      return `remind ${String(c.invoiceIdRef ?? "").replace(/^trigger\./, "")}`;
+    case "paypal.transaction_search":
+      return `last ${String(c.days ?? "?")} days`;
     default:
       return SPEC_BY_TYPE[n.type]?.description ?? n.type;
   }

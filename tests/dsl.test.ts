@@ -73,7 +73,7 @@ describe("expressions", () => {
 const T = { id: "t", type: "trigger.paypal_event", config: { eventTypes: ["PAYMENT.CAPTURE.COMPLETED"] } };
 const end = (id: string, outcome = "completed") => ({ id, type: "control.terminal", config: { outcome, message: id } });
 const limit = { id: "lim", type: "policy.amount_limit", config: { amountRef: "trigger.amount", max: { value: "500.00", currency: "USD" } } };
-const refund = { id: "refund", type: "paypal.refund", config: { captureIdRef: "trigger.id", note: "x" } };
+const refund = { id: "refund", type: "paypal.refund", config: { captureIdRef: "trigger.id", amountRef: "trigger.amount", note: "x" } };
 
 function codes(r: ReturnType<typeof validateGraph>) {
   return r.issues.filter((i) => i.severity === "error").map((i) => i.code);
@@ -183,13 +183,10 @@ describe("graph validation", () => {
 
   it("drafts later-phase nodes but refuses to activate them", () => {
     const g = {
-      nodes: [T, limit, refund, end("ok"), end("blocked", "blocked"), end("failed", "needs_review")],
+      nodes: [T, { id: "ai", type: "ai.invoice_match", config: { paymentRef: "trigger.amount" } }, end("ok")],
       edges: [
-        { from: "t", to: "lim", port: "next" },
-        { from: "lim", to: "refund", port: "pass" },
-        { from: "lim", to: "blocked", port: "block" },
-        { from: "refund", to: "ok", port: "done" },
-        { from: "refund", to: "failed", port: "error" },
+        { from: "t", to: "ai", port: "next" },
+        { from: "ai", to: "ok", port: "done" },
       ],
     };
     expect(validateGraph(g).ok).toBe(true);

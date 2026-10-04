@@ -380,3 +380,86 @@ export const aiUsage = pgTable(
   },
   (t) => [index("ai_usage_at_idx").on(t.at)],
 );
+
+// ── PayPal actions (Phase 5) ─────────────────────────────────────────────────
+
+export const actionStatus = pgEnum("action_status", ["PREPARED", "SUBMITTING", "SUCCEEDED", "FAILED", "UNKNOWN"]);
+
+/**
+ * One row per external action a run performs (refund, payout, invoice, capture…).
+ * Written PREPARED inside the step transaction before any network call; the
+ * call itself happens outside the transaction under a lease, keyed by
+ * `idempotencyKey` (sent to PayPal as PayPal-Request-Id). A crash, retry or
+ * duplicate job can only ever replay the same request.
+ */
+export const actionExecutions = pgTable(
+  "action_executions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => workflowRuns.id),
+    nodeId: text("node_id").notNull(),
+    kind: text("kind").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    status: actionStatus("status").notNull().default("PREPARED"),
+    attempts: integer("attempts").notNull().default(0),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    /** Exact decimal string and explicit currency, as sent. */
+    amountValue: text("amount_value"),
+    currency: text("currency"),
+    counterparty: text("counterparty"),
+    /** The PayPal object acted upon (capture/order/invoice id). */
+    targetRef: text("target_ref"),
+    /** Safe summary of what will be sent (no credentials). */
+    intent: jsonb("intent").notNull(),
+    /** Gates passed on the executed path that authorise this action. */
+    authorization: jsonb("authorization").notNull(),
+    executor: text("executor").notNull(),
+    /** PayPal ids created or touched, for linking webhooks back. */
+    paypalRefs: text("paypal_refs").array().notNull().default(sql`'{}'::text[]`),
+    paypalStatus: text("paypal_status"),
+    result: jsonb("result"),
+    debugId: text("debug_id"),
+    error: jsonb("error"),
+    provenance: provenance("provenance").notNull(),
+    preparedAt: timestamp("prepared_at", { withTimezone: true, precision: 3 }).notNull().defaultNow(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true, precision: 3 }),
+    completedAt: timestamp("completed_at", { withTimezone: true, precision: 3 }),
+    confirmedByEventId: text("confirmed_by_event_id"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true, precision: 3 }),
+    /** The latest PayPal webhook about this action and the status it reported (e.g. a payout item going UNCLAIMED). */
+    lastEventType: text("last_event_type"),
+    lastEventStatus: text("last_event_status"),
+  },
+  (t) => [
+    uniqueIndex("action_executions_key_uq").on(t.idempotencyKey),
+    index("action_executions_run_idx").on(t.runId),
+    index("action_executions_ws_idx").on(t.workspaceId, t.preparedAt),
+  ],
+);
+
+/** PayFlow's ledger entry: a PayPal invoice settled by a specific payment. */
+export const reconciliations = pgTable(
+  "reconciliations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => workflowRuns.id),
+    invoiceId: text("invoice_id").notNull(),
+    invoiceStatus: text("invoice_status").notNull(),
+    invoiceAmount: text("invoice_amount").notNull(),
+    paymentAmount: text("payment_amount").notNull(),
+    currency: text("currency").notNull(),
+    paymentRef: text("payment_ref"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("reconciliations_invoice_run_uq").on(t.invoiceId, t.runId)],
+);

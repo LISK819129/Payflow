@@ -1,6 +1,6 @@
 # Build Status
 
-Last updated: 2026-10-03 · Submission deadline: **2026-11-12 12:00 PT**
+Last updated: 2026-10-04 · Submission deadline: **2026-11-12 12:00 PT**
 
 Rule for this file: nothing is DONE until it has been run and verified; the verification is written next to it.
 
@@ -20,6 +20,8 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | **2** | **Real PayPal Sandbox integration — COMPLETE (2026-10-03)** | Evidence below |
 | **3** | **Workflow DSL, validator, durable runtime, Flow Builder, Executions (2026-10-03)** | see Phase 3 evidence |
 | **4** | **AI workflow compiler — mock-validated and real-model validated (2026-10-03)** | see Phase 4 evidence · `evidence/phase4/` |
+| **4.1** | **Correctness pass (2026-10-04)**: amount limit gains explicit `lt`/`lte` and a boundary review that corrects AI graphs to the instruction's wording (or asks when it contradicts itself); run outcomes derived from the executed path; AI edits refresh the changed node's own labels and flag stale mentions elsewhere ($2,500 → $1,800 regression); the old Nova and Phase-3 demo flows paused; decomposition seam documented (ARCHITECTURE §10) | `tests/phase41.test.ts` incl. replays of recorded real gpt-5.4-mini outputs at $0; commit `6528bd2` |
+| **5** | **PayPal action nodes on the real US Sandbox (2026-10-04)**: refund, payout, order capture, invoice send, invoice reminder, PayPal lookup, transaction search, ledger reconcile — one execution boundary (ARCHITECTURE §11) | see Phase 5 evidence · `evidence/phase5/` |
 | 1.5 | Local Postgres encoding bug: cluster had initialised as WIN1252, so any non-ASCII text failed to insert. Databases recreated as UTF8 (old ones kept as `*_win1252_old`), migrate now refuses non-UTF8, new clusters init with `--encoding=UTF8` | Regression test with non-ASCII audit text |
 
 ## IN PROGRESS
@@ -35,7 +37,29 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | APIMatic Context Plugin | Installed 2026-10-03 as project skills in `.claude/skills/` (TypeScript set, pinned commit 6aa0571) because the installer needs the `claude` CLI, which this machine lacks. Loads next session. Free-subscription form still to be submitted by the user | — |
 | AI provider | OpenAI `gpt-5.4-mini` configured; $5 total budget, $0.35 used | — |
 | Public webhook URL | cloudflared 2026.9.3 downloaded (Authenticode: Cloudflare, Inc., valid) | — |
-| PayPal sandbox merchant | Link the app to a **US** sandbox business account (current one is India-registered: payouts + card processing refused) and enable **Invoicing** + **Transaction Search** | Scenarios A, C, overdue reminder (Phase 5) |
+| PayPal sandbox merchant | US Sandbox app with all features ✓ (India app retired) | — |
+| Order capture success path | A buyer must approve a Sandbox order in PayPal checkout with a Sandbox **personal** account: run `pnpm paypal:sandbox:order 64.00`, open the printed link, log in as the personal account, approve. Then start "Capture approved orders" with that order id | The capture *success* screenshot only — node and refusals are verified |
+
+## Phase 5 evidence (real PayPal US Sandbox, 2026-10-04)
+
+Details, every id and the screenshots: `evidence/phase5/README.md` and the database-generated `evidence/phase5/manifest.json`. AI spend in Phase 4.1 + 5: **$0.00** (0 calls).
+
+| Check | Result |
+|---|---|
+| Worker + tunnel restarted, existing webhook `9MJ408823R309725D` re-pointed, delivery verified before testing | `CATALOG.PRODUCT.CREATED` + `BILLING.PLAN.CREATED` self-verified and routed |
+| Refund under limit → policy gate → real refund → webhook confirmation | refund `9CL93909WG926700C`, confirmed by `PAYMENT.CAPTURE.REFUNDED` |
+| Refund over limit waits for owner, no PayPal call until approved | 0 actions while waiting; refund `70387968X56817604` after approval |
+| PayPal refusals surfaced with the specific issue and debug_id, run → needs review | `CAPTURE_FULLY_REFUNDED` (f784808e4ab59), `REFUND_AMOUNT_EXCEEDED` (f59904661b3a7), `ORDER_NOT_APPROVED` (f411739a42744) |
+| Fail closed before PayPal | unknown supplier blocked; `ORDER_ALREADY_CAPTURED` and `AMOUNT_MISMATCH` after a real GET, no capture sent; malformed amount/currency/email/id and ungated paths refused (MOCK_TEST) |
+| Payout + webhook | batch `2DSJUHUB3A8CN`, `PAYMENT.PAYOUTS-ITEM.UNCLAIMED` (example.com receiver) |
+| Double-click / replayed form post | 2 POSTs with one submission key → 1 run → 1 payout |
+| Invoice → payment → `INVOICING.INVOICE.PAID` → reconcile (event-triggered workflow) | `INV2-3REM-EZJK-GY57-2WXL`: paid 850.00 matched against PayPal's MARKED_AS_PAID invoice, payment `EXTR-69J92669RM121742T` in the ledger |
+| Reminder after approval | `INV2-XKNS-YUUN-4XJY-Q328`, real status re-read (`SENT`) |
+| Crash-after-send replay (real Sandbox) | refund: same id, refund count 3 → 3; payout: same batch, 1 item (recovered from PayPal's duplicate-batch refusal) |
+| Audit chain | verified, `ok: true` |
+| Tests | 145 passed (13 files); typecheck, lint, `next build` clean; `pnpm paypal:check` all capabilities ✓ |
+
+Bugs found and fixed during the real runs: payout replay recorded as failed although paid (now recovered and verified); reminder and lookups reported statuses PayPal never returned (now PayPal's own); reconcile compared the invoice with itself (now the amount actually paid, `trigger.paidAmount`); simulated events could confirm real actions (now only PayPal-confirmed events); events that beat PayFlow's own write were never linked (now bound on success); an order captured by a lost earlier attempt would have been reported as a failure (now re-sent with the same request id); manual runs had no duplicate-start guard (now a per-dialog submission key); a stale worker from an earlier session ran old code (fail-closed; documented in ARCHITECTURE §11).
 
 ## Phase 4 evidence
 
@@ -101,4 +125,4 @@ Nothing in Phase 2 is simulated. No simulator events were used.
 
 ## NEXT
 
-Waiting for approval of the Phase 4 checkpoint before Phase 5 (PayPal action nodes).
+Waiting for approval of the Phase 5 checkpoint before Phase 6.

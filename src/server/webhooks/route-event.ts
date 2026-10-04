@@ -7,6 +7,8 @@ import type { PayPalHttp } from "../paypal/http";
 import { evaluate, ExpressionError, type Expr } from "../workflow/dsl/expression";
 import type { WorkflowGraph } from "../workflow/dsl/nodes";
 import { startRun } from "../workflow/runtime/engine";
+import { eventRefs, eventStatus } from "../actions/event-link";
+import { confirmActionsFromEvent } from "../actions/execute";
 import { normalizePayPalEvent } from "../workflow/runtime/trigger";
 import type { RuntimeDeps } from "../workflow/runtime/types";
 
@@ -88,7 +90,14 @@ export async function routePayPalEvent(paypalEventId: string, http: PayPalHttp, 
 
   const started = matched.filter((m) => m.runId).length;
   const held = matched.filter((m) => m.skipped);
+  // Ids this event refers to, for linking it back to actions PayFlow performed.
+  const r = (trigger.resource ?? {}) as Record<string, unknown>;
+  const refs = eventRefs(r);
   await db().transaction(async (tx) => {
+    // Only an event PayPal's own event store vouches for may confirm a real action.
+    if (confirmation.confirmed) {
+      await confirmActionsFromEvent(tx, { workspaceId: event.workspaceId, eventId: event.eventId, eventType: event.eventType, refs, status: eventStatus(r) });
+    }
     await tx.update(paypalEvents).set({ routedAt: new Date() }).where(eq(paypalEvents.id, event.id));
     await appendAudit(tx, {
       workspaceId: event.workspaceId,

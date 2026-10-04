@@ -18,7 +18,7 @@ export function describeOutcome(outcome: EndOutcome, steps: StepRow[], graph: Wo
   const expired = rejected.filter((s) => (s.output as { decision?: string } | null)?.decision === "EXPIRED");
   const blocks = steps.filter((s) => s.port === "block");
   const errors = steps.filter((s) => s.status === "ERROR");
-  const paypal = steps.filter((s) => s.nodeType.startsWith("paypal.") && s.status === "OK" && s.port === "done");
+  const paypal = steps.filter((s) => (s.nodeType.startsWith("paypal.") || s.nodeType === "ledger.reconcile") && s.status === "OK" && s.port === "done");
 
   switch (outcome) {
     case "completed": {
@@ -33,7 +33,7 @@ export function describeOutcome(outcome: EndOutcome, steps: StepRow[], graph: Wo
       return "Rejected";
     case "blocked": {
       const b = blocks.at(-1);
-      return b ? `Blocked by “${label(b.nodeId)}”: ${b.explanation ?? ""}`.trim() : "Blocked";
+      return b ? `Blocked by “${label(b.nodeId)}”: ${(b.explanation ?? "").replace(/^Blocked:\s*/, "")}`.trim() : "Blocked";
     }
     case "needs_review": {
       const e = errors.at(-1);

@@ -140,3 +140,29 @@ instruction → AIProvider.planInstruction() → Plan { automations: [{ title, i
 The seam already exists: `compileInstruction` takes one instruction and produces one draft; `dependsOn` links workflows; the envelope is provider-neutral. Adding `planInstruction` to `AIProvider` and a `PLAN` outcome is additive — no change to the validator, runtime or existing compile path.
 
 Deterministic post-compile passes (Phase 4.1), in order: structural validation → **boundary review** (exact amounts land on the side the instruction states: "under $X" puts X with the larger amounts, "up to $X" with the smaller; unanimous instructions are corrected and reported, contradictory ones become questions) → **grounding** → activation readiness. Edits additionally run **label refresh** (a changed node's own text follows its new values; other nodes still quoting the old value are flagged). Run outcome text is derived from the executed path, never from an end node's authored copy.
+
+## 11. PayPal actions: the execution boundary (Phase 5)
+
+Every node that touches PayPal goes through one path. Nothing else in the codebase calls a PayPal write endpoint.
+
+```
+runtime step ──► prepareIntent ──► ActionIntent ──► gatewayFor(intent) ──► ActionGateway ──► PayPal
+ (in run tx)     (fail closed)     (fully resolved)   (single routing point)  DirectPayPalGateway today
+```
+
+- **`prepareIntent`** (`src/server/actions/prepare.ts`) resolves the node's references against the run and refuses — before any network call — when the amount is missing, not an exact decimal with at most two places, zero or negative; the currency is not an ISO code; an email or PayPal id is malformed; or no policy gate passed and no approval was granted on *this run's executed path* (`NO_AUTHORIZATION`). The validator already guarantees a gate precedes every money node statically; this re-checks what actually happened.
+- **`ActionIntent`** is plain data: kind, idempotency key, exact amount and currency, counterparty, target, the gates that authorised it, provenance. AI output is never an input to it — AI nodes cannot feed money nodes (validator rule `ai_feeds_money`).
+- **Two-phase execution** (`src/server/actions/execute.ts`). The intent is stored `PREPARED` in the same transaction as the run step. The external call happens outside any transaction after an atomic claim (`PREPARED → SUBMITTING`, attempts + 1, 90 s lease). The reply is persisted in its own transaction. A crashed worker's lease expires and the next one re-claims it.
+- **Idempotency key** `pf:<runId>:<nodeId>` is sent as `PayPal-Request-Id` (and as the payout `sender_batch_id`), so any re-send of the same action is the same request to PayPal. Verified on real Sandbox by rewinding a completed action to "reply lost" and letting recovery re-send it: the refund came back with the same id and the order still had one refund for it; the payout was refused by PayPal as a duplicate batch, and PayFlow adopted the linked batch only after checking that its `sender_batch_id`, receiver and amount are its own (`evidence/phase5/idempotency/`).
+- **Fail closed on ambiguity.** 4xx is PayPal's answer and is final (`FAILED`, PayPal's specific `issue` and `debug_id` kept). 429/5xx/network errors are retried with the same key; after 3 attempts with no definitive answer the action is `UNKNOWN` and the run goes to review — it is never assumed to have failed or succeeded.
+- **Multi-step actions checkpoint.** An invoice is created, its id checkpointed, then sent; a replay sends the checkpointed invoice instead of creating a second one. An order capture re-reads the order first and refuses a different amount or an order already captured (on a retry, an already-captured order is re-captured with the same request id so PayPal replays its original answer instead of PayFlow reporting a false failure).
+- **Webhooks close the loop.** A PayPal event confirmed against PayPal's event store (`GET /v1/notifications/webhooks-events/{id}`) is matched to the action by the PayPal ids it names; the first match is the confirmation, later ones update the status PayPal reports (e.g. a payout item going `UNCLAIMED`). An event that arrives before PayFlow records the reply is bound when the action succeeds. Simulated events never confirm real actions.
+- **Duplicate starts.** PayPal-event runs are unique per (version, event id); manual runs carry a per-dialog submission key, so a double click or replayed form post resolves to the same run (verified: two POSTs, one run, one payout).
+
+### GatePal seam
+
+`gatewayFor(intent)` (`src/server/actions/paypal-gateway.ts`) is the only place that chooses who executes an intent. Today every kind maps to `DirectPayPalGateway` (`PayFlow → PayPal`). A future GatePal gateway implements the same `ActionGateway` interface and is added to the `routed` table for the kinds it protects (`PayFlow → GatePal → PayPal`). The intent already carries what such a layer needs to authorise independently — exact amount, counterparty, target, the gate evidence and the idempotency key — and the runtime, audit and UI do not change. GatePal is not built.
+
+### Operational note
+
+Workers must run the same code version as the web app. A stale worker from an earlier session once claimed a Phase 5 run and refused the refund node as "cannot run yet" — fail-closed, nothing was sent — before it was stopped (`evidence/phase5/incident-stale-worker/`). Restart the worker after every deploy.

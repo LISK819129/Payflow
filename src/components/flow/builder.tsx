@@ -54,6 +54,22 @@ function defaultConfig(type: string): Record<string, unknown> {
       return { amountRef: "trigger.amount", allowed: ["USD"] };
     case "policy.counterparty":
       return { ref: "trigger.payer.email", allowed: [] };
+    case "paypal.refund":
+      return { captureIdRef: "trigger.resourceId", amountRef: "trigger.amount", note: "Refund from PixelForge Studio" };
+    case "paypal.payout":
+      return { receiverRef: "trigger.supplierEmail", amountRef: "trigger.amount", note: "Payment from PixelForge Studio" };
+    case "paypal.order_capture":
+      return { orderIdRef: "trigger.resourceId", amountRef: "trigger.amount" };
+    case "paypal.invoice_send":
+      return { recipientRef: "trigger.clientEmail", amountRef: "trigger.amount", description: "Services" };
+    case "paypal.invoice_remind":
+      return { invoiceIdRef: "trigger.invoiceId", subject: "Friendly reminder" };
+    case "paypal.fetch":
+      return { resource: "capture", idRef: "trigger.resourceId" };
+    case "paypal.transaction_search":
+      return { days: 7 };
+    case "ledger.reconcile":
+      return { paymentRef: "trigger.amount", invoiceIdRef: "trigger.invoiceId" };
     default:
       return {};
   }
@@ -312,14 +328,29 @@ function Builder({ workflowId, name, state, latestVersion, latestStatus, activeV
   );
 }
 
+/** Fields the graph reads from `trigger.*`, as an empty payload to fill in. */
+function manualExample(graph: WorkflowGraph): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const visit = (v: unknown, field: string) => {
+    if (typeof v === "string") {
+      const m = /^trigger\.([A-Za-z0-9_]+)/.exec(v);
+      if (m && !(m[1] in out)) out[m[1]] = /amount|payment/i.test(field) ? { value: "", currency_code: "USD" } : "";
+    } else if (v && typeof v === "object") Object.entries(v).forEach(([k, x]) => visit(x, k));
+  };
+  graph.nodes.forEach((n) => visit(n.config, ""));
+  return out;
+}
+
 function ManualRunDialog({ workflowId, graph, onClose }: { workflowId: string; graph: WorkflowGraph; onClose: () => void }) {
   const router = useRouter();
   const t = graph.nodes.find((n) => SPEC_BY_TYPE[n.type]?.category === "trigger");
   const example =
     t?.type === "trigger.paypal_event"
       ? { amount: { value: "4000.00", currency_code: "USD" }, payer: { email: "ap@novalabs.test" }, resourceId: "MANUAL-TEST" }
-      : {};
+      : manualExample(graph);
   const [payload, setPayload] = useState(JSON.stringify(example, null, 2));
+  // One key per dialog: a double click or a replayed submit resolves to the same run.
+  const [submissionKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
@@ -331,7 +362,7 @@ function ManualRunDialog({ workflowId, graph, onClose }: { workflowId: string; g
         <p className="mt-1 text-body-sm text-muted">
           The payload becomes <span className="font-mono">trigger</span>. Runs started here are labelled <strong>user-provided</strong>, never PayPal activity.
         </p>
-        <textarea className="mt-4 h-48 w-full rounded-sm border border-field bg-surface p-2 font-mono text-meta outline-none focus:border-ink" value={payload} onChange={(e) => setPayload(e.target.value)} />
+        <textarea aria-label="Run payload (JSON)" className="mt-4 h-48 w-full rounded-sm border border-field bg-surface p-2 font-mono text-meta outline-none focus:border-ink" value={payload} onChange={(e) => setPayload(e.target.value)} />
         {error && <p className="mt-2 text-body-sm text-danger">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="quiet" onClick={onClose}>
@@ -342,7 +373,7 @@ function ManualRunDialog({ workflowId, graph, onClose }: { workflowId: string; g
             disabled={pending}
             onClick={() =>
               start(async () => {
-                const r = await manualRunAction(workflowId, payload);
+                const r = await manualRunAction(workflowId, payload, submissionKey);
                 if (r.ok && r.runId) router.push(`/executions/${r.runId}`);
                 else setError(r.ok ? "Started" : r.error);
               })

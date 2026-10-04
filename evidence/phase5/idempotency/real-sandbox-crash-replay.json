@@ -1,0 +1,33 @@
+{
+  "label": "REAL_PAYPAL_SANDBOX",
+  "what": "Each action ran once through its real workflow, then the worst crash was simulated (PayPal accepted the call, PayFlow lost the reply: status rewound to SUBMITTING with an expired lease and no stored result). The normal recovery path (runAction) re-sent it with the same PayPal-Request-Id / sender_batch_id. PayPal was then asked how many objects exist.",
+  "command": "pnpm paypal:idempotency:check 7B872764UT826153C 32N10786RS996335V",
+  "date": "2026-10-04",
+  "refund": {
+    "runId": "9a7a1714-f2fc-4088-9c7b-de4aa00497e9",
+    "idempotencyKey": "pf:9a7a1714-f2fc-4088-9c7b-de4aa00497e9:refund",
+    "firstRefundId": "3B5520949P604025P",
+    "replayRefundId": "3B5520949P604025P",
+    "attempts": 2,
+    "refundsOnOrder32N10786RS996335V": { "before": 2, "afterFirstSend": 3, "afterReplay": 3 },
+    "pass": true,
+    "how": "PayPal replayed its original response for the repeated PayPal-Request-Id."
+  },
+  "payout": {
+    "runId": "d988ba36-7b47-4251-9ee0-f4f898fd2d11",
+    "idempotencyKey": "pf:d988ba36-7b47-4251-9ee0-f4f898fd2d11:payout",
+    "firstBatchId": "SWKXBFQR2EWXY",
+    "replayBatchId": "SWKXBFQR2EWXY",
+    "attempts": 2,
+    "itemsInBatch": { "afterFirstSend": 1, "afterReplay": 1 },
+    "recoveredAfterLostReply": true,
+    "pass": true,
+    "how": "PayPal refused the repeated sender_batch_id (HTTP 400, 'Batch with given sender_batch_id already exists') and linked the existing batch; PayFlow fetched it, proved sender_batch_id, receiver and amount are its own, and adopted it."
+  },
+  "bugFoundByThisCheck": {
+    "firstAttemptRunId": "5cfb83bb-f659-42ab-b113-cccc02d297c7",
+    "batch": "UM2QM3S7JCSDC",
+    "before": "The replay was recorded FAILED although the payout existed (no duplicate money: PayPal's sender_batch_id guard held).",
+    "fix": "createPayout adopts the linked batch after verifying it; the record was then recovered through the same path and is SUCCEEDED with UM2QM3S7JCSDC. The audit chain keeps both the failure and the recovery."
+  }
+}

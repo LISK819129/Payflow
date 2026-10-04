@@ -26,7 +26,12 @@
     "db:seed:demo-flow": "tsx scripts/seed-demo-flow.ts",
     "ai:live-test": "tsx scripts/ai-live-test.ts",
     "evidence": "tsx scripts/evidence/capture.ts",
-    "evidence:manifest": "tsx scripts/evidence/manifest.ts"
+    "evidence:manifest": "tsx scripts/evidence/manifest.ts",
+    "db:seed:phase5": "tsx scripts/seed-phase5-flows.ts",
+    "paypal:sandbox:invoice-paid": "tsx scripts/paypal-sandbox-invoice-paid.ts",
+    "paypal:sandbox:order": "tsx scripts/paypal-sandbox-order.ts",
+    "paypal:idempotency:check": "tsx scripts/paypal-idempotency-check.ts",
+    "evidence:manifest:phase5": "tsx scripts/evidence/manifest-phase5.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

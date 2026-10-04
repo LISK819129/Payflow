@@ -17,6 +17,9 @@ export type PayPalTrigger = {
   amount: Amount | null;
   payer: { email: string | null; payerId: string | null; name: string | null };
   invoiceId: string | null;
+  /** For invoice events: what has actually been paid so far, and the latest payment's id. */
+  paidAmount: Amount | null;
+  paymentId: string | null;
   /** For captures: the order that produced it. */
   orderId: string | null;
   resource: Record<string, unknown>;
@@ -42,6 +45,18 @@ function amountOf(r: Record<string, unknown>): Amount | null {
     pick((r.dispute_amount as unknown) ?? null) ??
     null
   );
+}
+
+function paidOf(invoice: Record<string, unknown>): Amount | null {
+  const paid = (invoice.payments as { paid_amount?: { value?: unknown; currency_code?: unknown } } | undefined)?.paid_amount;
+  const value = str(paid?.value);
+  const currency = str(paid?.currency_code);
+  return value && currency ? { value, currency_code: currency } : null;
+}
+
+function lastPaymentId(invoice: Record<string, unknown>): string | null {
+  const txs = (invoice.payments as { transactions?: { payment_id?: unknown }[] } | undefined)?.transactions;
+  return Array.isArray(txs) && txs.length ? str(txs[txs.length - 1]?.payment_id) : null;
 }
 
 export function normalizePayPalEvent(raw: {
@@ -70,6 +85,8 @@ export function normalizePayPalEvent(raw: {
       name: [str(payerName.given_name), str(payerName.surname)].filter(Boolean).join(" ") || null,
     },
     invoiceId: str(r.invoice_id) ?? str(invoice.id),
+    paidAmount: paidOf(invoice),
+    paymentId: lastPaymentId(invoice),
     orderId: str(related.order_id),
     resource: r,
   };

@@ -20,7 +20,7 @@ export type NodeResult =
   | { kind: "next"; port: string; output?: unknown; explanation: string }
   | { kind: "wait"; waitFor: "approval" | "timer"; wakeAt?: Date; output?: unknown; explanation: string }
   | { kind: "end"; outcome: EndOutcome; explanation: string }
-  | { kind: "error"; code: string; message: string; explanation: string };
+  | { kind: "error"; code: string; message: string; explanation: string; debugId?: string | null };
 
 export type ExecutorArgs = {
   tx: Tx;

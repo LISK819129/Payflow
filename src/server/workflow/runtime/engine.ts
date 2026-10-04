@@ -1,10 +1,15 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { appendAudit } from "../../audit/audit";
 import { db, type Tx } from "../../db/client";
-import { approvals, runSteps, workflowRuns, workflows, workflowVersions } from "../../db/schema";
-import { SPEC_BY_TYPE, type WorkflowGraph } from "../dsl/nodes";
+import { actionExecutions, approvals, runSteps, workflowRuns, workflows, workflowVersions } from "../../db/schema";
+import { SPEC_BY_TYPE, type GraphNode, type WorkflowGraph } from "../dsl/nodes";
+import { RUNTIME_PHASE } from "../dsl/validate";
 import { EXECUTORS, notImplemented } from "./executors";
 import { describeOutcome } from "./outcome";
+import { describeExecution } from "../../actions/describe";
+import { prepareExecution, runAction } from "../../actions/execute";
+import { gatewayFor } from "../../actions/paypal-gateway";
+import { isActionNode, prepareIntent } from "../../actions/prepare";
 import type { NodeResult, RunContext, RunRow, RuntimeDeps, StepRow, WorkflowRow } from "./types";
 
 const MAX_STEPS_PER_ADVANCE = 100;
@@ -23,7 +28,10 @@ export function buildContext(run: RunRow, steps: StepRow[], workflow: WorkflowRo
   return { trigger: run.triggerPayload as Record<string, unknown>, nodes, workflow: { id: workflow.id, name: workflow.name } };
 }
 
-type StepOutcome = { continue: boolean; wakeAt?: Date };
+type StepOutcome = { continue: boolean; wakeAt?: Date; execute?: string };
+
+/** Delay before replaying an action whose last attempt got no definitive answer. */
+const ACTION_RETRY_MS = 15_000;
 
 /**
  * Advances a run as far as it can go: through deterministic nodes until it
@@ -36,6 +44,16 @@ export async function advanceRun(runId: string, deps: RuntimeDeps): Promise<RunR
   for (let i = 0; i < MAX_STEPS_PER_ADVANCE; i++) {
     const r = await db().transaction((tx) => step(tx, runId, deps));
     if (r.wakeAt) await deps.enqueueAdvance(runId, { startAfter: r.wakeAt });
+    if (r.execute) {
+      // The external call happens here, outside any transaction, under the execution's lease.
+      const res = await runAction(r.execute);
+      if (res === "retry_later") {
+        await deps.enqueueAdvance(runId, { startAfter: new Date(deps.now().getTime() + ACTION_RETRY_MS) });
+        break;
+      }
+      if (res === "busy") break; // another worker holds the lease and will advance the run
+      continue;
+    }
     if (!r.continue) break;
   }
   const [run] = await db().select({ status: workflowRuns.status }).from(workflowRuns).where(eq(workflowRuns.id, runId));
@@ -78,16 +96,20 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
   const waiting = steps.find((s) => s.nodeId === node.id && s.status === "WAITING") ?? null;
   const ctx = buildContext(run, steps, workflow);
   const exec = EXECUTORS[node.type];
+  const title = node.label ?? SPEC_BY_TYPE[node.type]?.title ?? node.type;
 
-  let result: NodeResult;
+  let result: NodeResult | { kind: "execute"; executionId: string; explanation: string; output: unknown };
   try {
-    result = exec ? await exec({ tx, node, ctx, run, workflow, waiting, now }) : notImplemented(node.type);
+    if (isActionNode(node.type) && (SPEC_BY_TYPE[node.type]?.implementedIn ?? 99) <= RUNTIME_PHASE) {
+      result = await actionResult(tx, { node, ctx, run, steps, waiting, title });
+    } else {
+      result = exec ? await exec({ tx, node, ctx, run, workflow, waiting, now }) : notImplemented(node.type);
+    }
   } catch (e) {
     // Unexpected executor failure: fail safe, never guess a port.
     result = { kind: "error", code: "EXECUTOR_CRASH", message: (e as Error).message, explanation: `Node failed unexpectedly: ${(e as Error).message}` };
   }
 
-  const title = node.label ?? SPEC_BY_TYPE[node.type]?.title ?? node.type;
   const nextSeq = (steps.at(-1)?.seq ?? 0) + (waiting ? 0 : 1);
 
   const writeStep = async (values: Partial<typeof runSteps.$inferInsert>) => {
@@ -97,6 +119,12 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
       await tx.insert(runSteps).values({ runId: run.id, seq: nextSeq, nodeId: node.id, nodeType: node.type, status: "OK", ...values });
     }
   };
+
+  if (result.kind === "execute") {
+    if (!waiting) await writeStep({ status: "WAITING", output: result.output, explanation: result.explanation });
+    await tx.update(workflowRuns).set({ status: "RUNNING" }).where(eq(workflowRuns.id, run.id));
+    return { continue: false, execute: result.executionId };
+  }
 
   if (result.kind === "wait") {
     if (!waiting) {
@@ -122,7 +150,7 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
     status: result.kind === "error" ? "ERROR" : "OK",
     port,
     output: result.kind === "next" ? (result.output ?? null) : null,
-    error: result.kind === "error" ? { code: result.code, message: result.message } : null,
+    error: result.kind === "error" ? { code: result.code, message: result.message, ...(result.debugId ? { debugId: result.debugId } : {}) } : null,
     explanation: result.explanation,
     finishedAt: now,
   });
@@ -141,6 +169,42 @@ async function step(tx: Tx, runId: string, deps: RuntimeDeps): Promise<StepOutco
   }
   await tx.update(workflowRuns).set({ currentNodeId: edge.to, status: "RUNNING", wakeAt: null }).where(eq(workflowRuns.id, run.id));
   return { continue: true };
+}
+
+/**
+ * Action nodes: the first visit prepares the intent (or refuses, failing
+ * closed) and asks the caller to execute it; later visits turn the settled
+ * execution into the node's result. Never calls PayPal itself.
+ */
+async function actionResult(
+  tx: Tx,
+  a: { node: GraphNode; ctx: RunContext; run: RunRow; steps: StepRow[]; waiting: StepRow | null; title: string },
+): Promise<NodeResult | { kind: "execute"; executionId: string; explanation: string; output: unknown }> {
+  let executionId = (a.waiting?.output as { executionId?: string } | null)?.executionId;
+  if (!executionId) {
+    const p = prepareIntent({ node: a.node, ctx: a.ctx, run: a.run, steps: a.steps });
+    if (!p.ok) return { kind: "error", code: p.code, message: p.message, explanation: `Refused before contacting PayPal: ${p.message}` };
+    const row = await prepareExecution(tx, p.intent, gatewayFor(p.intent).name);
+    executionId = row.id;
+  }
+  const [ex] = await tx.select().from(actionExecutions).where(eq(actionExecutions.id, executionId));
+  switch (ex.status) {
+    case "SUCCEEDED":
+      return {
+        kind: "next",
+        port: "done",
+        output: { ...(ex.result as Record<string, unknown>), executionId: ex.id, paypalRefs: ex.paypalRefs, paypalStatus: ex.paypalStatus },
+        explanation: describeExecution(ex),
+      };
+    case "FAILED": {
+      const e = ex.error as { code: string; message: string; debugId?: string | null };
+      return { kind: "error", code: e.code, message: e.message, debugId: e.debugId ?? null, explanation: `PayPal refused: ${e.message}${e.debugId ? ` (debug_id ${e.debugId})` : ""}` };
+    }
+    case "UNKNOWN":
+      return { kind: "error", code: "OUTCOME_UNKNOWN", message: "PayPal gave no definitive answer; needs review", explanation: "No definitive answer from PayPal after retries; stopped for review" };
+    default:
+      return { kind: "execute", executionId: ex.id, explanation: `${a.title}: sending to PayPal Sandbox`, output: { executionId: ex.id, idempotencyKey: ex.idempotencyKey } };
+  }
 }
 
 async function finish(tx: Tx, run: RunRow, status: RunRow["status"], outcome: string, now: Date) {

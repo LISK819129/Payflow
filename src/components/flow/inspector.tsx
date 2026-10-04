@@ -136,6 +136,52 @@ export function Inspector({ node, issues, readOnly, onChange, onDelete }: Props)
             <Text label="Allowed currencies" value={list(c.allowed)} onChange={(v) => set({ allowed: toList(v.toUpperCase()) })} placeholder="USD" />
           </>
         )}
+        {node.type === "policy.amount_limit" && (
+          <label className="block">
+            <span className="pf-label">Exactly the limit</span>
+            <select className={inputCls} value={String(c.comparison ?? "lte")} onChange={(e) => set({ comparison: e.target.value })}>
+              <option value="lte">passes (at or below, ≤)</option>
+              <option value="lt">is blocked (strictly below, &lt;)</option>
+            </select>
+          </label>
+        )}
+        {node.type === "paypal.refund" && (
+          <>
+            <Text label="Capture id (reference)" mono value={String(c.captureIdRef ?? "")} onChange={(v) => set({ captureIdRef: v })} placeholder="trigger.resourceId" />
+            <Text label="Amount to refund (reference)" mono value={String(c.amountRef ?? "")} onChange={(v) => set({ amountRef: v })} placeholder="trigger.amount" />
+            <Text label="Note to payer" value={String(c.note ?? "")} onChange={(v) => set({ note: v })} />
+          </>
+        )}
+        {node.type === "paypal.payout" && (
+          <>
+            <Text label="Receiver email (reference)" mono value={String(c.receiverRef ?? "")} onChange={(v) => set({ receiverRef: v })} placeholder="trigger.supplierEmail" />
+            <Text label="Amount (reference)" mono value={String(c.amountRef ?? "")} onChange={(v) => set({ amountRef: v })} placeholder="trigger.amount" />
+            <Text label="Note" value={String(c.note ?? "")} onChange={(v) => set({ note: v })} />
+          </>
+        )}
+        {node.type === "paypal.order_capture" && (
+          <>
+            <Text label="Order id (reference)" mono value={String(c.orderIdRef ?? "")} onChange={(v) => set({ orderIdRef: v })} placeholder="trigger.resourceId" />
+            <Text label="Expected amount (reference)" mono value={String(c.amountRef ?? "")} onChange={(v) => set({ amountRef: v })} placeholder="trigger.amount" />
+          </>
+        )}
+        {node.type === "paypal.invoice_send" && (
+          <>
+            <Text label="Recipient email (reference)" mono value={String(c.recipientRef ?? "")} onChange={(v) => set({ recipientRef: v })} placeholder="trigger.clientEmail" />
+            <Text label="Amount (reference)" mono value={String(c.amountRef ?? "")} onChange={(v) => set({ amountRef: v })} placeholder="trigger.amount" />
+            <Text label="Line item description" value={String(c.description ?? "")} onChange={(v) => set({ description: v })} />
+            <Text label="Due date (reference, optional)" mono value={String(c.dueDateRef ?? "")} onChange={(v) => set({ dueDateRef: v })} placeholder="trigger.dueDate" />
+          </>
+        )}
+        {node.type === "paypal.invoice_remind" && (
+          <>
+            <Text label="Invoice id (reference)" mono value={String(c.invoiceIdRef ?? "")} onChange={(v) => set({ invoiceIdRef: v })} placeholder="trigger.invoiceId" />
+            <Text label="Subject" value={String(c.subject ?? "")} onChange={(v) => set({ subject: v })} />
+          </>
+        )}
+        {node.type === "paypal.transaction_search" && (
+          <Text label="Look back (days)" value={c.days === undefined ? "" : String(c.days)} onChange={(v) => set({ days: num(v) })} />
+        )}
         {node.type === "policy.counterparty" && (
           <>
             <Text label="Counterparty (reference)" mono value={String(c.ref ?? "")} onChange={(v) => set({ ref: v })} placeholder="trigger.payer.email" />

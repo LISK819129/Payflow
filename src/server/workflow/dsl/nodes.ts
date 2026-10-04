@@ -227,11 +227,13 @@ export const NODE_SPECS = [
   }),
 
   // ── PayPal actions ────────────────────────────────────────────────────────
+  // Every money-moving node states an exact amount (Money ref) and currency; the
+  // runtime fails closed if either is missing, malformed or inconsistent.
   spec({
     type: "paypal.payout",
     category: "paypal",
     title: "Send payout",
-    description: "Pays a PayPal account (Payouts API).",
+    description: "Pays a PayPal account by email (Payouts API).",
     config: z.object({ receiverRef: Ref, amountRef: Ref, note: z.string().max(200) }).strict(),
     ports: ["done", "error"],
     requiredPorts: ["done", "error"],
@@ -243,13 +245,39 @@ export const NODE_SPECS = [
     type: "paypal.refund",
     category: "paypal",
     title: "Refund capture",
-    description: "Refunds a captured payment, fully or partially.",
-    config: z.object({ captureIdRef: Ref, amountRef: Ref.optional(), note: z.string().max(200) }).strict(),
+    description: "Refunds an exact amount of a captured payment back to the payer.",
+    config: z.object({ captureIdRef: Ref, amountRef: Ref, note: z.string().max(200) }).strict(),
     ports: ["done", "error"],
     requiredPorts: ["done", "error"],
     implementedIn: 5,
     movesMoney: true,
     refKeys: ["captureIdRef", "amountRef"],
+  }),
+  spec({
+    type: "paypal.order_capture",
+    category: "paypal",
+    title: "Capture order",
+    description: "Captures a buyer-approved order, only if its amount equals the expected amount.",
+    config: z.object({ orderIdRef: Ref, amountRef: Ref }).strict(),
+    ports: ["done", "error"],
+    requiredPorts: ["done", "error"],
+    implementedIn: 5,
+    movesMoney: true,
+    refKeys: ["orderIdRef", "amountRef"],
+  }),
+  spec({
+    type: "paypal.invoice_send",
+    category: "paypal",
+    title: "Send invoice",
+    description: "Creates and sends a PayPal invoice for an exact amount to a recipient email.",
+    config: z
+      .object({ recipientRef: Ref, amountRef: Ref, description: z.string().min(1).max(200), dueDateRef: Ref.optional(), note: z.string().max(400).optional() })
+      .strict(),
+    ports: ["done", "error"],
+    requiredPorts: ["done", "error"],
+    implementedIn: 5,
+    external: true,
+    refKeys: ["recipientRef", "amountRef", "dueDateRef"],
   }),
   spec({
     type: "paypal.invoice_remind",
@@ -274,13 +302,24 @@ export const NODE_SPECS = [
     implementedIn: 5,
     refKeys: ["idRef"],
   }),
+  spec({
+    type: "paypal.transaction_search",
+    category: "paypal",
+    title: "Search transactions",
+    description: "Lists recent PayPal transactions (read-only; PayPal indexes them with a delay of up to a few hours).",
+    config: z.object({ days: z.number().int().min(1).max(31), counterpartyRef: Ref.optional() }).strict(),
+    ports: ["done", "error"],
+    requiredPorts: ["done"],
+    implementedIn: 5,
+    refKeys: ["counterpartyRef"],
+  }),
 
   // ── Ledger ────────────────────────────────────────────────────────────────
   spec({
     type: "ledger.reconcile",
     category: "ledger",
     title: "Reconcile",
-    description: "Marks the matched invoice as settled by this payment in PayFlow's ledger.",
+    description: "Records in PayFlow's ledger that a PayPal invoice is settled by this payment, after confirming with PayPal that the invoice is paid for exactly this amount.",
     config: z.object({ paymentRef: Ref, invoiceIdRef: Ref }).strict(),
     ports: ["done", "error"],
     requiredPorts: ["done"],

@@ -1,7 +1,8 @@
 /**
  * Evidence capture: drives the real PayFlow UI in the locally installed Microsoft
  * Edge (playwright-core, no browser download, no recording software) and saves
- * 1920×1080 screenshots at each step into evidence/phase4/<scenario>/.
+ * 1920×1080 screenshots at each step into evidence/<phase>/<scenario>/
+ * (EVIDENCE_PHASE, default phase4).
  *
  *   pnpm evidence <step> [args]
  *     compile <scenarioKey>                  natural language → graph (real AI call via the UI)
@@ -12,6 +13,9 @@
  *     approve <runId>                        owner approves the waiting run in the UI
  *     edit <workflowId> <scenarioKey> [keep] AI edit in the Flow Builder (real AI call)
  *     page <path> <scenario> <label>         capture any page (audit, events, settings…)
+ *     manual <workflowId> <scenario> <json> [double]  owner starts a manual run in the UI
+ *                                            (double: clicks Start twice) and waits for it to settle
+ *     approve <runId> [scenario] [note]       as above, into a named scenario
  *
  * Credentials are the seeded local test owner from .env.local; the browser only
  * talks to localhost. Screenshots never include env files or secrets.
@@ -26,7 +30,7 @@ import { PHASE4_STOP_USD, SCENARIOS, type ScenarioKey } from "./scenarios";
 
 const BASE = "http://localhost:3000";
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const OUT = path.resolve("evidence/phase4");
+const OUT = path.resolve("evidence", process.env.EVIDENCE_PHASE ?? "phase4");
 
 async function guardBudget() {
   const spent = Number(await spentUsd());
@@ -154,8 +158,8 @@ async function replay(compilationId: string, scenario: string) {
   }
 }
 
-async function activate(workflowId: string) {
-  const shot = shooter("e2e");
+async function activate(workflowId: string, scenario = "e2e") {
+  const shot = shooter(scenario);
   const { browser, page } = await open();
   try {
     await page.goto(`${BASE}/flows/${workflowId}`);
@@ -184,25 +188,67 @@ async function capture(urlPath: string, scenario: string, label: string, full = 
   }
 }
 
-async function approve(runId: string) {
-  const shot = shooter("e2e");
+async function approve(runId: string, scenario = "e2e", note = "Checked with the client: legitimate larger payment") {
+  const shot = shooter(scenario);
   const { browser, page } = await open();
   try {
     await page.goto(`${BASE}/executions/${runId}`);
     await page.waitForSelector("section[aria-labelledby=approval-h]");
     await page.waitForTimeout(1500);
     await shot(page, "paused-awaiting-approval", true);
-    await page.locator("section[aria-labelledby=approval-h] input").fill("Checked with the client: legitimate larger payment");
+    await page.locator("section[aria-labelledby=approval-h] input").fill(note);
     await page.getByRole("button", { name: /^Approve/ }).click();
     await page.waitForSelector("section[aria-labelledby=approval-h]", { state: "detached" });
     // The worker resumes the run; poll the page until it reports completion.
     for (let i = 0; i < 20; i++) {
       await page.waitForTimeout(1500);
       await page.reload();
-      if (await page.getByText("completed", { exact: true }).count()) break;
+      const status = await page.locator("[data-run-status]").first().getAttribute("data-run-status");
+      if (status && !["RUNNING", "WAITING_APPROVAL", "WAITING_TIMER"].includes(status)) break;
     }
     await page.waitForTimeout(1500);
     await shot(page, "resumed-and-completed", true);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Waits until the run page shows a settled status, reloading as the worker advances it. */
+async function settle(page: Page) {
+  for (let i = 0; i < 40; i++) {
+    const status = await page.locator("[data-run-status]").first().getAttribute("data-run-status");
+    if (status && status !== "RUNNING" && status !== "WAITING_TIMER") return;
+    await page.waitForTimeout(1500);
+    await page.reload();
+  }
+}
+
+async function manual(workflowId: string, scenario: string, payload: string, double: boolean) {
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/flows/${workflowId}`);
+    await page.waitForSelector(".react-flow__node");
+    await page.waitForTimeout(1200);
+    await page.getByRole("button", { name: "Run manually" }).click();
+    await page.getByLabel("Run payload (JSON)").fill(JSON.stringify(JSON.parse(payload), null, 2));
+    await shot(page, "manual-run-payload");
+    const start = page.getByRole("button", { name: "Start run" });
+    if (double) {
+      // Two submissions of the same dialog, as a double click or a retried request would send.
+      await start.evaluate((b: HTMLButtonElement) => {
+        b.click();
+        b.removeAttribute("disabled");
+        b.click();
+      });
+    } else await start.click();
+    await page.waitForURL(/\/executions\//);
+    const runId = page.url().split("/").pop();
+    console.log(`  run ${runId}`);
+    await page.waitForTimeout(1500);
+    await settle(page);
+    await page.waitForTimeout(1500);
+    await shot(page, "run-settled", true);
   } finally {
     await browser.close();
   }
@@ -249,11 +295,13 @@ async function main() {
     case "answer":
       return answer(a, b, (c ?? "").split("||"));
     case "activate":
-      return activate(a);
+      return activate(a, b);
     case "run":
       return capture(`/executions/${a}`, "e2e", b ?? "execution");
     case "approve":
-      return approve(a);
+      return approve(a, b, c);
+    case "manual":
+      return manual(a, b, c, process.argv[6] === "double");
     case "edit":
       return edit(a, b as ScenarioKey, c === "keep");
     case "page":

@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, max } from "drizzle-orm";
 import { db } from "../db/client";
-import { approvals, runSteps, workflowRuns, workflowVersions, workflows } from "../db/schema";
+import { actionExecutions, approvals, runSteps, workflowRuns, workflowVersions, workflows } from "../db/schema";
 
 /** Read models for pages. Every query is scoped by workspace. */
 
@@ -84,5 +84,17 @@ export async function getRun(workspaceId: string, runId: string) {
   if (!row) return null;
   const steps = await db().select().from(runSteps).where(eq(runSteps.runId, runId)).orderBy(asc(runSteps.seq));
   const runApprovals = await db().select().from(approvals).where(eq(approvals.runId, runId));
-  return { ...row, steps, approvals: runApprovals };
+  const actions = await db().select().from(actionExecutions).where(eq(actionExecutions.runId, runId));
+  return { ...row, steps, approvals: runApprovals, actions };
+}
+
+export async function listActions(workspaceId: string, limit = 200) {
+  return db()
+    .select({ ex: actionExecutions, workflowName: workflows.name, workflowId: workflows.id })
+    .from(actionExecutions)
+    .innerJoin(workflowRuns, eq(workflowRuns.id, actionExecutions.runId))
+    .innerJoin(workflows, eq(workflows.id, workflowRuns.workflowId))
+    .where(eq(actionExecutions.workspaceId, workspaceId))
+    .orderBy(desc(actionExecutions.preparedAt))
+    .limit(limit);
 }
