@@ -313,8 +313,27 @@ describe("protection for a public deployment", () => {
     expect(issues({ PAYPAL_ALLOW_SIMULATOR_EVENTS: true })).toMatch(/SIMULATOR/);
     expect(issues({ PAYPAL_CLIENT_ID: "abc", PAYPAL_CLIENT_SECRET: undefined })).toMatch(/set together/);
     expect(issues({ OPENAI_API_KEY: "sk-test" }, { PAYFLOW_DEMO_MODE: "true" })).toMatch(/AI_DAILY_CAP_USD/);
+    // A Render worker has no public URL; a Render web service gets RENDER_EXTERNAL_URL.
+    expect(issues({ APP_URL: "http://localhost:3000" }, { RENDER_SERVICE_TYPE: "worker" })).toBe("");
+    expect(issues({ APP_URL: "http://localhost:3000" }, { RENDER_SERVICE_TYPE: "web" })).toMatch(/https/);
     // The local production rehearsal flag only relaxes the database/URL checks.
     expect(issues({ DATABASE_URL: "postgres://payflow:localdevpassword@127.0.0.1:54329/payflow", APP_URL: "http://localhost:3000" }, { PAYFLOW_ALLOW_LOCAL_DB: "true" })).toBe("");
+  });
+
+  it("on Render, APP_URL defaults to the service's public URL", () => {
+    const saved = { app: process.env.APP_URL, ext: process.env.RENDER_EXTERNAL_URL };
+    delete process.env.APP_URL;
+    process.env.RENDER_EXTERNAL_URL = "https://payflow-web.onrender.com";
+    resetEnvCache();
+    try {
+      expect(env().APP_URL).toBe("https://payflow-web.onrender.com");
+    } finally {
+      if (saved.app === undefined) delete process.env.APP_URL;
+      else process.env.APP_URL = saved.app;
+      if (saved.ext === undefined) delete process.env.RENDER_EXTERNAL_URL;
+      else process.env.RENDER_EXTERNAL_URL = saved.ext;
+      resetEnvCache();
+    }
   });
 
   it("15 · webhook registration moves the existing webhook instead of creating duplicates", async () => {

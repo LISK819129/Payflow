@@ -47,7 +47,8 @@ let cached: Env | undefined;
 
 export function env(): Env {
   if (cached) return cached;
-  const parsed = schema.safeParse(process.env);
+  // On Render the public URL is known only after the service exists: it is provided as RENDER_EXTERNAL_URL.
+  const parsed = schema.safeParse({ ...process.env, APP_URL: process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || undefined });
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
     throw new Error(`Invalid server environment:\n${issues}`);
@@ -96,7 +97,8 @@ export function productionProblems(e: Env, raw: Record<string, string | undefine
     if (devPassword && decodeURIComponent(db.password) === devPassword) out.push("DATABASE_URL reuses the local-development password — create a new credential for the hosted database");
     if (decodeURIComponent(db.password).length < 16) out.push("the database password is shorter than 16 characters");
   }
-  if (!local && !e.APP_URL.startsWith("https://")) out.push("APP_URL must be the public https:// URL");
+  // The worker serves no URLs (Render gives only web services a public URL).
+  if (!local && raw.RENDER_SERVICE_TYPE !== "worker" && !e.APP_URL.startsWith("https://")) out.push("APP_URL must be the public https:// URL");
   if (/^(.)\1+$/.test(e.SESSION_SECRET) || /change|example|secret|placeholder/i.test(e.SESSION_SECRET)) out.push("SESSION_SECRET looks like a placeholder — generate 32+ random characters");
   if (e.PAYPAL_ALLOW_SIMULATOR_EVENTS) out.push("PAYPAL_ALLOW_SIMULATOR_EVENTS must be false in production");
   if (!!e.PAYPAL_CLIENT_ID !== !!e.PAYPAL_CLIENT_SECRET) out.push("PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set together");
