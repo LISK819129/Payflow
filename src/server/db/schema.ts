@@ -178,6 +178,8 @@ export const workflows = pgTable(
     /** Phase 8: the latest draft evaluates real incoming PayPal events, with no ability to act. */
     observing: boolean("observing").notNull().default(false),
     observingSince: timestamp("observing_since", { withTimezone: true }),
+    /** Phase 10: set only on records created by the demo setup; demo restore touches nothing else. */
+    demoKey: text("demo_key"),
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -515,6 +517,8 @@ export const authorities = pgTable(
     purposeScope: text("purpose_scope"),
     /** Phase 7: what each kind of AI evidence causes. Deterministic; the AI never chooses this. */
     intelligencePolicy: jsonb("intelligence_policy").$type<Record<string, string>>().notNull().default({}),
+    /** Phase 10: set only on records created by the demo setup; demo restore touches nothing else. */
+    demoKey: text("demo_key"),
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -754,6 +758,8 @@ export const agents = pgTable(
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     revokedBy: uuid("revoked_by").references(() => users.id),
     revokeReason: text("revoke_reason"),
+    /** Phase 10: set only on agents created by the demo setup. */
+    demoKey: text("demo_key"),
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: createdAt(),
   },

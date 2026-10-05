@@ -2,12 +2,14 @@ import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { Wordmark } from "@/components/ui";
 import { requireUser } from "@/server/auth/current";
+import { environmentLabel } from "@/server/demo/queries";
 import { logoutAction } from "../login/actions";
 import { MainFrame } from "./main-frame";
 import { NavLinks } from "./nav-links";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
+  const environment = environmentLabel();
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="flex shrink-0 flex-col border-b border-line bg-surface md:sticky md:top-0 md:h-screen md:w-60 md:border-b-0 md:border-r">
@@ -16,6 +18,13 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <Wordmark size="sm" />
           </Link>
           <div className="mt-1 truncate text-meta text-muted">{user.workspaceName}</div>
+          <div
+            className={`mt-3 inline-flex items-center gap-1.5 rounded-sm border px-1.5 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] ${environment.sandbox ? "border-line-strong text-ink-2" : "border-danger text-danger"}`}
+            title={environment.sandbox ? "Every PayPal call goes to PayPal's Sandbox — test money only" : "LIVE PayPal"}
+          >
+            <span className={`inline-block size-1.5 rounded-full ${environment.sandbox ? "bg-marker" : "bg-danger"}`} aria-hidden />
+            {environment.label}
+          </div>
         </div>
         <NavLinks />
         <div className="hidden border-t border-line px-4 py-4 md:block">
@@ -29,10 +38,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
               </button>
             </form>
           </div>
-          <p className="mt-3 flex items-center gap-1.5 text-meta text-faint">
-            <span className="inline-block size-1.5 rounded-full bg-marker" aria-hidden />
-            PayPal Sandbox
-          </p>
+          <p className="mt-3 text-meta text-faint">Sandbox only — no real money moves.</p>
         </div>
       </aside>
       <MainFrame>{children}</MainFrame>

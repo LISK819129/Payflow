@@ -12,7 +12,7 @@ export default async function ExecutionsPage() {
     <>
       <PageHeader title="Executions" lead="Every run, the version it ran on, what started it and how it ended." />
       {runs.length === 0 ? (
-        <Empty>No runs yet. Activate a flow; runs start when its trigger fires.</Empty>
+        <Empty>No runs yet. Runs start when an active flow&rsquo;s trigger fires — a PayPal event, a schedule, a person, or an AI agent&rsquo;s request. To try a flow without moving money, use “Test this flow”.</Empty>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-left">

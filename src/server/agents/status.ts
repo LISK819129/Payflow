@@ -1,6 +1,7 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { db, type Tx } from "../db/client";
 import { actionExecutions, agentRequests, approvals, authorityDecisions, runSteps, simulations, workflowRuns } from "../db/schema";
+import { eventsFor, settlementOf, type Settlement, type SettlementStage } from "../actions/settlement";
 import { NOT_SENT_CODES } from "./binding";
 import { appendLinks } from "./receipt";
 
@@ -17,13 +18,16 @@ export type AgentState =
   | "REJECTED"
   | "DENIED"
   | "CANCELLED"
+  | "SUBMITTED_TO_PAYPAL"
+  | "AWAITING_RECIPIENT"
   | "COMPLETED"
+  | "RETURNED"
   | "FAILED"
   | "UNKNOWN"
   | "ENDED"
   | "TEST_COMPLETE";
 
-export const TERMINAL: AgentState[] = ["REJECTED", "DENIED", "CANCELLED", "COMPLETED", "FAILED", "UNKNOWN", "ENDED", "TEST_COMPLETE"];
+export const TERMINAL: AgentState[] = ["REJECTED", "DENIED", "CANCELLED", "COMPLETED", "RETURNED", "FAILED", "UNKNOWN", "ENDED", "TEST_COMPLETE"];
 
 export const STATE_MEANING: Record<AgentState, string> = {
   ACCEPTED: "PayFlow accepted the request into the workflow. Nothing has been decided or paid.",
@@ -33,8 +37,11 @@ export const STATE_MEANING: Record<AgentState, string> = {
   REJECTED: "A person rejected it, or the review expired. PayPal was not contacted.",
   DENIED: "PayFlow's authority refused it. PayPal was not contacted.",
   CANCELLED: "Withdrawn (by the agent, or because the agent was revoked) before PayPal was contacted.",
-  COMPLETED: "PayPal accepted the action. See paypal.status for its PayPal state.",
-  FAILED: "PayPal refused the action. Nothing was paid.",
+  SUBMITTED_TO_PAYPAL: "PayPal accepted the action and is processing it. Not settled yet — keep polling.",
+  AWAITING_RECIPIENT: "PayPal sent the payment, but the recipient has no PayPal account yet. PayPal holds the funds and returns them after 30 days unless claimed.",
+  COMPLETED: "PayPal confirmed the money reached its destination (or, for actions that move no money, that it was done).",
+  RETURNED: "PayPal reports the payment was returned or reversed.",
+  FAILED: "PayPal refused or failed the action. Nothing was paid.",
   UNKNOWN: "PayPal gave no definitive answer; held for a person to reconcile. Do not retry with a new request_id.",
   ENDED: "The workflow ended without a payment action.",
   TEST_COMPLETE: "TEST only: evaluated in isolation. No money moved and PayPal was not contacted.",
@@ -71,7 +78,17 @@ export type StatusView = {
   reasons: { code: string; detail: string; source: "payflow" | "ai" }[];
   authority: { decision: string; outcome: string | null; authorities: { id: string; name: string; version: number }[] } | null;
   human_review: { required: boolean; status: string | null; decided_at: string | null } | null;
-  paypal: { contacted: boolean; money_moved: boolean; status: string | null; ids: string[]; confirmed_by_webhook: boolean };
+  paypal: {
+    contacted: boolean;
+    /** PayPal accepted the action. Not the same as settled. */
+    submitted: boolean;
+    /** PayPal confirmed the money reached its destination. */
+    settled: boolean;
+    settlement: { stage: SettlementStage; label: string; final: boolean; paypal_status: string | null; explanation: string } | null;
+    status: string | null;
+    ids: string[];
+    confirmed_by_webhook: boolean;
+  };
   test: { verdict: string; headline: string; paypal_contacted: false } | null;
   receipt: { id: string; hash: string; links: number };
 };
@@ -87,7 +104,10 @@ async function facts(handle: Tx | ReturnType<typeof db>, ar: typeof agentRequest
   return { run, ex, aps, decs, started: !!step };
 }
 
-export async function deriveState(handle: Tx | ReturnType<typeof db>, ar: typeof agentRequests.$inferSelect): Promise<{ state: AgentState; reasons: StatusView["reasons"]; f: Awaited<ReturnType<typeof facts>> }> {
+export async function deriveState(
+  handle: Tx | ReturnType<typeof db>,
+  ar: typeof agentRequests.$inferSelect,
+): Promise<{ state: AgentState; reasons: StatusView["reasons"]; f: Awaited<ReturnType<typeof facts>>; settlement?: Settlement }> {
   if (ar.mode === "TEST") return { state: ar.simulationId ? "TEST_COMPLETE" : "PROCESSING", reasons: [], f: null };
   const f = await facts(handle, ar);
   const reasons: StatusView["reasons"] = [];
@@ -105,7 +125,13 @@ export async function deriveState(handle: Tx | ReturnType<typeof db>, ar: typeof
   const ap = aps.at(-1);
   if (ex) {
     const err = ex.error as { code?: string; message?: string } | null;
-    if (ex.status === "SUCCEEDED") return { state: "COMPLETED", reasons, f };
+    if (ex.status === "SUCCEEDED") {
+      // PayPal accepting the action is not settlement: ask what PayPal has reported since.
+      const st = settlementOf(ex, await eventsFor(handle, ar.workspaceId, ex.paypalRefs));
+      const map: Partial<Record<SettlementStage, AgentState>> = { SETTLED: "COMPLETED", DONE: "COMPLETED", AWAITING_RECIPIENT: "AWAITING_RECIPIENT", RETURNED: "RETURNED", FAILED: "FAILED" };
+      const state = map[st.stage] ?? "SUBMITTED_TO_PAYPAL";
+      return { state, reasons: state === "COMPLETED" || state === "SUBMITTED_TO_PAYPAL" ? reasons : [...reasons, { code: `PAYPAL_${st.paypalStatus ?? st.stage}`, detail: st.explanation, source: "payflow" }], f, settlement: st };
+    }
     if (ex.status === "UNKNOWN") return { state: "UNKNOWN", reasons: [...reasons, { code: err?.code ?? "OUTCOME_UNKNOWN", detail: err?.message ?? "No definitive answer from PayPal", source: "payflow" }], f };
     if (ex.status === "FAILED") {
       const code = err?.code ?? "PAYPAL_REFUSED";
@@ -155,7 +181,7 @@ export async function syncAgentRequest(id: string): Promise<typeof agentRequests
   return db().transaction(async (tx) => {
     const [ar] = await tx.select().from(agentRequests).where(eq(agentRequests.id, id)).for("update");
     if (!ar) return null;
-    const { state, reasons, f } = await deriveState(tx, ar);
+    const { state, reasons, f, settlement } = await deriveState(tx, ar);
     const add: Parameters<typeof appendLinks>[2] = [];
     if (ar.mode === "TEST" && ar.simulationId) {
       const [sim] = await tx.select().from(simulations).where(eq(simulations.id, ar.simulationId));
@@ -210,6 +236,15 @@ export async function syncAgentRequest(id: string): Promise<typeof agentRequests
     if (ex?.confirmedByEventId) {
       add.push({ kind: "paypal_confirmed", key: `confirmed:${ex.id}`, at: ex.confirmedAt ?? new Date(), data: { execution_id: ex.id, paypal_event_id: ex.confirmedByEventId, paypal_ids: ex.paypalRefs, note: "PayPal's own event (verified with PayPal's API) confirmed this action" } });
     }
+    // What PayPal later reported about the money (e.g. a payout item UNCLAIMED or SUCCESS) — one link per new stage.
+    if (ex && settlement && settlement.source === "paypal_webhook") {
+      add.push({
+        kind: "paypal_settlement",
+        key: `settlement:${ex.id}:${settlement.stage}`,
+        at: new Date(),
+        data: { execution_id: ex.id, stage: settlement.stage, paypal_status: settlement.paypalStatus, final: settlement.final, explanation: settlement.explanation },
+      });
+    }
     const lastFinal = (ar.links as { kind: string; data: { state?: string } }[]).filter((l) => l.kind === "final").at(-1)?.data.state;
     if (TERMINAL.includes(state) && lastFinal !== state) add.push({ kind: "final", key: `final:${state}`, at: new Date(), data: { state } });
     await appendLinks(tx, ar, add);
@@ -226,7 +261,7 @@ export async function syncAgentRequestForRun(runId: string) {
 }
 
 export async function statusView(ar: typeof agentRequests.$inferSelect): Promise<StatusView> {
-  const { state, reasons, f } = await deriveState(db(), ar);
+  const { state, reasons, f, settlement } = await deriveState(db(), ar);
   const dec = f?.decs.at(-1);
   const ap = f?.aps.at(-1);
   const ex = f?.ex;
@@ -249,7 +284,9 @@ export async function statusView(ar: typeof agentRequests.$inferSelect): Promise
     human_review: ap ? { required: true, status: ap.status, decided_at: ap.decidedAt?.toISOString() ?? null } : f ? { required: false, status: null, decided_at: null } : null,
     paypal: {
       contacted: !!ex && ex.attempts > 0,
-      money_moved: !!ex && ex.status === "SUCCEEDED" && ex.amountValue != null,
+      submitted: !!ex && ex.status === "SUCCEEDED",
+      settled: settlement?.stage === "SETTLED",
+      settlement: settlement ? { stage: settlement.stage, label: settlement.label, final: settlement.final, paypal_status: settlement.paypalStatus, explanation: settlement.explanation } : null,
       status: ex?.paypalStatus ?? null,
       ids: ex?.paypalRefs ?? [],
       confirmed_by_webhook: !!ex?.confirmedByEventId,

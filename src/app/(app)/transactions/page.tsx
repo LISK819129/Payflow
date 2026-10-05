@@ -3,6 +3,8 @@ import Link from "next/link";
 import { CopyId, Empty, PageHeader, ProvenanceTag, Status, formatClock, formatDay, formatMoney, type StatusTone } from "@/components/ui";
 import { requireUser } from "@/server/auth/current";
 import { listActions } from "@/server/workflow/queries";
+import { settlementsFor } from "@/server/actions/settlement";
+import { settlementTone } from "@/components/flow/action-card";
 
 const tone: Record<string, StatusTone> = { SUCCEEDED: "ok", FAILED: "danger", UNKNOWN: "warn", PREPARED: "neutral", SUBMITTING: "live" };
 const KIND: Record<string, string> = {
@@ -19,14 +21,15 @@ const KIND: Record<string, string> = {
 export default async function TransactionsPage() {
   const user = await requireUser();
   const rows = await listActions(user.workspaceId);
+  const settled = await settlementsFor(user.workspaceId, rows.map((r) => r.ex));
   return (
     <>
       <PageHeader
-        title="Transactions"
-        lead="Every PayPal action a workflow has taken. Each one ran only after its policy or approval gate, with an idempotency key so it can never run twice."
+        title="PayPal activity"
+        lead="Every PayPal action PayFlow has taken, and what PayPal has done with it since. “Accepted by PayPal” is not “settled”: settlement comes from PayPal's own status reports."
       />
       {rows.length === 0 ? (
-        <Empty>No PayPal actions yet. They appear here when a workflow reaches a refund, payout, invoice or capture step.</Empty>
+        <Empty>No PayPal actions yet. They appear here when a workflow reaches a refund, payout, invoice or capture step — and only after its authority or a person allowed it.</Empty>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[960px] text-left">
@@ -55,7 +58,11 @@ export default async function TransactionsPage() {
                   </td>
                   <td className="py-3 pr-6">{ex.paypalRefs[0] ? <CopyId value={ex.paypalRefs[0]} /> : <span className="text-faint">—</span>}</td>
                   <td className="py-3 pr-6">
-                    <Status tone={tone[ex.status] ?? "neutral"}>{ex.status.toLowerCase()}</Status>
+                    {ex.status === "SUCCEEDED" && settled.get(ex.id) ? (
+                      <Status tone={settlementTone[settled.get(ex.id)!.stage]}>{settled.get(ex.id)!.label}</Status>
+                    ) : (
+                      <Status tone={tone[ex.status] ?? "neutral"}>{ex.status === "SUCCEEDED" ? "accepted by PayPal" : ex.status.toLowerCase()}</Status>
+                    )}
                     {ex.confirmedByEventId && <div className="mt-0.5 text-meta text-muted">confirmed by webhook</div>}
                     {ex.status !== "SUCCEEDED" && ex.error != null && (
                       <div className="mt-0.5 max-w-48 break-words font-mono text-meta text-danger">{(ex.error as { code?: string }).code}</div>

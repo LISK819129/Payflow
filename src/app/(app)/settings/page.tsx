@@ -8,6 +8,8 @@ import { db } from "@/server/db/client";
 import { workerHeartbeats } from "@/server/db/schema";
 import { gitInfo, sourceHash } from "@/server/dev/version";
 import { desc, gt } from "drizzle-orm";
+import { RestoreDemo } from "@/components/demo/restore-demo";
+import { demoModeEnabled } from "@/server/demo/setup";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +17,7 @@ export default async function SettingsPage() {
   const code = { sourceHash: sourceHash(), ...gitInfo() };
   const now = new Date();
   const workers = await db().select().from(workerHeartbeats).where(gt(workerHeartbeats.lastSeenAt, new Date(now.getTime() - 3_600_000))).orderBy(desc(workerHeartbeats.lastSeenAt)).limit(8);
-  await requireUser();
+  const user = await requireUser();
   const status = integrationStatus();
   const e = env();
   const [conn, usage] = await Promise.all([status.paypal.configured ? describeConnection() : Promise.resolve(null), usageSummary()]);
@@ -26,7 +28,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader title="Settings" lead="Connections PayFlow depends on. Nothing here is cached from a previous check: it is read live." />
 
-      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-[1.3fr_1fr]">
+      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-[1.3fr_1fr] [&>*]:min-w-0">
         <Section label="PayPal Sandbox" aside={conn?.ok && conn.appId ? <CopyId value={conn.appId} /> : undefined}>
           {!conn ? (
             <div className="py-4">
@@ -131,6 +133,16 @@ export default async function SettingsPage() {
               <p className="mt-2 text-body-sm text-muted">A worker stops itself before running a job if the code changed after it started. Restart with pnpm worker:fresh.</p>
             </div>
           </Section>
+          {demoModeEnabled() && (
+            <Section label="Demo setup">
+              <div className="py-4">
+                <p className="mb-3 text-body-sm text-muted">
+                  Puts the demo workflows, their authorities and the Cloud Procurement Agent back the way the demo starts — as new, audited versions. Runs, approvals, receipts, PayPal records and the audit trail are never deleted or changed. A revoked or expired demo agent is replaced by a newly registered one.
+                </p>
+                {user.role === "OWNER" ? <RestoreDemo /> : <p className="text-body-sm text-muted">Only the owner can restore the demo setup.</p>}
+              </div>
+            </Section>
+          )}
           <Section label="Webhook simulator events">
             <div className="py-4">
               {e.PAYPAL_ALLOW_SIMULATOR_EVENTS ? <Status tone="warn">Accepted, labelled Simulated</Status> : <Status tone="neutral">Rejected</Status>}

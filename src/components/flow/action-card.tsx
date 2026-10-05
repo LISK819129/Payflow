@@ -1,12 +1,24 @@
 import { CopyId, ProvenanceTag, Status, formatClock, formatMoney, type StatusTone } from "@/components/ui";
 import { DecisionTrace } from "@/components/authority/decision-trace";
 import type { AuthorityOutcome, BudgetSnapshot, Evaluation, FrequencySnapshot } from "@/server/authority/types";
+import type { Settlement } from "@/server/actions/settlement";
 import type { actionExecutions, authorityDecisions } from "@/server/db/schema";
 
 type Execution = typeof actionExecutions.$inferSelect;
 
 const tone: Record<string, StatusTone> = { SUCCEEDED: "ok", FAILED: "danger", UNKNOWN: "warn", PREPARED: "neutral", SUBMITTING: "live" };
-const label: Record<string, string> = { SUCCEEDED: "Succeeded at PayPal", FAILED: "Refused by PayPal", UNKNOWN: "Outcome unknown — review", PREPARED: "Prepared", SUBMITTING: "Sending to PayPal" };
+const label: Record<string, string> = { SUCCEEDED: "Accepted by PayPal", FAILED: "Refused by PayPal", UNKNOWN: "Outcome unknown — review", PREPARED: "Prepared", SUBMITTING: "Sending to PayPal" };
+export const settlementTone: Record<Settlement["stage"], StatusTone> = {
+  NOT_SENT: "neutral",
+  SUBMITTED: "live",
+  PROCESSING: "live",
+  SETTLED: "ok",
+  AWAITING_RECIPIENT: "warn",
+  FAILED: "danger",
+  RETURNED: "danger",
+  UNKNOWN: "warn",
+  DONE: "ok",
+};
 
 const KIND: Record<string, string> = {
   "paypal.refund": "Refund",
@@ -26,7 +38,18 @@ const short = (id: string) => (id.length > 30 ? `${id.slice(0, 28)}…` : id);
  * returned, when, and under which authorization. Never shows credentials,
  * tokens or raw request headers.
  */
-export function ActionCard({ ex, labels = {}, decision = null }: { ex: Execution; labels?: Record<string, string>; decision?: typeof authorityDecisions.$inferSelect | null }) {
+export function ActionCard({
+  ex,
+  labels = {},
+  decision = null,
+  settlement = null,
+}: {
+  ex: Execution;
+  labels?: Record<string, string>;
+  decision?: typeof authorityDecisions.$inferSelect | null;
+  /** What PayPal has done with it since (accepted ≠ settled). */
+  settlement?: Settlement | null;
+}) {
   const err = ex.error as { code?: string; message?: string; status?: number } | null;
   const gates = (ex.authorization as { gates?: { nodeId: string; port: string }[] } | null)?.gates ?? [];
   const intent = ex.intent as { movesMoney?: boolean; external?: boolean } | null;
@@ -39,7 +62,11 @@ export function ActionCard({ ex, labels = {}, decision = null }: { ex: Execution
           <span className="pf-label text-ink">{KIND[ex.kind] ?? ex.kind}</span>
           <ProvenanceTag value={ex.provenance} />
         </div>
-        <Status tone={tone[ex.status] ?? "neutral"}>{(ex.kind === "ledger.reconcile" && ex.status === "SUCCEEDED" ? "Verified with PayPal · recorded" : label[ex.status]) ?? ex.status}</Status>
+        {settlement && ex.status === "SUCCEEDED" && ex.kind !== "ledger.reconcile" ? (
+          <Status tone={settlementTone[settlement.stage]}>{settlement.label}</Status>
+        ) : (
+          <Status tone={tone[ex.status] ?? "neutral"}>{(ex.kind === "ledger.reconcile" && ex.status === "SUCCEEDED" ? "Verified with PayPal · recorded" : label[ex.status]) ?? ex.status}</Status>
+        )}
       </div>
       <dl className="mt-3 grid grid-cols-[120px_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-body-sm">
         {ex.amountValue && (
@@ -77,7 +104,19 @@ export function ActionCard({ ex, labels = {}, decision = null }: { ex: Execution
         {ex.paypalStatus && (
           <>
             <dt className="text-muted">PayPal status</dt>
-            <dd className="font-mono text-meta">{ex.paypalStatus}</dd>
+            <dd className="font-mono text-meta">{ex.paypalStatus} {ex.kind === "paypal.payout" && <span className="font-sans text-muted">(batch, when sent)</span>}</dd>
+          </>
+        )}
+        {settlement && ex.status === "SUCCEEDED" && (
+          <>
+            <dt className="text-muted">Settlement</dt>
+            <dd>
+              <span className="font-medium">{settlement.label}</span>
+              {settlement.paypalStatus && <span className="font-mono text-meta text-muted"> · PayPal {settlement.paypalStatus}</span>}
+              <div className="text-meta text-muted">
+                {settlement.explanation} ({settlement.source === "paypal_webhook" ? "from PayPal's webhook" : settlement.source === "paypal_response" ? "from PayPal's response" : "PayFlow"})
+              </div>
+            </dd>
           </>
         )}
         <dt className="text-muted">Sent</dt>

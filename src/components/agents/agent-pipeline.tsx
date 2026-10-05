@@ -82,10 +82,11 @@ export function AgentPipeline({ v, showRunLink = false }: { v: AgentRequestView;
           ? ["ok", "approved once"]
           : ["stop", status.state === "CANCELLED" ? (status.reasons.some((x) => x.code === "AGENT_REVOKED") ? "withdrawn: agent revoked" : "withdrawn") : ap.status === "EXPIRED" ? "expired" : "rejected"];
 
+  const st = status.paypal.settlement;
   const paypal: [Tone, string] = test
     ? ["skip", "cannot be reached"]
-    : status.paypal.money_moved
-      ? ["ok", status.paypal.status ?? "accepted"]
+    : st
+      ? [st.stage === "SETTLED" || st.stage === "DONE" ? "ok" : st.stage === "FAILED" || st.stage === "RETURNED" ? "stop" : "warn", st.label.toLowerCase()]
       : status.state === "FAILED"
         ? ["stop", "refused"]
         : status.state === "UNKNOWN"
@@ -153,7 +154,8 @@ export function AgentPipeline({ v, showRunLink = false }: { v: AgentRequestView;
               {id}
             </div>
           ))}
-          <div>{status.paypal.money_moved ? `${formatMoney(r.amount.value, r.amount.currency)} · Sandbox` : test ? "no capability in TEST" : "nothing sent"}</div>
+          <div>{status.paypal.submitted ? `${formatMoney(r.amount.value, r.amount.currency)} · Sandbox` : test ? "no capability in TEST" : "nothing sent"}</div>
+          {st && <div>{st.paypal_status ? `PayPal: ${st.paypal_status}` : ""}</div>}
           {status.paypal.confirmed_by_webhook && <div>confirmed by webhook</div>}
         </Stage>
       </ol>

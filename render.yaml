@@ -1,0 +1,119 @@
+# Render Blueprint for PayFlow (judging deployment). See docs/DEPLOYMENT.md.
+# No secrets live here: every sensitive value is `sync: false` and is entered
+# in the Render dashboard. PayPal stays in Sandbox; PayFlow refuses to boot
+# against live PayPal.
+#
+# Exactly ONE web instance: rate limits are per process (documented). Do not
+# enable autoscaling or raise numInstances without moving them to Postgres.
+
+databases:
+  - name: payflow-db
+    databaseName: payflow
+    user: payflow
+    plan: basic-256mb
+    postgresMajorVersion: "17"
+
+services:
+  - type: web
+    name: payflow-web
+    runtime: node
+    plan: starter
+    numInstances: 1
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    preDeployCommand: pnpm db:migrate
+    startCommand: pnpm start
+    healthCheckPath: /api/health/ready
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: payflow-db
+          property: connectionString
+      - key: APP_URL # https://<service>.onrender.com — set after the first deploy
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID # printed by `pnpm paypal:webhook:register https://<render-host>`
+        sync: false
+      - key: PAYPAL_ALLOW_SIMULATOR_EVENTS
+        value: "false"
+      - key: AI_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AI_BUDGET_USD # lifetime hard cap across all model calls
+        value: "5"
+      - key: AI_DAILY_CAP_USD # rolling 24 h cap for the public judging deployment
+        value: "1"
+      - key: AI_COMPILES_PER_USER_PER_HOUR
+        value: "12"
+      - key: AI_COMPILES_PER_WORKSPACE_PER_DAY
+        value: "60"
+      - key: TEST_RUNS_PER_USER_PER_HOUR
+        value: "60"
+      - key: PAYFLOW_DEMO_MODE
+        value: "true"
+      - key: SEED_OWNER_EMAIL
+        sync: false
+      - key: SEED_OWNER_PASSWORD
+        sync: false
+      - key: DEMO_SUPPLIER_ACME_EMAIL # Sandbox personal account (Phase 12)
+        sync: false
+      - key: DEMO_SUPPLIER_AWS_EMAIL
+        sync: false
+
+  - type: worker
+    name: payflow-worker
+    runtime: node
+    plan: starter
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
+    startCommand: pnpm worker
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV # same production configuration checks as the web service
+        value: production
+      - key: PAYFLOW_WORKER_WATCH # a deployed worker never reloads code under itself
+        value: "0"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: payflow-db
+          property: connectionString
+      - fromGroup: payflow-shared
+
+envVarGroups:
+  - name: payflow-shared
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: SESSION_SECRET # must equal the web service's value (copy it after the first deploy)
+        sync: false
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: PAYPAL_ALLOW_SIMULATOR_EVENTS
+        value: "false"
+      - key: AI_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AI_BUDGET_USD
+        value: "5"
+      - key: AI_DAILY_CAP_USD
+        value: "1"
+      - key: PAYFLOW_DEMO_MODE
+        value: "true"

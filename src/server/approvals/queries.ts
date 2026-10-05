@@ -22,7 +22,7 @@ export type ApprovalView = {
   run: { id: string; status: string; version: number; provenance: string; triggerKind: string };
   workflow: { id: string; name: string; activeVersion: number | null; state: string };
   action: { kind: string; label: string; amount: { value: string; currency: string } | null; counterparty: string | null; target: { type: string; id: string } | null } | null;
-  authorities: { id: string; name: string; version: number | null }[];
+  authorities: { id: string; name: string; version: number | null; perTransactionMax?: string | null }[];
   evaluations: Evaluation[];
   budget: BudgetSnapshot[];
   frequency: FrequencySnapshot[];
@@ -94,8 +94,8 @@ export async function listApprovals(workspaceId: string, opts: { status?: "PENDI
       budget = (s.budget as BudgetSnapshot[]) ?? [];
       frequency = (s.frequency as FrequencySnapshot[]) ?? [];
       const decision = decisionRows.find((d) => d.id === s.decisionId);
-      const snap = (decision?.authoritySnapshot as { id: string; name: string; version: number }[] | null) ?? [];
-      auth = snap.map((x) => ({ id: x.id, name: x.name, version: x.version }));
+      const snap = (decision?.authoritySnapshot as { id: string; name: string; version: number; perTransactionMax?: string | null }[] | null) ?? [];
+      auth = snap.map((x) => ({ id: x.id, name: x.name, version: x.version, perTransactionMax: x.perTransactionMax ?? null }));
       actionNodeId = a.nodeId;
     } else {
       // A workflow approval node: the policy results that routed the run here are the evidence.

@@ -1,10 +1,11 @@
+import { clientIp } from "@/server/security/client-ip";
 import { rateLimit } from "@/server/security/rate-limit";
 import { ingestPayPalWebhook } from "@/server/webhooks/ingest";
 
 const MAX_BODY_BYTES = 512 * 1024;
 
 export async function POST(request: Request) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const ip = clientIp((n) => request.headers.get(n));
   if (!rateLimit(`webhook:${ip}`, 600, 60_000).ok) {
     return Response.json({ error: "rate limited" }, { status: 429 });
   }

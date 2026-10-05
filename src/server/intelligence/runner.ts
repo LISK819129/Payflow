@@ -123,7 +123,9 @@ export async function runAnalysis(analysisId: string): Promise<"done" | "busy"> 
       .update(aiAnalyses)
       .set({
         status: done ? "FAILED" : "PENDING",
-        leaseUntil: done ? null : sql`now()`,
+        // Release the lease outright. Setting it to now() could round *up* (millisecond column), and the
+        // immediate re-claim below (lease_until < now()) would then fail and wait on its own lease.
+        leaseUntil: null,
         error: `${code}: ${message}`.slice(0, 500),
         validation: { ok: false, code, repairs: extra.repairs ?? 0 },
         usage: extra.usage ?? null,

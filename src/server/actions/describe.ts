@@ -4,15 +4,15 @@ type Row = typeof actionExecutions.$inferSelect;
 
 const amt = (r: Row) => (r.amountValue ? `${r.amountValue} ${r.currency}` : "");
 
-/** Plain-language account of a settled action, for the step explanation and audit. */
+/** Plain-language account of what PayPal accepted, for the step explanation and audit. Not a claim of settlement. */
 export function describeExecution(r: Row): string {
   const res = (r.result ?? {}) as Record<string, unknown>;
   const ref = r.paypalRefs[0] ?? "";
   switch (r.kind) {
     case "paypal.refund":
-      return `Refunded ${amt(r)} on capture ${r.targetRef} · refund ${ref} ${r.paypalStatus}`;
+      return `Refund of ${amt(r)} on capture ${r.targetRef} accepted by PayPal · refund ${ref} ${r.paypalStatus}`;
     case "paypal.payout":
-      return `Paid ${amt(r)} to ${r.counterparty} · payout batch ${ref} ${r.paypalStatus}`;
+      return `Payout of ${amt(r)} to ${r.counterparty} submitted to PayPal · batch ${ref} ${r.paypalStatus} (settlement is reported by PayPal separately)`;
     case "paypal.order_capture":
       return `Captured ${amt(r)} for order ${r.targetRef} · capture ${String(res.captureId ?? "")} ${r.paypalStatus}`;
     case "paypal.invoice_send":

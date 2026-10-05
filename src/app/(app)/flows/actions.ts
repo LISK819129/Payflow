@@ -18,6 +18,7 @@ export type ActionResult = { ok: true; message?: string; version?: number } | { 
 
 export async function createWorkflowAction(form: FormData) {
   const user = await requireUser();
+  if (!canAuthorize(user)) redirect("/flows");
   const name = String(form.get("name") ?? "").trim() || "Untitled flow";
   const r = await createWorkflow({ workspaceId: user.workspaceId, userId: user.id, name });
   if (!r.ok) throw new Error(r.error);
@@ -26,6 +27,7 @@ export async function createWorkflowAction(form: FormData) {
 
 export async function saveDraftAction(workflowId: string, graph: WorkflowGraph): Promise<ActionResult> {
   const user = await requireUser();
+  if (!canAuthorize(user)) return { ok: false, error: "Only owners and approvers can edit workflows" };
   const r = await saveDraft({ workspaceId: user.workspaceId, userId: user.id, workflowId, graph });
   if (!r.ok) return { ok: false, error: r.error, issues: "issues" in r ? r.issues : undefined };
   revalidatePath(`/flows/${workflowId}`);

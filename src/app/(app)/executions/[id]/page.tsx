@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionCard } from "@/components/flow/action-card";
+import { DecisionChecks } from "@/components/authority/decision-checks";
 import { IntelligencePanel } from "@/components/intelligence/intelligence-panel";
 import type { Evaluation } from "@/server/authority/types";
 import type { AINodeOutput } from "@/server/intelligence/node";
@@ -15,6 +16,7 @@ import { ApprovalCard } from "@/components/authority/approval-card";
 import { listApprovals } from "@/server/approvals/queries";
 import { AgentBanner, AgentPipeline } from "@/components/agents/agent-pipeline";
 import { getAgentRequestView } from "@/server/agents/queries";
+import { settlementsFor } from "@/server/actions/settlement";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,7 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
   if (!data) notFound();
   const { run, wf, version, steps } = data;
   const agentView = run.triggerKind === "agent_request" ? await getAgentRequestView(user.workspaceId, { runId: run.id }) : null;
+  const settlements = await settlementsFor(user.workspaceId, data.actions);
   const graph = version.graph as WorkflowGraph;
   const amount = (run.triggerPayload as { amount?: { value?: string; currency_code?: string } }).amount;
   const pendingRow = data.approvals.find((a) => a.status === "PENDING");
@@ -74,6 +77,27 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
           </Link>
         </div>
       )}
+
+      {!pending &&
+        (() => {
+          const d = data.decisions.at(-1);
+          if (!d) return null;
+          const snap = (d.authoritySnapshot as { perTransactionMax?: string | null }[] | null) ?? [];
+          const human = data.approvals.find((a) => a.nodeId === d.nodeId)?.status ?? null;
+          return (
+            <div className="mt-8">
+              <div className="pf-label mb-2">Why — the authority engine&rsquo;s checks</div>
+              <DecisionChecks
+                evaluations={d.evaluations as Evaluation[]}
+                decision={d.decision}
+                amount={(d.request as { amount?: { value: string; currency: string } | null }).amount ?? null}
+                limits={snap.map((a) => a.perTransactionMax ?? null)}
+                agent={agentView ? { name: agentView.agent.name } : null}
+                humanDecision={human}
+              />
+            </div>
+          );
+        })()}
 
       {pending && (
         <div className="mt-8">
@@ -130,7 +154,7 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
                   {data.actions
                     .filter((a) => a.nodeId === s.nodeId)
                     .map((a) => (
-                      <ActionCard key={a.id} ex={a} decision={data.decisions.find((d) => d.id === a.decisionId) ?? null} labels={Object.fromEntries(graph.nodes.map((n) => [n.id, n.label ?? n.id]))} />
+                      <ActionCard key={a.id} ex={a} settlement={settlements.get(a.id) ?? null} decision={data.decisions.find((d) => d.id === a.decisionId) ?? null} labels={Object.fromEntries(graph.nodes.map((n) => [n.id, n.label ?? n.id]))} />
                     ))}
                   </div>
                 </li>

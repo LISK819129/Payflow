@@ -7,7 +7,7 @@
  *
  * Env: PAYFLOW_MCP_URL (default http://localhost:3000/api/mcp). The agent
  * credential is read from .env.agent.local and never printed. With a label,
- * the redacted exchange is saved to evidence/phase9/mcp/<label>.json.
+ * the redacted exchange is saved to evidence/<EVIDENCE_PHASE|phase9>/mcp/<label>.json.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -44,7 +44,7 @@ async function main() {
   const out = redact(JSON.stringify(exchange, null, 2), token);
   console.log(out);
   if (label) {
-    const dir = path.resolve("evidence/phase9/mcp");
+    const dir = path.resolve("evidence", process.env.EVIDENCE_PHASE ?? "phase9", "mcp");
     mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, `${label}.json`), out + "\n");
   }

@@ -1,0 +1,1 @@
+{"status":"ready","checks":{"database":"ok","migrations":"current","paypal":"configured","paypalWebhook":"configured","ai":"configured","worker":"recent"},"environment":"sandbox","time":"2026-10-05T12:31:00.964Z"}

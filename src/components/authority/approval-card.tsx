@@ -1,4 +1,5 @@
 import { ArrowUpRight, Clock } from "lucide-react";
+import { DecisionChecks } from "./decision-checks";
 import Link from "next/link";
 import { CopyId, formatClock, formatDay, ProvenanceTag, type Provenance } from "@/components/ui";
 import type { ApprovalView } from "@/server/approvals/queries";
@@ -87,6 +88,19 @@ export function ApprovalCard({ v, canDecide, now }: { v: ApprovalView; canDecide
           )}
         </dl>
       </div>
+
+      {v.kind === "authority_review" && v.evaluations.length > 0 && (
+        <div className="mt-6">
+          <DecisionChecks
+            evaluations={v.evaluations}
+            decision="REVIEW"
+            amount={amt ?? null}
+            limits={v.authorities.map((a) => a.perTransactionMax ?? null)}
+            agent={v.agent ? { name: v.agent.name } : null}
+            humanDecision={v.status}
+          />
+        </div>
+      )}
 
       <div className="mt-6 grid gap-x-12 gap-y-6 lg:grid-cols-[1fr_1.2fr]">
         <div>

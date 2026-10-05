@@ -6,6 +6,7 @@ import { appendAudit } from "@/server/audit/audit";
 import { canAuthorize, requireUser } from "@/server/auth/current";
 import { db } from "@/server/db/client";
 import { simulations, workflows } from "@/server/db/schema";
+import { checkTestRunLimit } from "@/server/security/limits";
 import { simulate, type Assumption } from "@/server/simulation/run";
 
 type Result = { ok: true; id: string } | { ok: false; error: string };
@@ -17,6 +18,9 @@ type Result = { ok: true; id: string } | { ok: false; error: string };
 export async function testRunAction(workflowId: string, payloadJson: string): Promise<Result> {
   const user = await requireUser();
   if (!canAuthorize(user)) return { ok: false, error: "Only owners and approvers can run tests" };
+  if (payloadJson.length > 64 * 1024) return { ok: false, error: "Test input is too large (64 KB at most)" };
+  const limit = checkTestRunLimit(user.id);
+  if (!limit.ok) return limit;
   let payload: unknown;
   try {
     payload = JSON.parse(payloadJson);
@@ -36,6 +40,8 @@ export async function assumeAction(simulationId: string, nodeId: string, choice:
   const user = await requireUser();
   if (!canAuthorize(user)) return { ok: false, error: "Only owners and approvers can run tests" };
   if (choice !== "APPROVED" && choice !== "REJECTED") return { ok: false, error: "Unknown assumption" };
+  const limit = checkTestRunLimit(user.id);
+  if (!limit.ok) return limit;
   const [s] = await db().select().from(simulations).where(and(eq(simulations.id, simulationId), eq(simulations.workspaceId, user.workspaceId)));
   if (!s) return { ok: false, error: "Test run not found" };
   if (s.mode !== "TEST") return { ok: false, error: "Only test runs can explore assumptions" };

@@ -3,13 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { compilerProvider } from "@/server/ai";
 import { canAuthorize, requireUser } from "@/server/auth/current";
+import { checkCompileLimit } from "@/server/security/limits";
 import { applyProposal, compileInstruction, discardProposal, proposePatch, type CompileOutcome, type PatchOutcome } from "@/server/workflow/compiler/compile";
 
 type NotAvailable = { status: "SETUP_REQUIRED"; error: string } | { status: "FORBIDDEN"; error: string };
 export type CompileActionResult = CompileOutcome | NotAvailable;
 export type PatchActionResult = PatchOutcome | NotAvailable;
 
-const SETUP = { status: "SETUP_REQUIRED" as const, error: "No AI provider is configured. Add ANTHROPIC_API_KEY to the server environment." };
+const SETUP = { status: "SETUP_REQUIRED" as const, error: "AI isn't configured on this server, so workflows can't be drafted from text. You can still build and test flows by hand." };
 const FORBIDDEN = { status: "FORBIDDEN" as const, error: "Only owners and approvers can create or edit workflows with AI." };
 
 /** Natural language → validated DRAFT. Never activates. */
@@ -18,6 +19,8 @@ export async function compileAction(instruction: string): Promise<CompileActionR
   if (!canAuthorize(user)) return FORBIDDEN;
   const provider = compilerProvider({ workspaceId: user.workspaceId });
   if (!provider) return SETUP;
+  const limit = checkCompileLimit(user.id, user.workspaceId);
+  if (!limit.ok) return { status: "FAILED", error: limit.error, attempts: 0 };
   const r = await compileInstruction({ workspaceId: user.workspaceId, userId: user.id, instruction, provider });
   if (r.status === "COMPILED") revalidatePath("/flows");
   return r;
@@ -29,6 +32,8 @@ export async function proposePatchAction(workflowId: string, instruction: string
   if (!canAuthorize(user)) return FORBIDDEN;
   const provider = compilerProvider({ workspaceId: user.workspaceId });
   if (!provider) return SETUP;
+  const limit = checkCompileLimit(user.id, user.workspaceId);
+  if (!limit.ok) return { status: "FAILED", error: limit.error, attempts: 0 } as PatchActionResult;
   return proposePatch({ workspaceId: user.workspaceId, userId: user.id, workflowId, instruction, provider });
 }
 

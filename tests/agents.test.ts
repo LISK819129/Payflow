@@ -15,7 +15,7 @@ import { statusView, syncAgentRequestForRun } from "@/server/agents/status";
 import { verifyChain } from "@/server/audit/audit";
 import { updateAuthority } from "@/server/authority/service";
 import { closeDb, db } from "@/server/db/client";
-import { actionExecutions, agentRequests, agents, approvals, auditRecords, authorities, authorityDecisions, simulations, workflowRuns, workflowVersions } from "@/server/db/schema";
+import { actionExecutions, agentRequests, agents, approvals, auditRecords, authorities, authorityDecisions, paypalEvents, simulations, workflowRuns, workflowVersions } from "@/server/db/schema";
 import { MockAnalysisProvider } from "@/server/intelligence/mock";
 import { setAnalysisProviderForTests } from "@/server/intelligence/runner";
 import type { WorkflowGraph } from "@/server/workflow/dsl/nodes";
@@ -309,20 +309,24 @@ describe("the normal path through the real engine", () => {
     expect(r.paypal).toMatchObject({ contacted: false });
     await drive();
     const s = await status(c, r.reference!);
-    expect(s).toMatchObject({ state: "COMPLETED", terminal: true, paypal: { contacted: true, money_moved: true, ids: ["PAYOUT-1"] }, authority: { decision: "ALLOW" } });
+    // PayPal accepted the batch: submitted, not settled.
+    expect(s).toMatchObject({ state: "SUBMITTED_TO_PAYPAL", terminal: false, paypal: { contacted: true, submitted: true, settled: false, ids: ["PAYOUT-1"] }, authority: { decision: "ALLOW" } });
     expect(fake.calls).toHaveLength(1);
     expect(fake.calls[0]).toMatchObject({ kind: "paypal.payout", amount: { value: "185.00", currency: "USD" }, counterparty: ACME });
     const [run] = await db().select().from(workflowRuns);
     expect(run).toMatchObject({ triggerKind: "agent_request", provenance: "AGENT_REQUEST" });
     const [ar] = await db().select().from(agentRequests);
     expect((await verifyReceipt(db(), ar)).ok).toBe(true);
-    const kinds = (ar.links as { kind: string }[]).map((l) => l.kind);
-    expect(kinds).toEqual(["authority_decision", "paypal_result", "final"]);
-    // Re-syncing never repeats a final state.
+    expect((ar.links as { kind: string }[]).map((l) => l.kind)).toEqual(["authority_decision", "paypal_result"]);
+    // PayPal's item webhook reports the recipient was paid → settled → COMPLETED, final link added once.
+    await itemEvent("PAYOUT-1", "SUCCESS");
+    const done = await status(c, r.reference!);
+    expect(done).toMatchObject({ state: "COMPLETED", terminal: true, paypal: { settled: true, settlement: { stage: "SETTLED", paypal_status: "SUCCESS", final: true } } });
     await syncAgentRequestForRun(ar.runId!);
     await status(c, r.reference!);
     const [again] = await db().select().from(agentRequests);
-    expect((again.links as unknown[]).length).toBe(3);
+    expect((again.links as { kind: string }[]).map((l) => l.kind)).toEqual(["authority_decision", "paypal_result", "paypal_settlement", "final"]);
+    expect((await verifyReceipt(db(), again)).ok).toBe(true);
     expect((await verifyChain(ws.id)).ok).toBe(true);
   });
 
@@ -332,7 +336,7 @@ describe("the normal path through the real engine", () => {
     const r = await call(c, "payflow_request_payment", pay("poll-early-01", "185.00"));
     const s = await status(c, r.reference!);
     expect(["ACCEPTED", "PROCESSING"]).toContain(s.state);
-    expect(s.paypal).toMatchObject({ contacted: false, money_moved: false });
+    expect(s.paypal).toMatchObject({ contacted: false, submitted: false, settled: false });
     expect(fake.calls).toHaveLength(0);
   });
 });
@@ -348,7 +352,7 @@ describe("idempotency and replay", () => {
     expect(await counts()).toMatchObject({ requests: 1, runs: 1, executions: 1 });
     expect(fake.calls).toHaveLength(1);
     const again = await call(c, "payflow_request_payment", pay("procurement-8472", "185.00"));
-    expect(again).toMatchObject({ replayed: true, state: "COMPLETED" });
+    expect(again).toMatchObject({ replayed: true, state: "SUBMITTED_TO_PAYPAL" });
   });
 
   it("9 · the same request_id with a changed amount (or recipient) is an IDEMPOTENCY_CONFLICT", async () => {
@@ -390,7 +394,7 @@ describe("financial safety: the same authority, intelligence and approvals as ev
     await syncAgentRequestForRun(ap.runId);
     expect((await status(c, r.reference!)).state).toBe("APPROVED");
     await drive();
-    expect(await status(c, r.reference!)).toMatchObject({ state: "COMPLETED", human_review: { required: true, status: "APPROVED" } });
+    expect(await status(c, r.reference!)).toMatchObject({ state: "SUBMITTED_TO_PAYPAL", human_review: { required: true, status: "APPROVED" } });
     expect(fake.calls).toHaveLength(1);
     expect((await decideApproval({ approvalId: ap.id, workspaceId: ws.id, userId: owner.id, decision: "APPROVED" }, deps)).error).toMatch(/Already/);
     await drive();
@@ -735,6 +739,14 @@ describe("intent receipts", () => {
     expect(s.reasons!.map((x) => x.code)).toContain("INTENT_MISMATCH");
   });
 });
+
+/** A verified PayPal payout-item webhook, as the ingest path stores it. */
+async function itemEvent(batchId: string, status: string) {
+  const id = `WH-ITEM-${Math.random().toString(36).slice(2)}`;
+  await db()
+    .insert(paypalEvents)
+    .values({ workspaceId: ws.id, eventId: id, eventType: status === "SUCCESS" ? "PAYMENT.PAYOUTS-ITEM.SUCCEEDED" : `PAYMENT.PAYOUTS-ITEM.${status}`, verification: "SELF", provenance: "REAL_PAYPAL_SANDBOX", raw: { id, event_type: "PAYMENT.PAYOUTS-ITEM", resource: { payout_batch_id: batchId, transaction_status: status } }, routedAt: new Date() });
+}
 
 async function advanceRunUntilPrepared(runId: string) {
   for (let i = 0; i < 5; i++) {

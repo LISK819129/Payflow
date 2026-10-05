@@ -6,6 +6,7 @@ import { ACTION_LABEL, intelligencePolicy, money } from "@/server/authority/eval
 
 const POLICY_LABEL: Record<string, string> = { purposeOutside: "outside purpose", purposeUncertain: "unsure of purpose", riskElevated: "elevated risk", riskHigh: "high risk", contractMismatch: "contract mismatch", injection: "injected instructions" };
 import { listAuthorities, uncoveredActions, type AuthorityView } from "@/server/authority/queries";
+import { authoritySentence } from "@/server/authority/sentence";
 import { requireUser } from "@/server/auth/current";
 import { addDecimal } from "@/server/workflow/dsl/decimal";
 import { StatusControl } from "./status-control";
@@ -65,7 +66,9 @@ function Charter({ a, isOwner }: { a: AuthorityView; isOwner: boolean }) {
         )}
       </header>
 
-      <dl className="mt-6 grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-6">
+      <p className="mt-5 max-w-4xl text-lead leading-relaxed text-ink">{authoritySentence(a, a.workflows.map((w) => w.name))}</p>
+
+      <dl className="mt-6 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-2 lg:grid-cols-6">
         <Clause q="Who">
           {a.workflows.length ? (
             <ul>

@@ -47,11 +47,12 @@ export default async function FlowsPage(props: PageProps<"/flows">) {
       {canAuthorize(user) && (
         <CompilePanel
           aiConfigured={integrationStatus().ai.configured}
+          initialInstruction={typeof q.instruction === "string" ? q.instruction.slice(0, 1000) : undefined}
           stored={stored ? { instruction: stored.instruction, result: stored.outcome, model: stored.model, at: stored.createdAt.toISOString() } : undefined}
         />
       )}
       {flows.length === 0 ? (
-        <Empty>No flows yet. Describe one above, or create an empty flow and build it by hand.</Empty>
+        <Empty>Describe what your money should do — above — and PayFlow drafts the workflow. Or create an empty flow and build it by hand.</Empty>
       ) : (
         <ul>
           {flows.map((f) => (

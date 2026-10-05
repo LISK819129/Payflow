@@ -1,4 +1,5 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { clientIp } from "../security/client-ip";
 import { rateLimit } from "../security/rate-limit";
 import { runtimeDeps } from "../workflow/runtime/deps";
 import type { RuntimeDeps } from "../workflow/runtime/types";
@@ -23,7 +24,7 @@ const rpcError = (status: number, code: number, message: string, headers: Record
  */
 export async function handleMcpRequest(request: Request, deps: RuntimeDeps = runtimeDeps): Promise<Response> {
   if (request.method !== "POST") return rpcError(405, -32000, "Method not allowed: this server is stateless; use POST", { allow: "POST" });
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const ip = clientIp((n) => request.headers.get(n));
 
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) return rpcError(413, -32600, "Request too large");

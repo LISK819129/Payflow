@@ -52,6 +52,10 @@ export function env(): Env {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
     throw new Error(`Invalid server environment:\n${issues}`);
   }
+  if (parsed.data.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+    const problems = productionProblems(parsed.data, process.env);
+    if (problems.length) throw new Error(["Unsafe production configuration:", ...problems.map((p) => `  - ${p}`)].join("\n"));
+  }
   if (parsed.data.PAYPAL_ENV === "live") {
     // PayFlow is a Sandbox product for the hackathon. Refuse to boot against
     // real money rather than trusting a config flag downstream.
@@ -59,6 +63,45 @@ export function env(): Env {
   }
   cached = parsed.data;
   return cached;
+}
+
+/** The local-development database password published in .env.example. A hosted database must never use it. */
+function localDevPassword(): string | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const text = (require("node:fs") as typeof import("node:fs")).readFileSync(".env.example", "utf8");
+    const m = /^DATABASE_URL=postgres:\/\/[^:]+:([^@]+)@/m.exec(text);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * What a hosted deployment must not run with. Checked at boot in production
+ * (not during `next build`). PAYFLOW_ALLOW_LOCAL_DB=true permits a local
+ * production rehearsal against the embedded database — never set it on a host.
+ */
+export function productionProblems(e: Env, raw: Record<string, string | undefined>, devPassword: string | null = localDevPassword()): string[] {
+  const out: string[] = [];
+  const local = raw.PAYFLOW_ALLOW_LOCAL_DB === "true";
+  let db: URL | null = null;
+  try {
+    db = new URL(e.DATABASE_URL);
+  } catch {
+    out.push("DATABASE_URL is not a valid URL");
+  }
+  if (db && !local) {
+    if (["127.0.0.1", "localhost", "::1"].includes(db.hostname)) out.push("DATABASE_URL points at a local database");
+    if (devPassword && decodeURIComponent(db.password) === devPassword) out.push("DATABASE_URL reuses the local-development password — create a new credential for the hosted database");
+    if (decodeURIComponent(db.password).length < 16) out.push("the database password is shorter than 16 characters");
+  }
+  if (!local && !e.APP_URL.startsWith("https://")) out.push("APP_URL must be the public https:// URL");
+  if (/^(.)\1+$/.test(e.SESSION_SECRET) || /change|example|secret|placeholder/i.test(e.SESSION_SECRET)) out.push("SESSION_SECRET looks like a placeholder — generate 32+ random characters");
+  if (e.PAYPAL_ALLOW_SIMULATOR_EVENTS) out.push("PAYPAL_ALLOW_SIMULATOR_EVENTS must be false in production");
+  if (!!e.PAYPAL_CLIENT_ID !== !!e.PAYPAL_CLIENT_SECRET) out.push("PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set together");
+  if (raw.PAYFLOW_DEMO_MODE === "true" && !raw.AI_DAILY_CAP_USD && (e.OPENAI_API_KEY || e.ANTHROPIC_API_KEY)) out.push("a public demo with AI enabled needs AI_DAILY_CAP_USD");
+  return out;
 }
 
 /** For tests only. */

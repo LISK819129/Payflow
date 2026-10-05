@@ -1,127 +1,136 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen, FlaskConical, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { CopyId, Empty, ProvenanceTag, Section, formatClock, formatDay, formatMoney, greeting } from "@/components/ui";
+import { buttonClass, Section, formatClock, formatDay } from "@/components/ui";
 import { requireUser } from "@/server/auth/current";
-import { integrationStatus } from "@/server/config/env";
-import { db } from "@/server/db/client";
-import { auditRecords, paypalEvents } from "@/server/db/schema";
+import { homeSnapshot, TRY_EXAMPLES } from "@/server/demo/queries";
 
-export default async function HomePage() {
-  const user = await requireUser();
-  const status = integrationStatus();
-  const ws = user.workspaceId;
+export const dynamic = "force-dynamic";
 
-  const [[processed], recentAudit, recentEvents] = await Promise.all([
-    // Real captured volume, from verified PayPal events only.
-    db()
-      .select({
-        total: sql<string>`coalesce(sum((${paypalEvents.raw}->'resource'->'amount'->>'value')::numeric), 0)::text`,
-      })
-      .from(paypalEvents)
-      .where(
-        and(
-          eq(paypalEvents.workspaceId, ws),
-          eq(paypalEvents.eventType, "PAYMENT.CAPTURE.COMPLETED"),
-          eq(paypalEvents.provenance, "REAL_PAYPAL_SANDBOX"),
-          sql`${paypalEvents.raw}->'resource'->'amount'->>'currency_code' = 'USD'`,
-        ),
-      ),
-    db().select().from(auditRecords).where(eq(auditRecords.workspaceId, ws)).orderBy(desc(auditRecords.seq)).limit(9),
-    db().select().from(paypalEvents).where(eq(paypalEvents.workspaceId, ws)).orderBy(desc(paypalEvents.receivedAt)).limit(5),
-  ]);
-  const [{ n: eventCount }] = await db().select({ n: count() }).from(paypalEvents).where(eq(paypalEvents.workspaceId, ws));
-
-  const activeFlows: number = 0; // workflow engine: Phase 3
-  const attention: number = 0; // approvals: Phase 6
-  const headline = !status.paypal.configured
-    ? "PayPal isn't connected yet."
-    : activeFlows === 0
-      ? "PayPal is connected. No flows are running yet."
-      : attention > 0
-        ? `${attention} thing${attention === 1 ? "" : "s"} need${attention === 1 ? "s" : ""} your attention.`
-        : "Your money is behaving normally.";
-
+function Pipeline({ label, steps }: { label: string; steps: string[] }) {
   return (
-    <div className="animate-fade-up">
-      <p className="text-lead text-muted">{greeting()}</p>
-      <h1 className="mt-1 max-w-3xl text-headline font-semibold tracking-[-0.02em]">{headline}</h1>
-
-      <dl className="mt-8 flex flex-wrap gap-x-12 gap-y-4">
-        <Figure label="processed" value={formatMoney(processed.total)} />
-        <Figure label="active flows" value={String(activeFlows)} />
-        <Figure label="need attention" value={String(attention)} />
-        <Figure label="PayPal events" value={String(eventCount)} />
-      </dl>
-
-      <div className="mt-14 grid gap-x-16 gap-y-12 lg:grid-cols-[1fr_1fr]">
-        <div className="space-y-12">
-          <Section label="Live flows">
-            <Empty>No flows yet. The Flow Builder arrives in Phase 3.</Empty>
-          </Section>
-          <Section label="Needs attention">
-            <Empty>Nothing needs you.</Empty>
-          </Section>
-          <Section
-            label="Latest PayPal events"
-            aside={
-              <Link href="/events" className="inline-flex items-center gap-1 hover:text-ink">
-                All events <ArrowRight size={12} aria-hidden />
-              </Link>
-            }
-          >
-            {recentEvents.length === 0 ? (
-              <Empty>No PayPal events received yet.</Empty>
-            ) : (
-              <ul>
-                {recentEvents.map((e) => (
-                  <li key={e.id} className="flex items-center gap-4 border-b border-line py-3 last:border-b-0">
-                    <span className="w-16 shrink-0 font-mono text-meta text-faint">{formatClock(e.receivedAt)}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-body font-medium">{e.eventType}</span>
-                      {e.resourceId && <CopyId value={e.resourceId} />}
-                    </span>
-                    <ProvenanceTag value={e.provenance} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-        </div>
-
-        <Section
-          label="Recent activity"
-          aside={
-            <Link href="/audit" className="inline-flex items-center gap-1 hover:text-ink">
-              Audit <ArrowRight size={12} aria-hidden />
-            </Link>
-          }
-        >
-          {recentAudit.length === 0 ? (
-            <Empty>No activity yet.</Empty>
-          ) : (
-            <ol>
-              {recentAudit.map((r) => (
-                <li key={r.id} className="flex gap-4 border-b border-line py-2.5 last:border-b-0">
-                  <span className="w-16 shrink-0 pt-px font-mono text-meta text-faint" title={formatDay(r.at)}>
-                    {formatClock(r.at)}
-                  </span>
-                  <span className="min-w-0 text-body text-ink-2">{r.summary}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </Section>
-      </div>
+    <div>
+      <div className="pf-label">{label}</div>
+      <ol className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1.5" aria-label={label}>
+        {steps.map((s, i) => (
+          <li key={s} className="inline-flex items-center gap-1.5">
+            <span
+              className={`rounded-sm border px-2 py-1 font-mono text-[12px] font-medium tracking-[0.02em] ${
+                i === steps.length - 1 ? "border-ink bg-ink text-surface" : s === "PayFlow" || s.startsWith("Authority") ? "border-marker bg-marker-wash text-ink" : "border-line text-ink-2"
+              }`}
+            >
+              {s}
+            </span>
+            {i < steps.length - 1 && <ArrowRight size={12} className="text-faint" aria-hidden />}
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
 
-function Figure({ label, value }: { label: string; value: string }) {
+function Figure({ label, value, href }: { label: string; value: number; href: string }) {
   return (
-    <div>
-      <dd className="text-title font-semibold tracking-[-0.01em]">{value}</dd>
-      <dt className="text-body-sm text-muted">{label}</dt>
+    <Link href={href} className="group block border-t-2 border-ink pt-3">
+      <div className="text-figure font-semibold tracking-[-0.02em] text-ink">{value}</div>
+      <div className="flex items-center gap-1 text-body-sm text-muted group-hover:text-ink">
+        {label} <ArrowRight size={12} aria-hidden />
+      </div>
+    </Link>
+  );
+}
+
+export default async function HomePage() {
+  const user = await requireUser();
+  const s = await homeSnapshot(user.workspaceId);
+
+  return (
+    <div className="animate-fade-up">
+      <section aria-labelledby="hero" className="max-w-4xl">
+        <h1 id="hero" className="text-[36px] font-semibold leading-[1.08] tracking-[-0.03em] sm:text-[48px]">
+          Give AI permission to ask.
+          <br />
+          <span className="pf-mark">PayFlow</span> decides whether money moves.
+        </h1>
+        <p className="mt-5 max-w-2xl text-lead text-ink-2">
+          Describe what your money should do. AI drafts the workflow; you test it safely, give it a delegated authority and switch it on. People and AI agents can then ask for payments — PayFlow checks every request against your rules and your intent, asks you when it should, and only then does PayPal settle.
+        </p>
+        <div className="mt-7 flex flex-wrap items-center gap-2">
+          <a href="#try" className={buttonClass("primary", "lg")}>
+            <Sparkles size={16} aria-hidden /> Try PayFlow
+          </a>
+          {s.cloudFlowId && (
+            <Link href={`/flows/${s.cloudFlowId}?test=1`} className={buttonClass("secondary", "lg")}>
+              <FlaskConical size={16} aria-hidden /> Test a payment — no money moves
+            </Link>
+          )}
+          <Link href="/guide" className={buttonClass("quiet", "lg")}>
+            <BookOpen size={16} aria-hidden /> 5-minute demo guide
+          </Link>
+        </div>
+      </section>
+
+      <section aria-label="How PayFlow works" className="mt-14 grid gap-8 border-t border-line pt-8 lg:grid-cols-2">
+        <Pipeline label="When a person automates money" steps={["Instruction", "AI draft", "Test run", "Authority", "Intelligence", "Approval if needed", "PayPal"]} />
+        <Pipeline label="When an AI agent asks" steps={["AI agent", "PayFlow", "Identity & scope", "Authority", "Intelligence", "Approval if needed", "PayPal"]} />
+        <p className="text-body text-ink lg:col-span-2">
+          <span className="font-semibold">AI proposes and requests. PayFlow authorizes. PayPal settles.</span> <span className="text-ink-2">No model, and no agent, ever holds PayPal credentials or approves its own request.</span>
+        </p>
+      </section>
+
+      <section id="try" aria-labelledby="try-h" className="mt-14 scroll-mt-8">
+        <h2 id="try-h" className="text-title font-semibold tracking-[-0.01em]">
+          Try PayFlow
+        </h2>
+        <p className="mt-1 text-body-sm text-muted">Pick a starting point or write your own. It opens in the real AI compiler, which drafts a workflow you can inspect and test — it never activates anything on its own.</p>
+        <ul className="mt-5 grid gap-4 md:grid-cols-3">
+          {TRY_EXAMPLES.map((e) => (
+            <li key={e.title}>
+              <Link href={`/flows?instruction=${encodeURIComponent(e.instruction)}#compile-h`} className="group flex h-full flex-col border border-line bg-surface p-5 transition-colors hover:border-ink">
+                <span className="pf-label text-ink">{e.title}</span>
+                <span className="mt-2 flex-1 text-body text-ink-2">“{e.instruction}”</span>
+                <span className="mt-4 inline-flex items-center gap-1 text-body-sm font-medium text-ink">
+                  Open in the compiler <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <Link href="/flows#compile-h" className="mt-3 inline-flex items-center gap-1 text-body-sm text-muted hover:text-ink">
+          Or describe your own <ArrowRight size={12} aria-hidden />
+        </Link>
+      </section>
+
+      <section aria-label="Right now" className="mt-14 grid grid-cols-2 gap-6 sm:grid-cols-4">
+        <Figure label={s.pending === 1 ? "needs your decision" : "need your decision"} value={s.pending} href="/approvals" />
+        <Figure label="active flows" value={s.activeFlows} href="/flows" />
+        <Figure label="active AI agents" value={s.activeAgents} href="/agents" />
+        <Figure label="agent requests" value={s.agentRequests} href="/agents" />
+      </section>
+
+      <Section
+        label="Recent activity"
+        className="mt-12"
+        aside={
+          <Link href="/audit" className="inline-flex items-center gap-1 hover:text-ink">
+            Full audit trail <ArrowRight size={12} aria-hidden />
+          </Link>
+        }
+      >
+        {s.recent.length === 0 ? (
+          <p className="py-4 text-body-sm text-muted">Nothing has happened yet. Everything PayFlow does will be recorded here, in a tamper-evident log.</p>
+        ) : (
+          <ol>
+            {s.recent.map((r) => (
+              <li key={r.id} className="flex gap-4 border-b border-line py-2.5 last:border-b-0">
+                <span className="w-32 shrink-0 whitespace-nowrap pt-px font-mono text-meta text-faint" title={r.at.toISOString()}>
+                  {formatDay(r.at)} {formatClock(r.at)}
+                </span>
+                <span className="min-w-0 text-body text-ink-2">{r.summary}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Section>
     </div>
   );
 }

@@ -24,6 +24,8 @@
  *     register-agent <scenario> <name> <workflowName>  owner registers an agent on the Agents page; the one-time
  *                                            token is blurred in the screenshot and saved only to .env.agent.local
  *     revoke-agent <agentId> <scenario> [reason]  owner revokes an agent on its page
+ *     test-example <workflowId> <scenario> <exampleLabel>  Phase 10 judge path: open the flow with ?test=1,
+ *                                            click an example preset, run the test, capture the result
  *
  * Credentials are the seeded local test owner from .env.local; the browser only
  * talks to localhost. Screenshots never include env files or secrets.
@@ -49,7 +51,9 @@ async function guardBudget() {
 
 async function open() {
   const browser = await chromium.launch({ executablePath: EDGE, headless: true });
-  const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1, reducedMotion: "no-preference" });
+  // EVIDENCE_VIEWPORT=768x1024 captures a tablet-width view; default is a 1920×1080 desktop.
+  const [vw, vh] = (process.env.EVIDENCE_VIEWPORT ?? "1920x1080").split("x").map(Number);
+  const context = await browser.newContext({ viewport: { width: vw || 1920, height: vh || 1080 }, deviceScaleFactor: 1, reducedMotion: "no-preference" });
   const page = await context.newPage();
   page.setDefaultTimeout(240_000);
   await page.goto(`${BASE}/login`);
@@ -525,6 +529,28 @@ async function revokeAgentStep(agentId: string, scenario: string, reason = "Demo
   }
 }
 
+/** Phase 10: the judge path — Test this flow, pick an example, run. The verdict comes from the engine. */
+async function testExample(workflowId: string, scenario: string, label: string) {
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/flows/${workflowId}?test=1`);
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor();
+    await dialog.getByRole("button", { name: label }).click();
+    await page.waitForTimeout(400);
+    await shot(page, "test-input");
+    await dialog.getByRole("button", { name: "Run test" }).click();
+    await page.waitForURL(/\/simulations\//, { timeout: 240_000 });
+    console.log(`  simulation ${page.url().split("/").pop()}`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    await shot(page, "test-result", true);
+  } finally {
+    await browser.close();
+  }
+}
+
 async function main() {
   const [step, a, b, c] = process.argv.slice(2);
   console.log(`evidence: ${step} ${a ?? ""} ${b ?? ""}`);
@@ -569,6 +595,8 @@ async function main() {
       return registerAgentStep(a, b, c);
     case "revoke-agent":
       return revokeAgentStep(a, b, c);
+    case "test-example":
+      return testExample(a, b, c);
     default:
       throw new Error(`unknown step ${step}`);
   }

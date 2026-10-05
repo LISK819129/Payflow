@@ -30,6 +30,15 @@ export async function assertWithinBudget(worstCaseUsd: string): Promise<{ ok: tr
       return { ok: false, message: `AI phase cap: $${Number(phase).toFixed(4)} of $${cap} spent since ${since}; this call could cost up to $${Number(worstCaseUsd).toFixed(4)}` };
     }
   }
+  // Optional rolling 24-hour cap (AI_DAILY_CAP_USD): what a public judging deployment may spend per day.
+  const daily = process.env.AI_DAILY_CAP_USD;
+  if (daily && /^\d+(\.\d+)?$/.test(daily)) {
+    const { rows } = await db().execute<{ total: string }>(sql`select coalesce(sum(cost_usd::numeric), 0)::text as total from ai_usage where at >= now() - interval '24 hours'`);
+    const day = rows[0]?.total ?? "0";
+    if (compareDecimal((Number(day) + Number(worstCaseUsd)).toFixed(6), daily) > 0) {
+      return { ok: false, message: `AI daily cap: $${Number(day).toFixed(4)} of $${daily} spent in the last 24 hours; this call could cost up to $${Number(worstCaseUsd).toFixed(4)}` };
+    }
+  }
   const spent = await spentUsd();
   const projected = (Number(spent) + Number(worstCaseUsd)).toFixed(6);
   if (compareDecimal(projected, aiBudgetUsd()) > 0) {

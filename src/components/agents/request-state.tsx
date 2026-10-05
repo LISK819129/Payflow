@@ -1,5 +1,8 @@
 const STATE_CLS: Record<string, string> = {
   COMPLETED: "border-marker-ink/60 text-marker-ink",
+  SUBMITTED_TO_PAYPAL: "border-ink text-ink",
+  AWAITING_RECIPIENT: "border-warn/60 text-warn",
+  RETURNED: "border-danger/60 text-danger",
   REVIEW_REQUIRED: "border-warn/60 text-warn",
   APPROVED: "border-ink text-ink",
   ACCEPTED: "border-line-strong text-ink-2",

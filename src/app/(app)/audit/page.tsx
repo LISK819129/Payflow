@@ -62,7 +62,7 @@ export default async function AuditPage() {
         }
       />
 
-      {records.length === 0 && <Empty>No audit records.</Empty>}
+      {records.length === 0 && <Empty>Nothing recorded yet. Every decision, approval and PayPal call will appear here, in a hash-chained log.</Empty>}
 
       {[...days.entries()].map(([day, rows]) => (
         <section key={day} className="mb-12">

@@ -21,6 +21,7 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | **3** | **Workflow DSL, validator, durable runtime, Flow Builder, Executions (2026-10-03)** | see Phase 3 evidence |
 | **4** | **AI workflow compiler — mock-validated and real-model validated (2026-10-03)** | see Phase 4 evidence · `evidence/phase4/` |
 | **4.1** | **Correctness pass (2026-10-04)**: amount limit gains explicit `lt`/`lte` and a boundary review that corrects AI graphs to the instruction's wording (or asks when it contradicts itself); run outcomes derived from the executed path; AI edits refresh the changed node's own labels and flag stale mentions elsewhere ($2,500 → $1,800 regression); the old Nova and Phase-3 demo flows paused; decomposition seam documented (ARCHITECTURE §10) | `tests/phase41.test.ts` incl. replays of recorded real gpt-5.4-mini outputs at $0; commit `6528bd2` |
+| **10** | **Product hardening & Judge Mode (2026-10-05)** — no new product concepts: judge Home (pitch, pipelines, *Try PayFlow* into the real compiler), Demo guide, Test Run presets and supplier picker, decision-checks strip (Supplier ✓ … Purpose ✕), readable authority sentence, clearer approvals ("exceeds by $150", *Approve once*), Sandbox indicator, empty/error states; truthful settlement model (*Submitted to PayPal* ≠ *Settled*; payout items from PayPal webhooks); demo setup + owner-only restore (demo records only, audited, no PayPal); AI/Test Run limits and a daily AI cap; health endpoints; production config checks; `render.yaml`; security fixes (proxy IPs, login throttling, viewer edits, headers) and an AI-lease race fix | see Phase 10 evidence · `evidence/phase10/` · ARCHITECTURE §16 · docs/DEPLOYMENT.md · docs/SECURITY.md |
 | **9** | **Agent Gateway & MCP (2026-10-05)**: PayFlow's own MCP server (`/api/mcp`, Streamable HTTP, 7 tools, no approve/mutate/raw-PayPal tool); agent identities with hashed, rotatable, revocable, expiring bearer credentials; scopes = permission to *ask* (workflow + action + mode), authority still decides; strict request envelope; idempotency per (agent, request_id); immutable, audit-anchored Intent Receipts with a hash-linked outcome chain; binding check before PayPal (exact action/amount/recipient, agent still active); executable *Agent request* trigger through the normal engine; agent TEST requests via Phase 8; Agents area and agent pipeline on executions | see Phase 9 evidence · `evidence/phase9/` · ARCHITECTURE §15 |
 | **8** | **Test Run and Observe Mode (2026-10-05)** — not forecasting or prediction: *Test this flow* runs a person's hypothetical input (`TEST_INPUT`) through the real engine; *Observe* lets a DRAFT evaluate real, PayPal-confirmed events (`REAL_PAYPAL_EVENT_OBSERVED`) after live routing. Real engine inside an always-rolled-back transaction; no PayPal write capability in TEST/OBSERVE (four layers); budgets snapshot-only; *Assume approved / rejected* exists only inside a test; every record keeps the workflow version, graph hash and authority versions | see Phase 8 evidence · `evidence/phase8/` · ARCHITECTURE §14 |
 | **7** | **AI financial intelligence (2026-10-04)**: five executable AI evidence nodes (invoice reading, contract check, purpose check, behaviour analysis, invoice match); deterministic history signals; authority purpose scope + intelligence policy; prompt-injection fencing + deterministic scanner; strict schemas, one repair, fail closed to review; content-addressed cache with single-flight; provenance; Intelligence panel | see Phase 7 evidence · `evidence/phase7/` |
@@ -39,10 +40,26 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | PayPal Sandbox app | Credentials in `.env.local` ✓ | — |
 | PayPal AI Toolkit plugin | Installed on the account 2026-10-03; loads in the next session. Its best-practices references were read directly from github.com/paypal/AI-Toolkit for Phase 2 | — |
 | APIMatic Context Plugin | Installed 2026-10-03 as project skills in `.claude/skills/` (TypeScript set, pinned commit 6aa0571) because the installer needs the `claude` CLI, which this machine lacks. Loads next session. Free-subscription form still to be submitted by the user | — |
-| AI provider | OpenAI `gpt-5.4-mini` configured; $5 total budget, $0.431729 used (Phase 9: $0.044912) | — |
+| AI provider | OpenAI `gpt-5.4-mini` configured; $5 total budget, $0.451354 used across the development and judge-rehearsal databases (Phase 10: $0.019625) | — |
 | Public webhook URL | cloudflared 2026.9.3 downloaded (Authenticode: Cloudflare, Inc., valid) | — |
 | PayPal sandbox merchant | US Sandbox app with all features ✓ (India app retired) | — |
+| Demo Sandbox recipients | Create two Sandbox **personal** accounts (developer.paypal.com → Testing tools → Sandbox accounts) to act as Acme Cloud and AWS, so demo payouts end *Settled* instead of *Awaiting recipient*; put their emails in `DEMO_SUPPLIER_ACME_EMAIL` / `DEMO_SUPPLIER_AWS_EMAIL` (docs/DEPLOYMENT.md) | A clean end-to-end payout in the Phase 12 demo |
 | Order capture success path | A buyer must approve a Sandbox order in PayPal checkout with a Sandbox **personal** account: run `pnpm paypal:sandbox:order 64.00`, open the printed link, log in as the personal account, approve. Then start "Capture approved orders" with that order id | The capture *success* screenshot only — node and refusals are verified |
+
+## Phase 10 evidence (production rehearsal on a fresh judge database, 2026-10-05)
+
+Details: `evidence/phase10/README.md`, database-generated `evidence/phase10/manifest.json`. **OpenAI: 12 calls, $0.019625** (judge Test Runs + one agent request; cap $0.25). **No PayPal transactions.** Run as `next build` + `next start` with a production-mode worker against a database created from scratch by `db:migrate`, `db:seed`, `demo:restore`.
+
+| Check | Result |
+|---|---|
+| Judge path, Test Run (real engine, rolled back) | $185 Acme GPU → WOULD ALLOW · $470 Acme gift cards → WOULD REVIEW (Purpose ✕, everything else ✓) · $650 AWS GPU → WOULD REVIEW (Amount ✕, exceeds by $150) |
+| Approval UX | live judge-agent request $650 AWS waits for a person; *Approve once* only; no "always" |
+| Truthful status | Phase 9 payouts now *Awaiting recipient* (PayPal item UNCLAIMED), receipts annotated, history unchanged, settlement link appended |
+| Demo setup | created from scratch; restore touches demo records only; never PayPal; audited |
+| Deployment readiness | `/api/health` ok, `/api/health/ready` ready (states only); security headers; production config refuses unsafe values |
+| Security | proxy-aware IPs, per-account login throttle, viewer edit check, AI/Test Run limits, daily AI cap; AI-lease race fixed (`docs/SECURITY.md`) |
+| Tests | `tests/phase10.test.ts` 21 (the 18 required + correctness and security); full suite 284 passing |
+| Regression | lint, typecheck, `next build`, `pnpm paypal:check` clean; audit chains verified (development and judge databases) |
 
 ## Phase 9 evidence (real external AI agent + real PayPal US Sandbox + deterministic tests, 2026-10-05)
 
@@ -195,4 +212,4 @@ Nothing in Phase 2 is simulated. No simulator events were used.
 
 ## NEXT
 
-Waiting for approval of the Phase 9 checkpoint before Phase 10.
+Waiting for approval of the Phase 10 checkpoint before Phase 11 (Render deployment).

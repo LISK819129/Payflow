@@ -112,7 +112,7 @@ describe("PayPal action nodes: success path", () => {
     expect(ex).toMatchObject({ kind: "paypal.refund", status: "SUCCEEDED", amountValue: "120.00", currency: "USD", targetRef: "9KA36357WA530561Y", paypalRefs: ["REF-1"], debugId: "dbg-ok", idempotencyKey: `pf:${runId}:refund`, attempts: 1 });
     expect((ex.authorization as { gates: { nodeId: string; port: string }[] }).gates).toEqual([expect.objectContaining({ nodeId: "lim", port: "pass" })]);
     const steps = await stepsOf(runId);
-    expect(steps.find((s) => s.nodeId === "refund")).toMatchObject({ status: "OK", port: "done", explanation: "Refunded 120.00 USD on capture 9KA36357WA530561Y · refund REF-1 COMPLETED" });
+    expect(steps.find((s) => s.nodeId === "refund")).toMatchObject({ status: "OK", port: "done", explanation: "Refund of 120.00 USD on capture 9KA36357WA530561Y accepted by PayPal · refund REF-1 COMPLETED" });
     const kinds = (await db().select().from(auditRecords).where(eq(auditRecords.runId, runId)).orderBy(asc(auditRecords.seq))).map((a) => a.kind);
     expect(kinds.indexOf("action.prepared")).toBeLessThan(kinds.indexOf("action.succeeded"));
     const [run] = await db().select().from(workflowRuns).where(eq(workflowRuns.id, runId));

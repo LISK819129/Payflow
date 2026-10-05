@@ -15,12 +15,15 @@ export async function login(email: string, password: string, meta: { ip: string;
   const normalized = email.trim().toLowerCase();
   // Only failed attempts count; a person signing in successfully is never locked out.
   const key = `login:${meta.ip}:${normalized}`;
-  if (isLimited(key, 8)) return { ok: false, error: "Too many failed attempts. Try again later." };
+  // Per account too, whatever the IP: rotating addresses must not allow unlimited guesses at one password.
+  const account = `login:account:${normalized}`;
+  if (isLimited(key, 8) || isLimited(account, 30)) return { ok: false, error: "Too many failed attempts. Try again later." };
 
   const [user] = await db().select().from(users).where(eq(sql`lower(${users.email})`, normalized)).limit(1);
   const valid = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !valid) {
     recordHit(key, 15 * 60_000);
+    recordHit(account, 15 * 60_000);
     return { ok: false, error: "Email or password is incorrect." };
   }
   clearHits(key);

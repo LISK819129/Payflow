@@ -3,6 +3,7 @@
 import {
   Activity,
   ArrowLeftRight,
+  BookOpen,
   House,
   KeyRound,
   Landmark,
@@ -25,13 +26,16 @@ const primary: Item[] = [
   { href: "/flows", label: "Flows", icon: Workflow },
   { href: "/executions", label: "Executions", icon: Activity },
   { href: "/approvals", label: "Approvals", icon: Stamp },
-  { href: "/authority", label: "Authority", icon: Landmark },
   { href: "/agents", label: "Agents", icon: KeyRound },
-  { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { href: "/authority", label: "Authority", icon: Landmark },
+  { href: "/transactions", label: "PayPal activity", icon: ArrowLeftRight },
   { href: "/events", label: "PayPal events", icon: Radio },
   { href: "/audit", label: "Audit", icon: ScrollText },
 ];
-const secondary: Item[] = [{ href: "/settings", label: "Settings", icon: Settings2 }];
+const secondary: Item[] = [
+  { href: "/guide", label: "Demo guide", icon: BookOpen },
+  { href: "/settings", label: "Settings", icon: Settings2 },
+];
 
 function NavItem({ item, active }: { item: Item; active: boolean }) {
   const Icon = item.icon;

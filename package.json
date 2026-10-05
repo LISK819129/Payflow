@@ -40,11 +40,13 @@
     "db:seed:phase7": "tsx scripts/seed-phase7.ts",
     "db:seed:phase8": "tsx scripts/seed-phase8.ts",
     "db:seed:phase9": "tsx scripts/seed-phase9.ts",
+    "demo:restore": "tsx scripts/demo-restore.ts",
     "agent:mcp": "tsx scripts/agent-demo/mcp-client.ts",
     "agent:openai": "tsx scripts/agent-demo/openai-agent.ts",
     "evidence:manifest:phase7": "tsx scripts/evidence/manifest-phase7.ts",
     "evidence:manifest:phase8": "tsx scripts/evidence/manifest-phase8.ts",
-    "evidence:manifest:phase9": "tsx scripts/evidence/manifest-phase9.ts"
+    "evidence:manifest:phase9": "tsx scripts/evidence/manifest-phase9.ts",
+    "evidence:manifest:phase10": "tsx scripts/evidence/manifest-phase10.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -52,6 +54,7 @@
     "@modelcontextprotocol/sdk": "1.32.0",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "@xyflow/react": "^12.12.0",
+    "dotenv": "^18.0.5",
     "drizzle-orm": "^0.45.3",
     "lucide-react": "^1.49.0",
     "next": "16.3.8",
@@ -61,6 +64,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
+    "tsx": "^4.23.15",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -70,7 +74,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
-    "dotenv": "^18.0.5",
     "drizzle-kit": "^0.31.11",
     "embedded-postgres": "18.4.0-beta.17",
     "eslint": "^9",
@@ -78,7 +81,6 @@
     "playwright-core": "^1.63.0",
     "selfsigned": "^5.5.0",
     "tailwindcss": "^4",
-    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.3"
   },

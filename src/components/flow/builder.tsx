@@ -9,6 +9,7 @@ import { useMemo, useState, useTransition } from "react";
 import { activateAction, manualRunAction, saveDraftAction, setStateAction } from "@/app/(app)/flows/actions";
 import { setObservingAction } from "@/app/(app)/simulations/actions";
 import { TestRunDialog } from "@/components/simulation/test-run-dialog";
+import type { TestExample } from "@/server/demo/setup";
 import { Button, ProvenanceTag } from "@/components/ui";
 import { canonicalJson } from "@/server/audit/canonical-json";
 import { NODE_SPECS, SPEC_BY_TYPE, type GraphNode, type WorkflowGraph } from "@/server/workflow/dsl/nodes";
@@ -32,6 +33,10 @@ type Props = {
   aiInstruction?: string | null;
   observing?: boolean;
   observations?: number;
+  /** Open "Test this flow" straight away (from the home page / guide). */
+  autoTest?: boolean;
+  suppliers?: { id: string; name: string }[];
+  testExamples?: TestExample[];
 };
 
 const CATEGORY_ORDER = ["trigger", "policy", "control", "paypal", "ai", "ledger"] as const;
@@ -100,8 +105,8 @@ export function FlowBuilder(props: Props) {
   );
 }
 
-function Builder({ workflowId, name, state, latestVersion, latestStatus, activeVersion, initialGraph, canAuthorize, aiConfigured, provenance, aiInstruction, observing = false, observations = 0 }: Props) {
-  const [testOpen, setTestOpen] = useState(false);
+function Builder({ workflowId, name, state, latestVersion, latestStatus, activeVersion, initialGraph, canAuthorize, aiConfigured, provenance, aiInstruction, observing = false, observations = 0, autoTest = false, suppliers = [], testExamples = [] }: Props) {
+  const [testOpen, setTestOpen] = useState(autoTest && canAuthorize);
   const [observeOn, setObserveOn] = useState(observing);
   const router = useRouter();
   const [graph, setGraph] = useState<WorkflowGraph>(initialGraph);
@@ -266,7 +271,7 @@ function Builder({ workflowId, name, state, latestVersion, latestStatus, activeV
         </div>
       </header>
 
-      {testOpen && <TestRunDialog workflowId={workflowId} graph={graph} onClose={() => setTestOpen(false)} />}
+      {testOpen && <TestRunDialog workflowId={workflowId} graph={graph} suppliers={suppliers} examples={testExamples} onClose={() => setTestOpen(false)} />}
       <PatchBar workflowId={workflowId} aiConfigured={aiConfigured} disabledReason={dirty ? "Save your manual edits before asking for an AI change" : canAuthorize ? undefined : "Only owners and approvers can edit"} />
 
       {provenance === "AI_GENERATED" && aiInstruction && (

@@ -85,6 +85,13 @@
       "when": 1791171922840,
       "tag": "0011_agent_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791188097802,
+      "tag": "0012_demo_keys",
+      "breakpoints": true
     }
   ]
 }

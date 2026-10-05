@@ -39,7 +39,7 @@ export function buildMcpServer(ctx: AgentContext, deps: RuntimeDeps = runtimeDep
       instructions:
         "PayFlow is a financial control layer. You may REQUEST payouts or refunds through the workflows you are scoped to, check their status, run TEST requests, and withdraw a request that is waiting for review. " +
         "A request is never authorization: PayFlow's authority, AI analysis and, when required, a person decide, and only then does PayPal settle. " +
-        "REQUEST accepted ≠ payment completed — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. " +
+        "REQUEST accepted ≠ submitted to PayPal ≠ settled — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. " +
         "Always reuse the same request_id when retrying the same request.",
     },
   );
@@ -76,7 +76,7 @@ export function buildMcpServer(ctx: AgentContext, deps: RuntimeDeps = runtimeDep
       title: "Request a payout (LIVE)",
       description:
         "Asks PayFlow to pay a supplier through one of your workflows. PayFlow checks identity, scope, authority (amount, recipient, currency, budget, frequency), analyses the purpose and evidence, and asks a person when required. " +
-        "Returns the request state — ACCEPTED/PROCESSING/REVIEW_REQUIRED/DENIED/COMPLETED… — never assume payment until state is COMPLETED.",
+        "Returns the request state — ACCEPTED, PROCESSING, REVIEW_REQUIRED, DENIED, SUBMITTED_TO_PAYPAL, AWAITING_RECIPIENT, COMPLETED… SUBMITTED_TO_PAYPAL means PayPal accepted it, not that money arrived; only COMPLETED means PayPal confirmed settlement.",
       inputSchema: PaymentInput,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },

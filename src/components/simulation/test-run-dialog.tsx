@@ -27,7 +27,23 @@ function fieldsFor(graph: WorkflowGraph): Field[] {
 
 const input = "mt-1 block w-full border-0 border-b border-field bg-transparent pb-1.5 text-body outline-none focus:border-ink";
 
-export function TestRunDialog({ workflowId, graph, onClose }: { workflowId: string; graph: WorkflowGraph; onClose: () => void }) {
+const SUPPLIER_KEYS = new Set(["counterparty", "supplierEmail"]);
+
+export function TestRunDialog({
+  workflowId,
+  graph,
+  onClose,
+  suppliers = [],
+  examples = [],
+}: {
+  workflowId: string;
+  graph: WorkflowGraph;
+  onClose: () => void;
+  /** Recipients the covering authority names — offered as choices for the supplier field. */
+  suppliers?: { id: string; name: string }[];
+  /** Input presets only; the verdict always comes from the engine. */
+  examples?: { label: string; values: Record<string, string | { value: string; currency_code: string }> }[];
+}) {
   const router = useRouter();
   const trigger = graph.nodes.find((n) => n.type.startsWith("trigger."));
   const isEvent = trigger?.type === "trigger.paypal_event";
@@ -81,6 +97,33 @@ export function TestRunDialog({ workflowId, graph, onClose }: { workflowId: stri
         </h2>
         <p className="mt-1 text-body-sm text-muted">See exactly how this workflow handles a transaction — without moving money. PayPal is never contacted and no budget is reserved.</p>
         <div className="mt-4 inline-block rounded-sm border border-line-strong px-1.5 py-px text-label font-semibold uppercase tracking-[0.06em] text-muted">Test input — user provided</div>
+        {examples.length > 0 && (
+          <div className="mt-4">
+            <div className="pf-label">Fill in an example</div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {examples.map((ex) => (
+                <button
+                  key={ex.label}
+                  type="button"
+                  onClick={() => {
+                    const v: Record<string, string> = {};
+                    const m: Record<string, { value: string; currency: string }> = {};
+                    for (const [k, x] of Object.entries(ex.values)) {
+                      if (typeof x === "string") v[k] = x;
+                      else m[k] = { value: x.value, currency: x.currency_code };
+                    }
+                    setValues(v);
+                    setMoney(m);
+                  }}
+                  className="rounded-sm border border-line px-2 py-1 text-body-sm text-ink-2 hover:border-ink hover:text-ink"
+                >
+                  {ex.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-meta text-muted">Examples only fill the form. The result comes from the real decision engine.</p>
+          </div>
+        )}
 
         <div className="mt-4 space-y-4">
           {isEvent && (
@@ -123,6 +166,20 @@ export function TestRunDialog({ workflowId, graph, onClose }: { workflowId: stri
                   <input aria-label={`${f.key} currency`} className={input} value={money[f.key]?.currency ?? "USD"} onChange={(e) => setMoney({ ...money, [f.key]: { value: money[f.key]?.value ?? "", currency: e.target.value } })} />
                 </label>
               </div>
+            ) : SUPPLIER_KEYS.has(f.key) && suppliers.length > 0 ? (
+              <label key={f.key} className="block">
+                <span className="pf-label">Supplier</span>
+                <select aria-label={f.key} className={input} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}>
+                  <option value="">Choose…</option>
+                  {suppliers.map((sp) => (
+                    <option key={sp.id} value={sp.id}>
+                      {sp.name} · {sp.id}
+                    </option>
+                  ))}
+                  {values[f.key] && !suppliers.some((sp) => sp.id === values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
+                </select>
+                <input aria-label={`${f.key} (other)`} className={`${input} mt-2 font-mono text-meta`} placeholder="or another PayPal email" value={suppliers.some((sp) => sp.id === values[f.key]) ? "" : (values[f.key] ?? "")} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+              </label>
             ) : (
               <label key={f.key} className="block">
                 <span className="pf-label">{f.key}</span>

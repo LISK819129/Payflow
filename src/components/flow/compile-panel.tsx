@@ -18,12 +18,15 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export function CompilePanel({
   aiConfigured,
   stored,
+  initialInstruction,
 }: {
   aiConfigured: boolean;
+  /** Pre-filled from a "Try PayFlow" example. Nothing is compiled until the person presses the button. */
+  initialInstruction?: string;
   /** A past compilation re-rendered from its record (no model call). */
   stored?: { instruction: string; result: CompileActionResult; model: string; at: string };
 }) {
-  const [instruction, setInstruction] = useState(stored?.instruction ?? "");
+  const [instruction, setInstruction] = useState(stored?.instruction ?? initialInstruction ?? "");
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [stage, setStage] = useState<Stage>(stored ? "Ready" : "idle");
   const [result, setResult] = useState<CompileActionResult | null>(stored?.result ?? null);

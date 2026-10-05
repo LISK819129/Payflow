@@ -23,7 +23,7 @@ export default async function EventsPage() {
     <>
       <PageHeader title="PayPal events" lead="Webhook deliveries from PayPal that passed signature verification. Each is stored once, however many times PayPal delivers it." />
       {events.length === 0 ? (
-        <Empty>No PayPal events yet. They appear here once the sandbox webhook is registered.</Empty>
+        <Empty>PayPal events will appear here after your connected Sandbox app sends them. Each one is verified before PayFlow acts on it.</Empty>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left">

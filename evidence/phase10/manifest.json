@@ -1,0 +1,227 @@
+{
+  "phase": 10,
+  "generatedAt": "2026-10-05T12:59:07.873Z",
+  "labels": {
+    "REAL_OPENAI": "a real OpenAI (gpt-5.4-mini) analysis, metered and capped",
+    "CACHED_AI_ANALYSIS": "an earlier real OpenAI result reused from the cache — no new call",
+    "TEST_INPUT": "a Test Run: real engine, rolled back, PayPal not contacted, no budget reserved",
+    "DEMO_SETUP": "configuration created by `pnpm demo:restore` (workflows, authorities, agent) — never payments or PayPal records",
+    "REAL_PAYPAL_SANDBOX": "records PayPal produced (Phase 9 payouts and their webhooks); no PayPal transactions were made in Phase 10",
+    "MOCK_TEST": "tests/phase10.test.ts and the rest of the suite (fake PayPal, mock analyst)"
+  },
+  "judge": {
+    "database": "fresh judge database (production rehearsal: next build + next start, NODE_ENV=production)",
+    "demo_setup": {
+      "workflows": [
+        {
+          "name": "Cloud procurement",
+          "demo_key": "demo:cloud-procurement",
+          "state": "ACTIVE"
+        },
+        {
+          "name": "Customer refunds",
+          "demo_key": "demo:customer-refunds",
+          "state": "ACTIVE"
+        }
+      ],
+      "authorities": [
+        {
+          "name": "Cloud procurement",
+          "demo_key": "demo:cloud-procurement-authority",
+          "version": 1,
+          "per_transaction_max": "500.00",
+          "budget_amount": "5000.00",
+          "budget_period": "month",
+          "counterparties": [
+            {
+              "id": "billing@acme-cloud.example",
+              "name": "Acme Cloud"
+            },
+            {
+              "id": "aws-billing@amazon.example",
+              "name": "AWS"
+            }
+          ]
+        },
+        {
+          "name": "Customer refunds",
+          "demo_key": "demo:customer-refunds-authority",
+          "version": 1,
+          "per_transaction_max": "100.00",
+          "budget_amount": "1000.00",
+          "budget_period": "month",
+          "counterparties": []
+        }
+      ],
+      "agents": [
+        {
+          "name": "Cloud Procurement Agent",
+          "demo_key": "demo:cloud-procurement-agent",
+          "status": "ACTIVE",
+          "scopes": [
+            {
+              "modes": [
+                "LIVE",
+                "TEST"
+              ],
+              "actions": [
+                "paypal.payout"
+              ],
+              "workflowId": "b49aecb2-ea48-402d-be56-975a2e1d47ac"
+            }
+          ],
+          "credential_version": 1,
+          "expires_at": "2026-12-04T12:22:57.698Z"
+        }
+      ]
+    },
+    "test_runs": [
+      {
+        "id": "0f23ea18-e2ed-450e-803c-fb7c8407adc1",
+        "verdict": "WOULD_ALLOW",
+        "headline": "Would send payout 185.00 USD → billing@acme-cloud.example to PayPal — not sent in this test",
+        "ai_labels": "extract:REAL_OPENAI, purpose:REAL_OPENAI, behavior:REAL_OPENAI",
+        "external_actions_disabled": true,
+        "created_at": "2026-10-05T12:26:25.986Z"
+      },
+      {
+        "id": "f63b554a-97ca-441f-8d97-82df64bb043b",
+        "verdict": "WOULD_REVIEW",
+        "headline": "Would wait for a person: AI interpretation: outside the delegated purpose (gift cards) — The documents describe digital gift cards, which are not cloud infrastructure services.",
+        "ai_labels": "extract:REAL_OPENAI, purpose:REAL_OPENAI, behavior:REAL_OPENAI",
+        "external_actions_disabled": true,
+        "created_at": "2026-10-05T12:26:39.753Z"
+      },
+      {
+        "id": "a59e5632-a06e-40d1-b5aa-291d0c82463d",
+        "verdict": "WOULD_REVIEW",
+        "headline": "Would wait for a person: $650.00 exceeds the $500.00 per-transaction limit",
+        "ai_labels": "extract:REAL_OPENAI, purpose:REAL_OPENAI, behavior:REAL_OPENAI",
+        "external_actions_disabled": true,
+        "created_at": "2026-10-05T12:26:52.895Z"
+      }
+    ],
+    "agent_requests": [
+      {
+        "reference": "PF-PNMMKQHH",
+        "request_id": "judge-aws-gpu-0650",
+        "mode": "LIVE",
+        "state": "REVIEW_REQUIRED",
+        "receipt_hash": "bb292a8c71ef880dddc655455baa393e7ea9ffa32328c5fab8387e52ba2e3e32",
+        "links": 2
+      }
+    ],
+    "live_records": {
+      "runs": "1",
+      "executions": "0",
+      "approvals_pending": "1",
+      "paypal_events": "0"
+    },
+    "openai": {
+      "calls": 12,
+      "cost_usd": "0.019625"
+    },
+    "audit": {
+      "linkage_ok": true,
+      "records": 58,
+      "note": "seq + prev_hash linkage; full hash recomputation is `verifyChain` (run in the regression)"
+    }
+  },
+  "main": {
+    "database": "development database (Phases 2–9 history)",
+    "openai_phase10": {
+      "calls": 0,
+      "cost_usd": "0"
+    },
+    "openai_lifetime": {
+      "calls": 49,
+      "cost_usd": "0.431729"
+    },
+    "historical_payouts_under_truthful_status": [
+      {
+        "paypal_ids": [
+          "UBYPWTPSCT2FG"
+        ],
+        "phase9_label": "COMPLETED (meaning: PayPal accepted)",
+        "paypal_said": [
+          "PAYMENT.PAYOUTS-ITEM.UNCLAIMED=UNCLAIMED",
+          "PAYMENT.PAYOUTSBATCH.SUCCESS=SUCCESS"
+        ],
+        "now_presented_as": "Awaiting recipient (AWAITING_RECIPIENT, final=false)"
+      },
+      {
+        "paypal_ids": [
+          "NPXQZ7FYERYNE"
+        ],
+        "phase9_label": "COMPLETED (meaning: PayPal accepted)",
+        "paypal_said": [
+          "PAYMENT.PAYOUTS-ITEM.UNCLAIMED=UNCLAIMED",
+          "PAYMENT.PAYOUTSBATCH.SUCCESS=SUCCESS"
+        ],
+        "now_presented_as": "Awaiting recipient (AWAITING_RECIPIENT, final=false)"
+      }
+    ],
+    "receipts": [
+      {
+        "reference": "PF-NT6DAC4P",
+        "state": "AWAITING_RECIPIENT",
+        "links": 6
+      },
+      {
+        "reference": "PF-7GK9NCJQ",
+        "state": "REJECTED",
+        "links": 5
+      },
+      {
+        "reference": "PF-RUQN67G5",
+        "state": "AWAITING_RECIPIENT",
+        "links": 9
+      },
+      {
+        "reference": "PF-WLHJX6EQ",
+        "state": "CANCELLED",
+        "links": 5
+      },
+      {
+        "reference": "PF-M3PUUR36",
+        "state": "TEST_COMPLETE",
+        "links": 3
+      }
+    ],
+    "audit": {
+      "linkage_ok": true,
+      "records": 812,
+      "note": "seq + prev_hash linkage; full hash recomputation is `verifyChain` (run in the regression)"
+    }
+  },
+  "screenshots": [
+    "01-judge-home/01-home.png",
+    "02-demo-guide/01-guide.png",
+    "03-try-payflow/01-compiler-prefilled.png",
+    "04-test-185-allowed/01-test-input.png",
+    "04-test-185-allowed/02-test-result.png",
+    "05-test-470-giftcards-purpose/01-test-input.png",
+    "05-test-470-giftcards-purpose/02-test-result.png",
+    "06-test-650-over-authority/01-test-input.png",
+    "06-test-650-over-authority/02-test-result.png",
+    "07-approval-650/01-approval-card.png",
+    "08-agent-request-trace/01-execution.png",
+    "09-intent-receipt/01-receipt.png",
+    "10-readable-authority/01-authority.png",
+    "11-agents/01-agents-dashboard.png",
+    "11-agents/02-agent-scope.png",
+    "12-settings-demo-restore/01-settings.png",
+    "13-audit/01-audit.png",
+    "14-tablet/01-home-tablet.png",
+    "14-tablet/02-test-result-tablet.png",
+    "16-payment-status-historical/01-paypal-activity.png",
+    "16-payment-status-historical/02-phase9-request-c-awaiting-recipient.png",
+    "16-payment-status-historical/03-phase9-receipt-a-preserved-history.png"
+  ],
+  "other": [
+    "15-health/liveness.json",
+    "15-health/readiness.json",
+    "15-health/security-headers.txt",
+    "mcp/01-judge-agent-aws-650.json"
+  ]
+}

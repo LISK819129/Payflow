@@ -26,7 +26,7 @@ export default async function ApprovalsPage() {
         lead="Requests a workflow could not make on its own authority. Each decision covers one request, once — approving never widens what a workflow may do."
       />
       {pending.length === 0 ? (
-        <Empty>Nothing is waiting for you.</Empty>
+        <Empty>Nothing needs your attention. Requests that go beyond a workflow&rsquo;s delegated authority will wait here for you.</Empty>
       ) : (
         <div className="space-y-10">
           {pending.map((v) => (

@@ -2,6 +2,7 @@ import { ArrowLeft, CircleAlert, CircleCheck, CircleX, Eye, FlaskConical, Hourgl
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { DecisionChecks } from "@/components/authority/decision-checks";
 import { DecisionTrace } from "@/components/authority/decision-trace";
 import { RunGraph } from "@/components/flow/run-graph";
 import { IntelligencePanel } from "@/components/intelligence/intelligence-panel";
@@ -96,7 +97,7 @@ export default async function SimulationPage(props: PageProps<"/simulations/[id]
       : "Test input provided by a person — not a PayPal event"
     : `Real PayPal event ${s.paypalEventId ?? ""} (confirmed with PayPal), evaluated in Observe Mode`;
   const pending = approvals.find((a) => a.status === "PENDING");
-  const decision = s.authorityDecision as { request: { kind: string; amount: { value: string; currency: string } | null; counterparty: string | null; target: { type: string; id: string } | null }; outcome: AuthorityOutcome; evaluations: Evaluation[]; budget: BudgetSnapshot[]; frequency: FrequencySnapshot[]; authoritySnapshot: { id: string; name: string; version: number }[] } | null;
+  const decision = s.authorityDecision as { request: { kind: string; amount: { value: string; currency: string } | null; counterparty: string | null; target: { type: string; id: string } | null }; outcome: AuthorityOutcome; evaluations: Evaluation[]; budget: BudgetSnapshot[]; frequency: FrequencySnapshot[]; authoritySnapshot: { id: string; name: string; version: number; perTransactionMax?: string | null }[]; decision?: string } | null;
   const overlay = Object.fromEntries(
     steps.map((st) => [st.nodeId, { state: st.nodeId === would?.nodeId ? ("current" as const) : st.status === "ERROR" ? ("error" as const) : st.status === "WAITING" ? ("waiting" as const) : ("ok" as const), port: st.port }]),
   );
@@ -151,7 +152,21 @@ export default async function SimulationPage(props: PageProps<"/simulations/[id]
         </div>
       </header>
 
-      <div className="mt-10 grid gap-x-12 gap-y-10 xl:grid-cols-[1.25fr_1fr]">
+      {decision && (
+        <div className="mt-8">
+          <div className="pf-label mb-2">Why — the authority engine&rsquo;s checks</div>
+          <DecisionChecks
+            evaluations={decision.evaluations}
+            decision={decision.decision ?? (decision.outcome === "DENY" ? "DENY" : decision.outcome === "ALLOW" ? "ALLOW" : "REVIEW")}
+            amount={decision.request.amount}
+            limits={(decision.authoritySnapshot ?? []).map((a) => a.perTransactionMax ?? null)}
+            agent={(s.trigger as { kind?: string; payload?: { agent?: { name: string } } }).kind === "agent_request" ? ((s.trigger as { payload: { agent?: { name: string } } }).payload.agent ?? null) : null}
+            humanDecision={approvals.find((a) => a.assumed)?.status ?? null}
+          />
+        </div>
+      )}
+
+      <div className="mt-10 grid gap-x-12 gap-y-10 xl:grid-cols-[1.25fr_1fr] [&>*]:min-w-0">
         <Section label="Path through the flow">
           <div className="mt-3 h-[560px] rounded border border-line bg-canvas">
             <RunGraph graph={graph} overlay={overlay} />
@@ -207,7 +222,7 @@ export default async function SimulationPage(props: PageProps<"/simulations/[id]
         </div>
       )}
 
-      <div className="mt-10 grid gap-x-12 gap-y-8 lg:grid-cols-2">
+      <div className="mt-10 grid gap-x-12 gap-y-8 lg:grid-cols-2 [&>*]:min-w-0">
         <Section label={isTest ? "Test input — user provided" : "Real PayPal event observed"}>
           <pre className="mt-3 max-h-72 overflow-auto rounded-sm bg-sunken p-3 font-mono text-meta text-ink-2">{JSON.stringify(trigger.payload, null, 2)}</pre>
         </Section>

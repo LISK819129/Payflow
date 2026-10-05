@@ -58,7 +58,7 @@ export default async function AgentsPage() {
       )}
 
       {list.length === 0 ? (
-        <Empty>No agents yet.</Empty>
+        <Empty>AI agents can request actions through PayFlow without receiving your PayPal credentials. Register one above to give it a scoped, revocable identity.</Empty>
       ) : (
         <div className="space-y-10">
           {list.map((a) => {

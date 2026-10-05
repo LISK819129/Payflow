@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { login } from "@/server/auth/login";
+import { clientIp } from "@/server/security/client-ip";
 import { SESSION_COOKIE, destroySession } from "@/server/auth/session";
 
 export type LoginState = { error?: string; email?: string };
@@ -13,7 +14,7 @@ export async function loginAction(_prev: LoginState, form: FormData): Promise<Lo
   if (!email || !password) return { error: "Enter your email and password.", email };
 
   const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const ip = clientIp((n) => h.get(n));
   const result = await login(email, password, { ip, userAgent: h.get("user-agent") });
   if (!result.ok) return { error: result.error, email };
 

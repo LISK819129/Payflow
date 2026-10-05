@@ -405,7 +405,11 @@ export async function listCapabilities(ctx: AgentContext) {
     }),
     cannot: NEVER,
     principle: "Requesting is not authorization. Every request is decided by PayFlow's authority, intelligence and, where required, a person; PayPal settles only after that.",
-    states: { live: ["ACCEPTED", "PROCESSING", "REVIEW_REQUIRED", "APPROVED", "REJECTED", "DENIED", "CANCELLED", "COMPLETED", "FAILED", "UNKNOWN", "ENDED"], test: ["TEST_COMPLETE"] },
+    states: {
+      live: ["ACCEPTED", "PROCESSING", "REVIEW_REQUIRED", "APPROVED", "REJECTED", "DENIED", "CANCELLED", "SUBMITTED_TO_PAYPAL", "AWAITING_RECIPIENT", "COMPLETED", "RETURNED", "FAILED", "UNKNOWN", "ENDED"],
+      test: ["TEST_COMPLETE"],
+      settled_only_when: "COMPLETED — PayPal confirmed the money reached its destination",
+    },
   };
 }
 
