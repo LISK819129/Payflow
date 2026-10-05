@@ -71,6 +71,13 @@
       "when": 1791102633404,
       "tag": "0009_ai_intelligence",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791131470211,
+      "tag": "0010_test_and_observe",
+      "breakpoints": true
     }
   ]
 }

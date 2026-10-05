@@ -1,5 +1,6 @@
 import { paypal } from "./client";
 import { PayPalApiError } from "./errors";
+import { assertLiveWrite } from "../runtime/mode";
 import { paypalSdk, sdkCall } from "./sdk";
 
 /**
@@ -20,6 +21,7 @@ export async function getCapture(captureId: string) {
 }
 
 export async function refundCapture(input: { captureId: string; amount: Money; note: string; requestId: string }) {
+  assertLiveWrite("PayPal refund");
   const r = await sdkCall("Refund capture", () =>
     paypalSdk().payments.refundCapturedPayment({
       captureId: input.captureId,
@@ -40,6 +42,7 @@ export async function getOrder(orderId: string) {
 }
 
 export async function captureOrder(input: { orderId: string; requestId: string }) {
+  assertLiveWrite("PayPal order capture");
   const r = await sdkCall("Capture order", () => paypalSdk().orders.captureOrder({ id: input.orderId, paypalRequestId: input.requestId, prefer: "return=representation" }));
   const o = r.data as { id?: string; status?: string; purchaseUnits?: { payments?: { captures?: { id?: string; status?: string; amount?: { value?: string; currencyCode?: string } }[] } }[] };
   const cap = o.purchaseUnits?.[0]?.payments?.captures?.[0];

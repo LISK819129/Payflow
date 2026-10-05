@@ -17,12 +17,16 @@
  *                                            (double: clicks Start twice) and waits for it to settle
  *     approve <runId> [scenario] [note]       as above, into a named scenario
  *     authority <scenario> <json>            owner creates an authority in the Authority form
+ *     test-run <workflowId> <scenario> <payloadFile>  owner fills "Test this flow" (TEST_INPUT) and
+ *                                            captures the result: no money moves, PayPal is not contacted
+ *     assume <simulationId> <scenario> approved|rejected  "Assume …" inside a test (creates no approval)
+ *     observe <workflowId> <scenario>        owner switches Observe Mode on for a draft
  *
  * Credentials are the seeded local test owner from .env.local; the browser only
  * talks to localhost. Screenshots never include env files or secrets.
  */
 import "../load-env";
-import { mkdirSync, readdirSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { spentUsd } from "../../src/server/ai/usage";
@@ -405,6 +409,72 @@ async function edit(workflowId: string, key: ScenarioKey, keep: boolean) {
   }
 }
 
+/** Phase 8: a Test Run through the real UI. Field labels are the trigger keys the graph reads. */
+async function testRun(workflowId: string, scenario: string, payloadFile: string) {
+  const payload = JSON.parse(readFileSync(payloadFile, "utf8")) as Record<string, unknown>;
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/flows/${workflowId}`);
+    await page.waitForSelector(".react-flow__node");
+    await page.waitForTimeout(1200);
+    await page.getByRole("button", { name: "Test this flow" }).click();
+    const dialog = page.getByRole("dialog");
+    for (const [key, v] of Object.entries(payload)) {
+      if (v && typeof v === "object") {
+        const m = v as { value: string; currency_code: string };
+        await dialog.getByLabel(key, { exact: true }).fill(m.value);
+        await dialog.getByLabel(`${key} currency`, { exact: true }).fill(m.currency_code);
+      } else await dialog.getByLabel(key, { exact: true }).fill(String(v));
+    }
+    await shot(page, "test-input");
+    await dialog.getByRole("button", { name: "Run test" }).click();
+    await page.waitForURL(/\/simulations\//, { timeout: 240_000 });
+    console.log(`  simulation ${page.url().split("/").pop()}`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1800);
+    await shot(page, "test-result", true);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Phase 8: explore the rest of the path with an assumed decision. Nothing is approved for real. */
+async function assume(simulationId: string, scenario: string, choice: string) {
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/simulations/${simulationId}`);
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: choice === "rejected" ? "Assume rejected" : "Assume approved" }).click();
+    await page.waitForURL((u) => /\/simulations\//.test(u.pathname) && !u.pathname.endsWith(simulationId), { timeout: 240_000 });
+    console.log(`  simulation ${page.url().split("/").pop()}`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1800);
+    await shot(page, `assumed-${choice}`, true);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Phase 8: the owner switches Observe Mode on for a draft in the Flow Builder. */
+async function observe(workflowId: string, scenario: string) {
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/flows/${workflowId}`);
+    await page.waitForSelector(".react-flow__node");
+    await page.waitForTimeout(1200);
+    await shot(page, "draft-not-observing");
+    await page.getByRole("button", { name: "Observe", exact: true }).click();
+    await page.getByRole("button", { name: "Observing" }).waitFor();
+    await page.waitForTimeout(800);
+    await shot(page, "draft-observing");
+  } finally {
+    await browser.close();
+  }
+}
+
 async function main() {
   const [step, a, b, c] = process.argv.slice(2);
   console.log(`evidence: ${step} ${a ?? ""} ${b ?? ""}`);
@@ -439,6 +509,12 @@ async function main() {
       return edit(a, b as ScenarioKey, c === "keep");
     case "page":
       return capture(a, b, c);
+    case "test-run":
+      return testRun(a, b, c);
+    case "assume":
+      return assume(a, b, c);
+    case "observe":
+      return observe(a, b);
     default:
       throw new Error(`unknown step ${step}`);
   }

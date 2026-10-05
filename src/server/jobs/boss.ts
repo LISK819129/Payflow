@@ -10,6 +10,8 @@ export const QUEUES = {
   workflowSchedule: "workflow-schedule",
   /** Sweeps for timers whose delayed job was lost. */
   timerSweep: "timer-sweep",
+  /** A routed real PayPal event, offered to observing drafts (no actions). */
+  observeEvent: "observe-event",
 } as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
@@ -19,6 +21,7 @@ export type JobPayloads = {
   [QUEUES.runAdvance]: { runId: string };
   [QUEUES.workflowSchedule]: { workflowId: string };
   [QUEUES.timerSweep]: Record<string, never>;
+  [QUEUES.observeEvent]: { paypalEventId: string };
 };
 
 const g = globalThis as unknown as { __boss?: Promise<PgBoss> };

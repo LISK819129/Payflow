@@ -45,7 +45,8 @@ export function IntelligencePanel({ outputs, analyses, decision }: { outputs: AI
   const extract = outputs.find((o) => o.task === "extract");
   const injected = outputs.filter((o) => o.injection?.detected);
   const aiUsed = outputs.filter((o) => o.source === "ai" && o.analysisId);
-  const cost = aiUsed.reduce((t, o) => t + Number(analyses.find((a) => a.id === o.analysisId)?.costUsd ?? 0), 0);
+  // A cached result cost nothing for this run: only fresh model calls count here.
+  const cost = aiUsed.filter((o) => !o.cached).reduce((t, o) => t + Number(analyses.find((a) => a.id === o.analysisId)?.costUsd ?? 0), 0);
   const noticed = (decision?.evaluations ?? []).filter((e) => e.result !== "pass" && ["purpose", "risk", "contract", "injection", "extraction"].includes(e.check));
 
   return (
@@ -56,7 +57,7 @@ export function IntelligencePanel({ outputs, analyses, decision }: { outputs: AI
         </h2>
         <div className="font-mono text-meta text-muted">
           {aiUsed.length
-            ? `${aiUsed.length} AI ${aiUsed.length === 1 ? "analysis" : "analyses"} · ${[...new Set(aiUsed.map((o) => o.model))].join(", ")} · ${aiUsed.filter((o) => o.cached).length} from cache · $${cost.toFixed(6)}`
+            ? `${aiUsed.length} AI ${aiUsed.length === 1 ? "analysis" : "analyses"} · ${[...new Set(aiUsed.map((o) => o.model))].join(", ")} · ${aiUsed.filter((o) => o.cached).length} from cache · $${cost.toFixed(6)} spent for this`
             : "no AI call was needed"}
         </div>
       </div>
@@ -131,8 +132,7 @@ export function IntelligencePanel({ outputs, analyses, decision }: { outputs: AI
               return (
                 <li key={o.analysisId}>
                   {o.task} · {o.model} · {o.promptVersion}
-                  {o.cached ? " · cached" : ""}
-                  {a?.costUsd ? ` · $${a.costUsd}` : ""}
+                  {o.cached ? ` · cached, no new call${a?.costUsd ? ` (first computed for $${a.costUsd})` : ""}` : a?.costUsd ? ` · $${a.costUsd}` : ""}
                   {(a?.validation as { repairs?: number } | null)?.repairs ? " · repaired once" : ""}
                 </li>
               );

@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, inArray, max } from "drizzle-orm";
 import { db } from "../db/client";
-import { actionExecutions, aiAnalyses, approvals, authorityDecisions, runSteps, workflowRuns, workflowVersions, workflows } from "../db/schema";
+import { actionExecutions, aiAnalyses, approvals, authorityDecisions, runSteps, simulations, workflowRuns, workflowVersions, workflows } from "../db/schema";
 
 /** Read models for pages. Every query is scoped by workspace. */
 
@@ -47,7 +47,8 @@ export async function getWorkflowForEditing(workspaceId: string, workflowId: str
     .from(workflowVersions)
     .where(eq(workflowVersions.workflowId, wf.id))
     .orderBy(desc(workflowVersions.version));
-  return { wf, latest: versions[0], active: versions.find((v) => v.id === wf.activeVersionId) ?? null, versions };
+  const [obs] = await db().select({ n: count() }).from(simulations).where(and(eq(simulations.workflowId, wf.id), eq(simulations.mode, "OBSERVE")));
+  return { wf, latest: versions[0], active: versions.find((v) => v.id === wf.activeVersionId) ?? null, versions, observations: obs.n };
 }
 
 export async function listRuns(workspaceId: string, limit = 100) {

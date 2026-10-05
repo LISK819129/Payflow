@@ -173,6 +173,9 @@ export const workflows = pgTable(
     frozenAt: timestamp("frozen_at", { withTimezone: true }),
     /** The run whose Freeze node froze this workflow; only that run may continue to its end. */
     frozenByRunId: uuid("frozen_by_run_id"),
+    /** Phase 8: the latest draft evaluates real incoming PayPal events, with no ability to act. */
+    observing: boolean("observing").notNull().default(false),
+    observingSince: timestamp("observing_since", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -654,4 +657,60 @@ export const aiAnalyses = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true, precision: 3 }),
   },
   (t) => [uniqueIndex("ai_analyses_cache_uq").on(t.workspaceId, t.cacheKey), index("ai_analyses_task_idx").on(t.task, t.createdAt)],
+);
+
+// ── Test Run & Observe Mode (Phase 8) ───────────────────────────────────────
+
+export const simulationMode = pgEnum("simulation_mode", ["TEST", "OBSERVE"]);
+
+/**
+ * A Test Run (a person's hypothetical input) or an Observation (a real PayPal
+ * event evaluated by a draft). The real engine ran inside a transaction that
+ * was rolled back, so nothing it did persisted; this record is what remains:
+ * exactly which graph and authority versions were evaluated, against what
+ * input, with what result. Never a workflow run, an execution or an approval,
+ * so it cannot be resumed, approved or executed.
+ */
+export const simulations = pgTable(
+  "simulations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    mode: simulationMode("mode").notNull(),
+    /** TEST_INPUT (user provided) or REAL_PAYPAL_EVENT_OBSERVED. Never LIVE_EXECUTION. */
+    inputProvenance: text("input_provenance").$type<"TEST_INPUT" | "REAL_PAYPAL_EVENT_OBSERVED">().notNull(),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id),
+    versionId: uuid("version_id").notNull(),
+    versionNumber: integer("version_number").notNull(),
+    /** The exact graph evaluated, so an edited draft never reinterprets an old record. */
+    graph: jsonb("graph").notNull(),
+    graphHash: text("graph_hash").notNull(),
+    authorities: jsonb("authorities").notNull().default([]),
+    paypalEventId: text("paypal_event_id"),
+    trigger: jsonb("trigger").notNull(),
+    assumptions: jsonb("assumptions").notNull().default({}),
+    parentId: uuid("parent_id"),
+    steps: jsonb("steps").notNull().default([]),
+    verdict: text("verdict").notNull(),
+    headline: text("headline").notNull(),
+    wouldAction: jsonb("would_action"),
+    authorityDecision: jsonb("authority_decision"),
+    approvals: jsonb("approvals").notNull().default([]),
+    ai: jsonb("ai").notNull().default([]),
+    budget: jsonb("budget").notNull().default([]),
+    evaluatedAt: timestamp("evaluated_at", { withTimezone: true, precision: 3 }).notNull(),
+    externalActionsDisabled: boolean("external_actions_disabled").notNull().default(true),
+    durationMs: integer("duration_ms"),
+    error: text("error"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("simulations_workflow_idx").on(t.workflowId, t.createdAt),
+    uniqueIndex("simulations_observation_uq").on(t.workflowId, t.graphHash, t.paypalEventId),
+  ],
 );

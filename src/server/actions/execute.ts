@@ -4,7 +4,7 @@ import { db, type Tx } from "../db/client";
 import { actionExecutions, paypalEvents, workflowRuns, workflows } from "../db/schema";
 import { authorityProvider } from "../authority";
 import { eventStatus } from "./event-link";
-import { gatewayFor } from "./paypal-gateway";
+import { isGenuineWrite, livePayPalWrite, type PayPalWrite } from "./capability";
 import type { ActionIntent } from "./types";
 
 /** After this many attempts with no definitive answer, the outcome is UNKNOWN and the run fails closed. */
@@ -113,7 +113,9 @@ async function preflight(executionId: string): Promise<RunActionResult | null> {
  * lease talks to the gateway; a crash mid-call leaves the lease to expire and
  * the next attempt replays the same idempotency key, which PayPal deduplicates.
  */
-export async function runAction(executionId: string): Promise<RunActionResult> {
+export async function runAction(executionId: string, write: PayPalWrite = livePayPalWrite()): Promise<RunActionResult> {
+  // Only a capability issued outside a Test/Observe sandbox can reach PayPal.
+  if (!isGenuineWrite(write)) throw new Error("runAction requires a genuine PayPal write capability");
   const stop = await preflight(executionId);
   if (stop) return stop;
   const [claimed] = await db()
@@ -150,7 +152,7 @@ export async function runAction(executionId: string): Promise<RunActionResult> {
     return "settled";
   }
 
-  const gateway = gatewayFor(intent);
+  const gateway = write.gatewayFor(intent);
   const outcome = await gateway.execute(intent, {
     previous: (claimed.result as Record<string, unknown> | null) ?? null,
     attempt: claimed.attempts,

@@ -50,11 +50,12 @@ const ACTION_RETRY_MS = 15_000;
  */
 export async function advanceRun(runId: string, deps: RuntimeDeps): Promise<RunRow["status"]> {
   for (let i = 0; i < MAX_STEPS_PER_ADVANCE; i++) {
-    const r = await db().transaction((tx) => step(tx, runId, deps));
+    const r = await (deps.transaction ?? ((fn) => db().transaction(fn)))((tx) => step(tx, runId, deps));
     if (r.wakeAt) await deps.enqueueAdvance(runId, { startAfter: r.wakeAt });
     if (r.analyze) {
       // The model call happens outside any transaction; the step then reads the stored, validated result.
-      const res = await runAnalysis(r.analyze);
+      const res = await (deps.analysis ?? { run: runAnalysis }).run(r.analyze);
+      if (res === "stop") break;
       if (res === "busy") {
         await deps.enqueueAdvance(runId, { startAfter: new Date(deps.now().getTime() + 10_000) });
         break;
@@ -63,7 +64,8 @@ export async function advanceRun(runId: string, deps: RuntimeDeps): Promise<RunR
     }
     if (r.execute) {
       // The external call happens here, outside any transaction, under the execution's lease.
-      const res = await runAction(r.execute);
+      const res = await (deps.actions ?? { execute: (id: string) => runAction(id) }).execute(r.execute);
+      if (res === "simulated") break; // Test/Observe: the action is where a sandboxed run ends
       if (res === "retry_later") {
         await deps.enqueueAdvance(runId, { startAfter: new Date(deps.now().getTime() + ACTION_RETRY_MS) });
         break;
@@ -73,7 +75,8 @@ export async function advanceRun(runId: string, deps: RuntimeDeps): Promise<RunR
     }
     if (!r.continue) break;
   }
-  const [run] = await db().select({ status: workflowRuns.status }).from(workflowRuns).where(eq(workflowRuns.id, runId));
+  const [run] = await (deps.transaction ?? ((fn) => db().transaction(fn)))((tx) => tx.select({ status: workflowRuns.status }).from(workflowRuns).where(eq(workflowRuns.id, runId)));
+  if (!run) throw new Error(`Run ${runId} not found`);
   return run.status;
 }
 

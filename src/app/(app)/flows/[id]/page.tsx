@@ -25,6 +25,8 @@ export default async function FlowPage(props: PageProps<"/flows/[id]">) {
       aiConfigured={integrationStatus().ai.configured}
       provenance={data.latest.provenance}
       aiInstruction={(data.latest.compileMeta as { instruction?: string } | null)?.instruction ?? null}
+      observing={data.wf.observing}
+      observations={data.observations}
     />
   );
 }

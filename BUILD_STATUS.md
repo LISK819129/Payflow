@@ -1,6 +1,6 @@
 # Build Status
 
-Last updated: 2026-10-04 · Submission deadline: **2026-11-12 12:00 PT**
+Last updated: 2026-10-05 · Submission deadline: **2026-11-12 12:00 PT**
 
 Rule for this file: nothing is DONE until it has been run and verified; the verification is written next to it.
 
@@ -21,6 +21,7 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | **3** | **Workflow DSL, validator, durable runtime, Flow Builder, Executions (2026-10-03)** | see Phase 3 evidence |
 | **4** | **AI workflow compiler — mock-validated and real-model validated (2026-10-03)** | see Phase 4 evidence · `evidence/phase4/` |
 | **4.1** | **Correctness pass (2026-10-04)**: amount limit gains explicit `lt`/`lte` and a boundary review that corrects AI graphs to the instruction's wording (or asks when it contradicts itself); run outcomes derived from the executed path; AI edits refresh the changed node's own labels and flag stale mentions elsewhere ($2,500 → $1,800 regression); the old Nova and Phase-3 demo flows paused; decomposition seam documented (ARCHITECTURE §10) | `tests/phase41.test.ts` incl. replays of recorded real gpt-5.4-mini outputs at $0; commit `6528bd2` |
+| **8** | **Test Run and Observe Mode (2026-10-05)** — not forecasting or prediction: *Test this flow* runs a person's hypothetical input (`TEST_INPUT`) through the real engine; *Observe* lets a DRAFT evaluate real, PayPal-confirmed events (`REAL_PAYPAL_EVENT_OBSERVED`) after live routing. Real engine inside an always-rolled-back transaction; no PayPal write capability in TEST/OBSERVE (four layers); budgets snapshot-only; *Assume approved / rejected* exists only inside a test; every record keeps the workflow version, graph hash and authority versions | see Phase 8 evidence · `evidence/phase8/` · ARCHITECTURE §14 |
 | **7** | **AI financial intelligence (2026-10-04)**: five executable AI evidence nodes (invoice reading, contract check, purpose check, behaviour analysis, invoice match); deterministic history signals; authority purpose scope + intelligence policy; prompt-injection fencing + deterministic scanner; strict schemas, one repair, fail closed to review; content-addressed cache with single-flight; provenance; Intelligence panel | see Phase 7 evidence · `evidence/phase7/` |
 | **6** | **Financial authority, budgets and human control (2026-10-04)**: delegated authorities (who / what / to whom / how much / how often / until when), CHECK → RESERVE → EXECUTE → COMMIT/RELEASE under row locks, executable budget and frequency nodes, Approvals queue (approve once / reject), Authority pages, decision trace on every action, stale-worker protection | see Phase 6 evidence · `evidence/phase6/` |
 | **5** | **PayPal action nodes on the real US Sandbox (2026-10-04)**: refund, payout, order capture, invoice send, invoice reminder, PayPal lookup, transaction search, ledger reconcile — one execution boundary (ARCHITECTURE §11) | see Phase 5 evidence · `evidence/phase5/` |
@@ -37,10 +38,27 @@ Rule for this file: nothing is DONE until it has been run and verified; the veri
 | PayPal Sandbox app | Credentials in `.env.local` ✓ | — |
 | PayPal AI Toolkit plugin | Installed on the account 2026-10-03; loads in the next session. Its best-practices references were read directly from github.com/paypal/AI-Toolkit for Phase 2 | — |
 | APIMatic Context Plugin | Installed 2026-10-03 as project skills in `.claude/skills/` (TypeScript set, pinned commit 6aa0571) because the installer needs the `claude` CLI, which this machine lacks. Loads next session. Free-subscription form still to be submitted by the user | — |
-| AI provider | OpenAI `gpt-5.4-mini` configured; $5 total budget, $0.35 used | — |
+| AI provider | OpenAI `gpt-5.4-mini` configured; $5 total budget, $0.386817 used (Phase 8: $0) | — |
 | Public webhook URL | cloudflared 2026.9.3 downloaded (Authenticode: Cloudflare, Inc., valid) | — |
 | PayPal sandbox merchant | US Sandbox app with all features ✓ (India app retired) | — |
 | Order capture success path | A buyer must approve a Sandbox order in PayPal checkout with a Sandbox **personal** account: run `pnpm paypal:sandbox:order 64.00`, open the printed link, log in as the personal account, approve. Then start "Capture approved orders" with that order id | The capture *success* screenshot only — node and refusals are verified |
+
+## Phase 8 evidence (real PayPal US Sandbox event + deterministic tests, 2026-10-05)
+
+Details: `evidence/phase8/README.md`, database-generated `evidence/phase8/manifest.json`. **OpenAI this phase: 0 calls, $0** (dev server and worker ran with `AI_PHASE_CAP_USD=0`). **No PayPal money movement.** Neither feature forecasts anything: each record describes one evaluation at one moment.
+
+| Check | Result |
+|---|---|
+| Normal Test Run: Acme $185 GPU compute (MOCK_TEST) | WOULD ALLOW — payout prepared and authorised, stopped before contact; PayPal not contacted, $0 moved, $0 reserved |
+| Purpose violation: $470 gift cards, exact Phase 7 invoice | CACHED_AI_ANALYSIS (real Phase 7 OpenAI results, no new call) → OUTSIDE SCOPE → WOULD REQUIRE REVIEW |
+| Financial limit: $650 | over the $500 per-transaction limit → WOULD REQUIRE REVIEW; budget snapshot only |
+| Unknown supplier | not an approved counterparty → WOULD REQUIRE REVIEW |
+| Assume approved / rejected | WOULD ALLOW after the assumed approval (not sent) / WOULD END WITHOUT PAYPAL; no approval created |
+| $0 cap | a cache miss → both model calls refused before being made → AI_UNAVAILABLE → review |
+| Observe Mode, real event | draft "New subscription plan review" observed `BILLING.PLAN.CREATED` `WH-95695264SV199530G-7JV32686XH072420A` (from a Sandbox billing plan, no money) after live routing confirmed it with PayPal → WOULD REQUIRE REVIEW |
+| Isolation | live rows created by all tests/observations: 0 executions, 0 reservations, 0 approvals, 0 decisions, 0 reconciliations, 0 runs |
+| Safety | `tests/simulation.test.ts` 23 tests (20 required cases + 5 scenarios + records/cache/cap); commit-instead-of-rollback → 11 fail; removing the no-PayPal action port → 6 fail |
+| Regression | 226 tests passing; lint, typecheck, `next build`, `pnpm paypal:check` clean; audit chain verified |
 
 ## Phase 7 evidence (real OpenAI + real PayPal US Sandbox + deterministic tests, 2026-10-04)
 
@@ -159,4 +177,4 @@ Nothing in Phase 2 is simulated. No simulator events were used.
 
 ## NEXT
 
-Waiting for approval of the Phase 7 checkpoint before Phase 8.
+Waiting for approval of the Phase 8 checkpoint before Phase 9.

@@ -43,8 +43,19 @@ export type ExecutorArgs = {
 
 export type Executor = (args: ExecutorArgs) => Promise<NodeResult>;
 
+/** Runs a prepared PayPal action. Live: the PayPal action runner. Test/Observe: an adapter with no PayPal access. */
+export type ActionsPort = { execute(executionId: string): Promise<"settled" | "busy" | "retry_later" | "halted" | "simulated"> };
+/** Runs a pending AI analysis outside the step transaction. "stop": the caller must end this advance (sandbox). */
+export type AnalysisPort = { run(analysisId: string): Promise<"done" | "busy" | "stop"> };
+
 /** Side effects the engine needs from the outside world, injectable for tests. */
 export type RuntimeDeps = {
   enqueueAdvance(runId: string, opts?: { startAfter?: Date }): Promise<void>;
   now(): Date;
+  /** How each step's transaction is opened. Default: a new database transaction. A sandbox passes savepoints of one transaction it always rolls back. */
+  transaction?: <T>(fn: (tx: Tx) => Promise<T>) => Promise<T>;
+  /** Default: live PayPal action runner (which cannot obtain its write capability inside a sandbox). */
+  actions?: ActionsPort;
+  /** Default: live analysis runner. */
+  analysis?: AnalysisPort;
 };

@@ -38,9 +38,13 @@ const trigger: Executor = async ({ run }) => ({
   explanation:
     run.triggerKind === "paypal_event"
       ? `Started by verified PayPal event ${(run.triggerPayload as { eventType?: string }).eventType ?? ""}`.trim()
-      : run.triggerKind === "schedule"
-        ? "Started by schedule"
-        : "Started manually with a user-provided payload",
+      : run.triggerKind === "observe"
+        ? `Real PayPal event ${(run.triggerPayload as { eventType?: string }).eventType ?? ""} (confirmed with PayPal), evaluated in Observe Mode`
+        : run.triggerKind === "test"
+          ? "Test input provided by a person — not a PayPal event"
+          : run.triggerKind === "schedule"
+            ? "Started by schedule"
+            : "Started manually with a user-provided payload",
 });
 
 const condition: Executor = async ({ node, ctx }) => {

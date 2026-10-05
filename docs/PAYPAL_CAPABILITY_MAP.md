@@ -14,7 +14,7 @@ Nothing in this table is marked DONE until a real Sandbox call has succeeded and
 | AI access | Agent Toolkit (`@paypal/agent-toolkit` 1.11.0), PayPal MCP server (local `@paypal/mcp` 1.8.1, remote `mcp.sandbox.paypal.com`), AI Toolkit plugin for coding agents | A permission boundary in front of those: scoped, expiring, single-use capabilities instead of handing an agent a PayPal token |
 | Policy | Account-level risk and limits | Per-workflow budgets, counterparty/currency/category restrictions, frequency limits, human approval gates |
 | Reasoning | — | Natural language → typed workflow graph; transaction / behaviour / invoice-match / purpose analysis as nodes whose output feeds deterministic rules |
-| Pre-flight | — | Simulator that runs the real runtime against historical + labelled synthetic events with every PayPal action stubbed |
+| Pre-flight | — | Test Run (a person's hypothetical input) and Observe Mode (real incoming events, evaluated by a draft): the real runtime in a rolled-back transaction with no PayPal write capability — not historical prediction (ARCHITECTURE §14) |
 | Audit | Transaction records, debug IDs | Hash-chained, append-only trace of every decision, rule, approval and PayPal response |
 
 **The test the product must pass:** give an agent PayPal MCP directly and it can pay anything its token allows, with no memory of budgets, no proof of purpose, no approval, no freeze on dispute and no reconstruction of why. PayFlow exists to make that impossible.

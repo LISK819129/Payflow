@@ -2,10 +2,13 @@
 
 import type { Connection } from "@xyflow/react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { CircleAlert, CircleCheck, LayoutGrid, Pause, Play, Rocket, Save, X } from "lucide-react";
+import { CircleAlert, CircleCheck, Eye, FlaskConical, LayoutGrid, Pause, Play, Rocket, Save, X } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { activateAction, manualRunAction, saveDraftAction, setStateAction } from "@/app/(app)/flows/actions";
+import { setObservingAction } from "@/app/(app)/simulations/actions";
+import { TestRunDialog } from "@/components/simulation/test-run-dialog";
 import { Button, ProvenanceTag } from "@/components/ui";
 import { canonicalJson } from "@/server/audit/canonical-json";
 import { NODE_SPECS, SPEC_BY_TYPE, type GraphNode, type WorkflowGraph } from "@/server/workflow/dsl/nodes";
@@ -27,6 +30,8 @@ type Props = {
   aiConfigured: boolean;
   provenance: string;
   aiInstruction?: string | null;
+  observing?: boolean;
+  observations?: number;
 };
 
 const CATEGORY_ORDER = ["trigger", "policy", "control", "paypal", "ai", "ledger"] as const;
@@ -95,7 +100,9 @@ export function FlowBuilder(props: Props) {
   );
 }
 
-function Builder({ workflowId, name, state, latestVersion, latestStatus, activeVersion, initialGraph, canAuthorize, aiConfigured, provenance, aiInstruction }: Props) {
+function Builder({ workflowId, name, state, latestVersion, latestStatus, activeVersion, initialGraph, canAuthorize, aiConfigured, provenance, aiInstruction, observing = false, observations = 0 }: Props) {
+  const [testOpen, setTestOpen] = useState(false);
+  const [observeOn, setObserveOn] = useState(observing);
   const router = useRouter();
   const [graph, setGraph] = useState<WorkflowGraph>(initialGraph);
   const [positions, setPositions] = useState(() => layoutGraph(initialGraph));
@@ -229,9 +236,37 @@ function Builder({ workflowId, name, state, latestVersion, latestStatus, activeV
               <Play size={14} aria-hidden /> Run manually
             </Button>
           )}
+          {canAuthorize && (
+            <Button size="sm" onClick={() => setTestOpen(true)} disabled={pending || dirty} title={dirty ? "Save first: a test runs the saved version" : "Run a hypothetical transaction through this flow — no money moves"}>
+              <FlaskConical size={14} aria-hidden /> Test this flow
+            </Button>
+          )}
+          {canAuthorize && latestStatus === "DRAFT" && (
+            <Button
+              size="sm"
+              variant="quiet"
+              disabled={pending}
+              title="Watch real PayPal events with this draft — it cannot move money or contact anyone"
+              onClick={() =>
+                start(async () => {
+                  const r = await setObservingAction(workflowId, !observeOn);
+                  if (r.ok) setObserveOn(!observeOn);
+                })
+              }
+            >
+              {observeOn ? <span aria-hidden className="animate-live-dot mx-[3px] inline-block size-2 rounded-full bg-marker" /> : <Eye size={14} aria-hidden />}
+              {observeOn ? "Observing" : "Observe"}
+            </Button>
+          )}
+          {(observeOn || observations > 0) && (
+            <Link href={`/flows/${workflowId}/observations`} className="text-body-sm text-muted hover:text-ink">
+              {observations} observed
+            </Link>
+          )}
         </div>
       </header>
 
+      {testOpen && <TestRunDialog workflowId={workflowId} graph={graph} onClose={() => setTestOpen(false)} />}
       <PatchBar workflowId={workflowId} aiConfigured={aiConfigured} disabledReason={dirty ? "Save your manual edits before asking for an AI change" : canAuthorize ? undefined : "Only owners and approvers can edit"} />
 
       {provenance === "AI_GENERATED" && aiInstruction && (

@@ -1,3 +1,4 @@
+import { assertLiveWrite } from "../runtime/mode";
 import { PayPalApiError } from "./errors";
 import type { FetchLike, TokenProvider } from "./auth";
 
@@ -37,6 +38,8 @@ export class PayPalHttp {
   ) {}
 
   async request<T>(req: PayPalRequest): Promise<PayPalResponse<T>> {
+    // Test/Observe executions may read, never write.
+    if (req.method !== "GET") assertLiveWrite(`PayPal ${req.method} ${req.path}`);
     if (req.method === "POST" && !req.requestId) {
       throw new Error(`PayPal POST ${req.path} requires a requestId (PayPal-Request-Id)`);
     }

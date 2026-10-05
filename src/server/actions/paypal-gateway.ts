@@ -4,6 +4,7 @@ import { reconciliations } from "../db/schema";
 import { compareDecimal } from "../workflow/dsl/decimal";
 import { PayPalApiError } from "../paypal/errors";
 import * as pp from "../paypal/operations";
+import { assertLiveWrite } from "../runtime/mode";
 import type { ActionGateway, ActionIntent, ActionOutcome, GatewayContext } from "./types";
 
 function failure(err: unknown): ActionOutcome {
@@ -28,6 +29,8 @@ export class DirectPayPalGateway implements ActionGateway {
   readonly name = "paypal-direct";
 
   async execute(intent: ActionIntent, ctx: GatewayContext): Promise<ActionOutcome> {
+    // Outside the try: a sandboxed caller gets an exception, never a "failed" outcome that looks like PayPal's answer.
+    assertLiveWrite(`PayPal ${intent.kind}`);
     try {
       switch (intent.kind) {
         case "paypal.refund": {

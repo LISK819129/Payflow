@@ -17,7 +17,7 @@
                  │  run.step       → deterministic interpreter advances one run                       │
                  │  run.timer      → delay / due-date nodes wake runs                                 │
                  │  schedule.tick  → schedule triggers                                                │
-                 │  sim.run        → simulator jobs                                                   │
+                 │  observe-event  → after live routing: observing drafts evaluate the real event     │
                  └───────┬──────────────────────┬──────────────────────────┬──────────────────────────┘
                          │                      │                          │
                   PayPal adapter           AI adapter               Retrieval adapter
@@ -41,7 +41,7 @@ All financial logic lives in `src/server/**`. Route handlers only authenticate, 
 | policy | `src/server/policy` | Budgets (ledger with row locks), frequency, counterparty, currency, category rules — pure functions + locked reads |
 | approvals | `src/server/approvals` | Approval requests, decisions, resume |
 | agents | `src/server/agents` | Ephemeral capabilities, token hashing, atomic use-counting, agent request handling, PayFlow MCP tools |
-| simulation | `src/server/simulation` | Runs the real runtime with a stub PayPal executor and labelled fixtures |
+| simulation | `src/server/simulation` | Test Run and Observe Mode: the real runtime inside a rolled-back transaction, with no PayPal write capability (§14) |
 | ai | `src/server/ai` | `AIProvider` interface + Anthropic implementation, prompts, output schemas |
 | retrieval | `src/server/retrieval` | `ContextRetriever` interface: counterparty history, invoice candidates, prior anomalies/disputes |
 | audit | `src/server/audit` | Append-only, hash-chained audit records |
@@ -105,7 +105,7 @@ Every displayed money record carries one of: `REAL_PAYPAL_SANDBOX`, `SIMULATED`,
 | Postgres | `embedded-postgres` (real PostgreSQL binaries, data in `.data/pg`) | Render Postgres |
 | Web | `next dev` | Render web service |
 | Jobs / timers / schedules | worker process (`tsx src/worker`) on pg-boss | Render background worker on pg-boss |
-| Simulator fan-out | in-process | Render Workflows task per scenario batch — **evaluated in Phase 8/11**: Workflows has no native scheduling or sleep, so it does not replace pg-boss for timers/approvals, but parallel simulation is a genuine fit |
+| Test Run / Observe Mode | in-process (one rolled-back transaction per evaluation) | Render Workflows task per batch — **deferred to Phase 11** (Phase 8 needed no fan-out): Workflows has no native scheduling or sleep, so it does not replace pg-boss for timers/approvals, but parallel simulation is a genuine fit |
 | Public webhook URL | tunnel (decided in Phase 2) | Render URL |
 | Retrieval | Postgres queries | Postgres, or Elastic if claimed (see §9) |
 
@@ -228,3 +228,42 @@ AI node ─► prepare (code: resolve inputs, history signals, injection scan, s
 ### GatePal seam
 
 The intelligence pieces are plain modules with PayFlow-owned types — intent (`AuthorityRequest`), purpose evidence, contract evidence, behavioural signals, risk evidence — and the authority engine consumes them through `AuthorityRequest.evidence`. An external authority service could receive the same evidence (or compute its own) behind `AuthorityProvider`; PayFlow does not depend on it.
+
+## 14. Test Run and Observe Mode (Phase 8)
+
+**What it is not.** Neither feature forecasts or predicts anything. A Test Run answers *"how does this saved version of the workflow handle this transaction, right now?"*; Observe Mode answers *"how did this draft evaluate that real PayPal event, at that moment?"*. Every result says it can differ in live use if the transaction, authority, budgets, workflow version, AI analysis or PayPal state change.
+
+| Mode | Input | Provenance label | Can move money |
+|---|---|---|---|
+| LIVE | real event / schedule / manual run of an ACTIVE version | `REAL_PAYPAL_SANDBOX` / `USER_PROVIDED` | yes, through the authority engine |
+| TEST | a person's hypothetical input ("Test this flow") | `TEST_INPUT` | **no** |
+| OBSERVE | a real, PayPal-confirmed webhook, given to drafts with Observe on | `REAL_PAYPAL_EVENT_OBSERVED` | **no** |
+
+**The real engine, inside a transaction that is always rolled back** (`src/server/simulation/run.ts`). `simulate()` opens one transaction, inserts a run row, and calls the same `advanceRun` used live — conditions, policy nodes, AI evidence nodes, the authority engine (CHECK → RESERVE under `FOR UPDATE`), approvals. The engine's three side-effect ports are injected through `RuntimeDeps`:
+
+```
+transaction ─► the sandbox's own transaction (all reads see the sandbox rows)
+actions     ─► records "would execute" and stops; holds no PayPal capability
+analysis    ─► stops and asks for the analysis it needs (computed outside, then the pass replays)
+```
+
+When the pass ends, the captured state (path, step results, authority decision with its budget snapshot, approvals, the would-be action) is thrown out in a `Rollback` error, so every reservation, decision, approval, run and step written during the pass disappears. Only two rows persist: the `simulations` record and an audit line *"TEST RUN — no money moved, PayPal not contacted"* (or *OBSERVED REAL EVENT …*).
+
+**No PayPal write capability — by construction, not by `if (testMode)`.** Four independent layers:
+1. The sandbox's action port has no gateway at all; it only records the intent.
+2. `runAction` requires a `PayPalWrite` capability; `livePayPalWrite()` refuses to mint one inside a sandbox (`AsyncLocalStorage` mode from `withSandbox`, which only accepts TEST or OBSERVE — there is no way to enter LIVE from inside).
+3. `DirectPayPalGateway.execute` calls `assertLiveWrite` before anything else.
+4. `PayPalHttp.request` (any non-GET) and the SDK refund/capture operations call `assertLiveWrite` before a request leaves.
+Test 20 deliberately calls each layer from inside a sandbox; all refuse, and a fake PayPal records zero calls. Removing layer 1 makes 6 tests fail; committing instead of rolling back makes 11 fail.
+
+**AI in a test.** An analysis the test needs is computed **outside** the rolled-back transaction through the normal cached, metered runner, so it keeps its provenance and budget enforcement; the pass then replays and reads it. Labels per analysis: `CACHED_AI_ANALYSIS` (an earlier real result, no new call), `REAL_OPENAI` (computed for this test), `MOCK_TEST` (mock analyst), `AI_UNAVAILABLE` (refused — e.g. by the phase cap — and treated as UNCERTAIN → review), `CALCULATED_BY_PAYFLOW` (code, no AI). Only analyses actually computed during the test count as fresh; one found already done is a cache hit.
+
+**Approvals.** A test that reaches a review shows *Assume approved / Assume rejected*. The choice is applied to the approval row **inside the rolled-back transaction** and the path continues; a new `simulations` record is linked to its parent. No approval is ever created, no one is notified, and nothing is authorised. A test record has no run id, so it cannot be resumed, approved or executed.
+
+**Budgets.** The authority engine reserves inside the sandbox exactly as live — and the reservation is rolled back. The record keeps the snapshot it read (limit, spent, reserved, request, after); "Real budget reserved: $0".
+
+**Observe Mode.** The owner toggles Observe on a workflow whose latest version is a DRAFT (audited `observe.enabled`). After the worker routes a real event live (`routePayPalEvent`, which confirms it with PayPal's event API first), it queues a separate `observe-event` job — observation can never delay or fail live routing. `observeEvent` accepts only `REAL_PAYPAL_SANDBOX` events that have been routed, finds observing workflows whose latest version's PayPal trigger lists the event type (and whose filter passes), and runs `simulate({ mode: "OBSERVE" })`. A unique index on (workflow, graph hash, PayPal event id) makes it idempotent.
+
+**Versioning.** Every record stores the workflow version id and number, the full graph and its hash, the authority ids and versions, the input, the evaluation time and the provenance. Editing a draft never changes past observations.
+
+**UI.** Flow Builder: *Test this flow* (fields derived from the graph's `trigger.*` references; disabled while there are unsaved edits) and *Observe* for drafts. Result page `/simulations/[id]`: TEST RUN / OBSERVED banner, verdict (`WOULD_ALLOW / WOULD_REVIEW / WOULD_DENY / WOULD_END / WOULD_WAIT / WOULD_SUSPEND`), PayPal *Not contacted*, Money moved *$0*, Real budget reserved *$0*, the highlighted path, each step, the authority trace and the Intelligence panel. Observation feed `/flows/[id]/observations`.

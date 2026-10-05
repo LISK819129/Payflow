@@ -2,7 +2,7 @@
 
 **Tell PayPal how your money should behave.**
 
-PayFlow compiles plain-language financial intent into versioned, policy-enforced workflows that run against real PayPal Sandbox APIs and webhooks — with human approval gates, scoped agent capabilities, a pre-activation simulator, and a hash-chained audit trail.
+PayFlow compiles plain-language financial intent into versioned, policy-enforced workflows that run against real PayPal Sandbox APIs and webhooks — with human approval gates, scoped agent capabilities, Test Run and Observe Mode (the real engine with no ability to move money — not forecasting), and a hash-chained audit trail.
 
 > AI interprets. Code enforces. Humans authorize. PayPal executes.
 

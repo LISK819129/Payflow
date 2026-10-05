@@ -19,6 +19,7 @@ import { routePayPalEvent } from "../server/webhooks/route-event";
 import { runtimeDeps } from "../server/workflow/runtime/deps";
 import { advanceRun, dueTimers } from "../server/workflow/runtime/engine";
 import { onScheduleTick } from "../server/workflow/schedule";
+import { observeEvent } from "../server/simulation/run";
 
 const ID = `${hostname()}:${process.pid}`;
 const version = { ...gitInfo(), sourceHash: sourceHash() };
@@ -83,6 +84,8 @@ async function main() {
   const routeEvent = guarded<JobPayloads[typeof QUEUES.paypalEventRoute]>(QUEUES.paypalEventRoute, async (data) => {
     const result = await routePayPalEvent(data.paypalEventId, paypal(), runtimeDeps);
     console.log(`[worker] ${QUEUES.paypalEventRoute}`, JSON.stringify(result));
+    // After live routing, offer the event to observing drafts. Separate job: it can never delay or fail live routing.
+    if ("routed" in result && result.routed) await (await boss("worker")).send(QUEUES.observeEvent, { paypalEventId: data.paypalEventId });
   });
   await b.work<JobPayloads[typeof QUEUES.paypalEventRoute]>(QUEUES.paypalEventRoute, async ([job]) => routeEvent(job.data));
 
@@ -99,6 +102,12 @@ async function main() {
     console.log(`[worker] ${QUEUES.workflowSchedule} workflow=${data.workflowId}`, JSON.stringify(r));
   });
   await b.work<JobPayloads[typeof QUEUES.workflowSchedule]>(QUEUES.workflowSchedule, async ([job]) => schedule(job.data));
+
+  const observe = guarded<JobPayloads[typeof QUEUES.observeEvent]>(QUEUES.observeEvent, async (data) => {
+    const r = await observeEvent(data.paypalEventId);
+    console.log(`[worker] ${QUEUES.observeEvent} event=${data.paypalEventId} observations=${r.length}`, JSON.stringify(r));
+  });
+  await b.work<JobPayloads[typeof QUEUES.observeEvent]>(QUEUES.observeEvent, async ([job]) => observe(job.data));
 
   // Safety net for delayed advance jobs: every minute, wake any timer that is due.
   await b.schedule(QUEUES.timerSweep, "* * * * *", {});

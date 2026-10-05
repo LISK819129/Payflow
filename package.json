@@ -38,7 +38,9 @@
     "db:seed:phase6": "tsx scripts/seed-phase6.ts",
     "evidence:manifest:phase6": "tsx scripts/evidence/manifest-phase6.ts",
     "db:seed:phase7": "tsx scripts/seed-phase7.ts",
-    "evidence:manifest:phase7": "tsx scripts/evidence/manifest-phase7.ts"
+    "db:seed:phase8": "tsx scripts/seed-phase8.ts",
+    "evidence:manifest:phase7": "tsx scripts/evidence/manifest-phase7.ts",
+    "evidence:manifest:phase8": "tsx scripts/evidence/manifest-phase8.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

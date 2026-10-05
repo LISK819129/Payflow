@@ -1,0 +1,858 @@
+{
+  "phase": 8,
+  "generatedAt": "2026-10-05T02:41:19.215Z",
+  "whatThisIsNot": "Test Run and Observe Mode are not forecasting or prediction. Each record says how one saved workflow version evaluated one input with the authority, budget and AI evidence available at that moment.",
+  "labels": {
+    "TEST_INPUT": "a hypothetical transaction typed by a person in “Test this flow”; never a PayPal event",
+    "REAL_PAYPAL_EVENT_OBSERVED": "a real PayPal Sandbox webhook, confirmed with PayPal's API, evaluated by an observing draft after live routing",
+    "CACHED_AI_ANALYSIS": "a real OpenAI result computed in Phase 7 and reused from the content-addressed cache — no new model call",
+    "MOCK_TEST": "the deterministic mock analyst (AI_ANALYSIS_PROVIDER=mock); no model was called",
+    "AI_UNAVAILABLE": "the model call was refused before it was made (the $0 phase cap) — the policy treats it as UNCERTAIN",
+    "CALCULATED_BY_PAYFLOW": "computed by PayFlow's own rules; no AI involved"
+  },
+  "openai": {
+    "phase8": {
+      "calls": 0,
+      "cost": "0"
+    },
+    "lifetime": {
+      "calls": 32,
+      "cost": "0.386817"
+    },
+    "phaseCap": "AI_PHASE_CAP_USD=0 for the dev server and worker; any model call is refused before it is made"
+  },
+  "paypal": {
+    "moneyMoved": "none — no payout, refund, capture, payment or invoice was created in Phase 8",
+    "eventsReceived": [
+      {
+        "eventId": "WH-95695264SV199530G-7JV32686XH072420A",
+        "type": "BILLING.PLAN.CREATED",
+        "provenance": "REAL_PAYPAL_SANDBOX",
+        "resourceId": "P-2F6347026D165282UNLBQRNY",
+        "routedAt": "2026-10-05T02:17:53.054Z",
+        "liveRouting": {
+          "debugId": "ca458eeae897c",
+          "eventId": "WH-95695264SV199530G-7JV32686XH072420A",
+          "matched": [],
+          "confirmed": true
+        }
+      },
+      {
+        "eventId": "WH-5AN868774B986251R-4PR551388J948141Y",
+        "type": "CATALOG.PRODUCT.CREATED",
+        "provenance": "REAL_PAYPAL_SANDBOX",
+        "resourceId": "PROD-9JK887907T391174J",
+        "routedAt": "2026-10-05T02:18:08.514Z",
+        "liveRouting": {
+          "debugId": "ca458ef0f0fde",
+          "eventId": "WH-5AN868774B986251R-4PR551388J948141Y",
+          "matched": [],
+          "confirmed": true
+        }
+      }
+    ],
+    "howProduced": "pnpm paypal:sandbox:plan — a Sandbox catalog product and billing plan (no subscriber, no payment)"
+  },
+  "liveRowsCreatedSincePhaseStart": {
+    "action_executions": 0,
+    "budget_reservations": 0,
+    "approvals": 0,
+    "authority_decisions": 0,
+    "reconciliations": 0,
+    "workflow_runs": 0
+  },
+  "simulations": [
+    {
+      "id": "5a3bfc4e-debc-4596-9afc-15a066ea36c8",
+      "mode": "OBSERVE",
+      "inputProvenance": "REAL_PAYPAL_EVENT_OBSERVED",
+      "workflow": "New subscription plan review",
+      "versionNumber": 1,
+      "graphHash": "6cdc445f039bb2ec",
+      "authorities": [],
+      "paypalEventId": "WH-95695264SV199530G-7JV32686XH072420A",
+      "assumptions": {},
+      "parentId": null,
+      "verdict": "WOULD_REVIEW",
+      "headline": "Would wait for a person: A new subscription plan was created in PayPal; finance confirms its price and terms",
+      "wouldAction": null,
+      "ai": [],
+      "budgetSnapshot": [],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:17:54.487Z"
+    },
+    {
+      "id": "f3bdb4ed-4722-4d40-8d63-608a05f2ee1f",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {},
+      "parentId": null,
+      "verdict": "WOULD_REVIEW",
+      "headline": "Would wait for a person: Purpose: AI analysis unavailable (BUDGET_EXHAUSTED); a person decides",
+      "wouldAction": null,
+      "ai": [
+        "extract: AI_UNAVAILABLE",
+        "purpose: AI_UNAVAILABLE",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: CALCULATED_BY_PAYFLOW"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:22:58.279Z"
+    },
+    {
+      "id": "443d969a-9a80-4e08-9686-0525c97a9aac",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {},
+      "parentId": null,
+      "verdict": "WOULD_REVIEW",
+      "headline": "Would wait for a person: AI interpretation: outside the delegated purpose (gift cards) — The invoice is for digital gift cards, which are not cloud infrastructure services.",
+      "wouldAction": null,
+      "ai": [
+        "extract: CACHED_AI_ANALYSIS",
+        "purpose: CACHED_AI_ANALYSIS",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: CALCULATED_BY_PAYFLOW"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:24:12.650Z"
+    },
+    {
+      "id": "e891ff27-da2b-4109-ade7-0dbc2c4a45aa",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {
+        "pay": "APPROVED"
+      },
+      "parentId": "443d969a-9a80-4e08-9686-0525c97a9aac",
+      "verdict": "WOULD_ALLOW",
+      "headline": "Would send payout 470.00 USD → billing@acme-cloud.example to PayPal after the assumed approval — not sent in this test",
+      "wouldAction": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "470.00",
+          "currency": "USD"
+        },
+        "nodeId": "pay",
+        "target": null,
+        "counterparty": "billing@acme-cloud.example",
+        "authorityOutcome": "ALLOW_AFTER_HUMAN_APPROVAL"
+      },
+      "ai": [
+        "extract: CACHED_AI_ANALYSIS",
+        "purpose: CACHED_AI_ANALYSIS",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: CALCULATED_BY_PAYFLOW"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:25:35.840Z"
+    },
+    {
+      "id": "bbc58f17-e714-4519-a695-30f9c5e0d500",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {
+        "pay": "REJECTED"
+      },
+      "parentId": "443d969a-9a80-4e08-9686-0525c97a9aac",
+      "verdict": "WOULD_END",
+      "headline": "Authority review at “Pay the cloud supplier” was rejected by a person; PayPal was not contacted",
+      "wouldAction": null,
+      "ai": [
+        "extract: CACHED_AI_ANALYSIS",
+        "purpose: CACHED_AI_ANALYSIS",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: CALCULATED_BY_PAYFLOW"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:25:51.996Z"
+    },
+    {
+      "id": "29554c24-3b48-4ebf-802c-89e580f7e28b",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {
+        "pay": "REJECTED"
+      },
+      "parentId": "443d969a-9a80-4e08-9686-0525c97a9aac",
+      "verdict": "WOULD_END",
+      "headline": "After the assumed rejection (only inside this test) the run would end here; PayPal would not be contacted",
+      "wouldAction": null,
+      "ai": [
+        "extract: CACHED_AI_ANALYSIS",
+        "purpose: CACHED_AI_ANALYSIS",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: CALCULATED_BY_PAYFLOW"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:27:14.198Z"
+    },
+    {
+      "id": "5fdcd7b4-b6dc-497d-a5b4-e39a2fdd3100",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {
+        "pay": "APPROVED"
+      },
+      "parentId": "443d969a-9a80-4e08-9686-0525c97a9aac",
+      "verdict": "WOULD_ALLOW",
+      "headline": "Would send payout 470.00 USD → billing@acme-cloud.example to PayPal after the assumed approval — not sent in this test",
+      "wouldAction": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "470.00",
+          "currency": "USD"
+        },
+        "nodeId": "pay",
+        "target": null,
+        "counterparty": "billing@acme-cloud.example",
+        "authorityOutcome": "ALLOW_AFTER_HUMAN_APPROVAL"
+      },
+      "ai": [
+        "extract: CACHED_AI_ANALYSIS",
+        "purpose: CACHED_AI_ANALYSIS",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: CALCULATED_BY_PAYFLOW"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:27:32.525Z"
+    },
+    {
+      "id": "679256bf-8d13-49e6-b6a1-b3befd60b0d9",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {
+        "pay": "REJECTED"
+      },
+      "parentId": "443d969a-9a80-4e08-9686-0525c97a9aac",
+      "verdict": "WOULD_END",
+      "headline": "After the assumed rejection (only inside this test) the run would end here; PayPal would not be contacted",
+      "wouldAction": null,
+      "ai": [
+        "extract: CACHED_AI_ANALYSIS",
+        "purpose: CACHED_AI_ANALYSIS",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: CALCULATED_BY_PAYFLOW"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:27:39.884Z"
+    },
+    {
+      "id": "0dc7aa70-84a1-4f7d-a33a-0783677369f1",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {},
+      "parentId": null,
+      "verdict": "WOULD_ALLOW",
+      "headline": "Would send payout 185.00 USD → billing@acme-cloud.example to PayPal — not sent in this test",
+      "wouldAction": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "185.00",
+          "currency": "USD"
+        },
+        "nodeId": "pay",
+        "target": null,
+        "counterparty": "billing@acme-cloud.example",
+        "authorityOutcome": "ALLOW"
+      },
+      "ai": [
+        "extract: MOCK_TEST",
+        "purpose: MOCK_TEST",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: MOCK_TEST"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:28:34.312Z"
+    },
+    {
+      "id": "a416638e-4ea1-45ab-9580-5d8430978b48",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {},
+      "parentId": null,
+      "verdict": "WOULD_REVIEW",
+      "headline": "Would wait for a person: $650.00 exceeds the $500.00 per-transaction limit",
+      "wouldAction": null,
+      "ai": [
+        "extract: MOCK_TEST",
+        "purpose: MOCK_TEST",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: MOCK_TEST"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:28:48.231Z"
+    },
+    {
+      "id": "1ffe132a-83b8-42cb-b867-8218e9416a64",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {},
+      "parentId": null,
+      "verdict": "WOULD_REVIEW",
+      "headline": "Would wait for a person: invoices@nimbus-compute.example is not an approved counterparty; Risk ELEVATED: invoices@nimbus-compute.example has never been paid by PayFlow",
+      "wouldAction": null,
+      "ai": [
+        "extract: MOCK_TEST",
+        "purpose: MOCK_TEST",
+        "behavior: MOCK_TEST",
+        "contract: CALCULATED_BY_PAYFLOW"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:28:58.544Z"
+    },
+    {
+      "id": "2856f5ac-e086-4861-a04b-3e2d3aa91cb3",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {},
+      "parentId": null,
+      "verdict": "WOULD_ALLOW",
+      "headline": "Would send payout 185.00 USD → billing@acme-cloud.example to PayPal — not sent in this test",
+      "wouldAction": {
+        "kind": "paypal.payout",
+        "amount": {
+          "value": "185.00",
+          "currency": "USD"
+        },
+        "nodeId": "pay",
+        "target": null,
+        "counterparty": "billing@acme-cloud.example",
+        "authorityOutcome": "ALLOW"
+      },
+      "ai": [
+        "extract: MOCK_TEST",
+        "purpose: MOCK_TEST",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: MOCK_TEST"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:31:40.078Z"
+    },
+    {
+      "id": "a1c622f8-baf2-445b-af52-cf45b9b30c0b",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {},
+      "parentId": null,
+      "verdict": "WOULD_REVIEW",
+      "headline": "Would wait for a person: $650.00 exceeds the $500.00 per-transaction limit",
+      "wouldAction": null,
+      "ai": [
+        "extract: MOCK_TEST",
+        "purpose: MOCK_TEST",
+        "behavior: CALCULATED_BY_PAYFLOW",
+        "contract: MOCK_TEST"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:31:50.505Z"
+    },
+    {
+      "id": "24f8b5a7-01d8-4676-8a00-3716c285b6b6",
+      "mode": "TEST",
+      "inputProvenance": "TEST_INPUT",
+      "workflow": "Cloud procurement",
+      "versionNumber": 2,
+      "graphHash": "514c4f385fc18c2c",
+      "authorities": [
+        {
+          "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+          "name": "Cloud procurement",
+          "status": "ACTIVE",
+          "version": 4
+        }
+      ],
+      "paypalEventId": null,
+      "assumptions": {},
+      "parentId": null,
+      "verdict": "WOULD_REVIEW",
+      "headline": "Would wait for a person: invoices@nimbus-compute.example is not an approved counterparty; Risk ELEVATED: invoices@nimbus-compute.example has never been paid by PayFlow",
+      "wouldAction": null,
+      "ai": [
+        "extract: MOCK_TEST",
+        "purpose: MOCK_TEST",
+        "behavior: MOCK_TEST",
+        "contract: CALCULATED_BY_PAYFLOW"
+      ],
+      "budgetSnapshot": [
+        {
+          "name": "Cloud procurement",
+          "limit": "5000.00",
+          "period": "October 2026 (UTC)",
+          "currency": "USD",
+          "reserved": "0",
+          "committed": "2200.00",
+          "authorityId": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915"
+        }
+      ],
+      "externalActionsDisabled": true,
+      "evaluatedAt": "2026-10-05T02:32:00.875Z"
+    }
+  ],
+  "aiAnalysesCreated": [
+    {
+      "task": "extract",
+      "provider": "openai",
+      "model": "gpt-5.4-mini",
+      "status": "FAILED",
+      "costUsd": "0",
+      "error": "BUDGET_EXHAUSTED: AI phase cap: $0.0000 of $0 spent since 2026-10-04T10:00:00Z; this call could cost up to $0.0180"
+    },
+    {
+      "task": "purpose",
+      "provider": "openai",
+      "model": "gpt-5.4-mini",
+      "status": "FAILED",
+      "costUsd": "0",
+      "error": "BUDGET_EXHAUSTED: AI phase cap: $0.0000 of $0 spent since 2026-10-04T10:00:00Z; this call could cost up to $0.0180"
+    },
+    {
+      "task": "extract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "purpose",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "contract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "extract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "purpose",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "contract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "extract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "purpose",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "behavior",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "extract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "purpose",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "contract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "extract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "purpose",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "contract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "extract",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "purpose",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    },
+    {
+      "task": "behavior",
+      "provider": "mock",
+      "model": "mock-analyst-1",
+      "status": "OK",
+      "costUsd": "0.000000",
+      "error": null
+    }
+  ],
+  "auditChain": {
+    "ok": true,
+    "records": 671,
+    "head": "6980180458805c708c8664cb47c41c64dac82e3550dc00a86c32681d14473ef2"
+  },
+  "screenshots": [
+    "1-normal/01-test-input.png",
+    "1-normal/02-test-result.png",
+    "2-purpose-violation/01-test-input.png",
+    "2-purpose-violation/02-test-result.png",
+    "3-financial-limit/01-test-input.png",
+    "3-financial-limit/02-test-result.png",
+    "4-unknown-supplier/01-test-input.png",
+    "4-unknown-supplier/02-test-result.png",
+    "5-approval-exploration/01-assumed-approved.png",
+    "5-approval-exploration/02-assumed-rejected.png",
+    "6-isolation/01-authority-budget-unchanged.png",
+    "6-isolation/02-no-approval-created.png",
+    "6-isolation/03-no-execution-created.png",
+    "6-isolation/04-audit-no-money-moved.png",
+    "7-ai-cap-refusal/01-test-input.png",
+    "7-ai-cap-refusal/02-test-result.png",
+    "observe/01-draft-not-observing.png",
+    "observe/02-draft-observing.png",
+    "observe/03-observation-feed.png",
+    "observe/04-observed-real-plan-event.png",
+    "observe/05-paypal-events-live-routing.png"
+  ]
+}
