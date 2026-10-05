@@ -1,4 +1,4 @@
-import { CircleCheck, CircleDashed, CircleAlert, CircleX, FlaskConical, Hand, Radio, Sparkles, UserPen } from "lucide-react";
+import { Bot, CircleCheck, CircleDashed, CircleAlert, CircleX, FlaskConical, Hand, Radio, Sparkles, UserPen } from "lucide-react";
 import type { ReactNode } from "react";
 
 export type StatusTone = "ok" | "warn" | "danger" | "neutral" | "live" | "ai";
@@ -31,7 +31,7 @@ export function Status({ tone, children }: { tone: StatusTone; children: ReactNo
   );
 }
 
-export type Provenance = "REAL_PAYPAL_SANDBOX" | "SIMULATED" | "AI_GENERATED" | "USER_PROVIDED";
+export type Provenance = "REAL_PAYPAL_SANDBOX" | "SIMULATED" | "AI_GENERATED" | "USER_PROVIDED" | "AGENT_REQUEST";
 
 const provenanceStyle: Record<Provenance, { label: string; cls: string; icon: ReactNode }> = {
   REAL_PAYPAL_SANDBOX: {
@@ -42,6 +42,7 @@ const provenanceStyle: Record<Provenance, { label: string; cls: string; icon: Re
   SIMULATED: { label: "Simulated", cls: "border-sim/60 text-sim bg-sim-wash", icon: <FlaskConical size={12} strokeWidth={2} aria-hidden /> },
   AI_GENERATED: { label: "AI-generated", cls: "border-marker-ink/50 text-marker-ink", icon: <Sparkles size={12} strokeWidth={2} aria-hidden /> },
   USER_PROVIDED: { label: "User-provided", cls: "border-line-strong text-muted", icon: <UserPen size={12} strokeWidth={2} aria-hidden /> },
+  AGENT_REQUEST: { label: "Requested by AI agent", cls: "border-ink bg-ink text-surface", icon: <Bot size={12} strokeWidth={2} aria-hidden /> },
 };
 
 /** Where a money-shaped record came from. Shown next to every such record. */

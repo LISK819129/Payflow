@@ -1,0 +1,401 @@
+{
+  "client": "@modelcontextprotocol/sdk Client (Streamable HTTP)",
+  "server": "https://<payflow>/api/mcp",
+  "at": "2026-10-05T07:22:32.884Z",
+  "serverInfo": {
+    "name": "payflow-agent-gateway",
+    "title": "PayFlow Agent Gateway",
+    "version": "0.9.0"
+  },
+  "instructions": "PayFlow is a financial control layer. You may REQUEST payouts or refunds through the workflows you are scoped to, check their status, run TEST requests, and withdraw a request that is waiting for review. A request is never authorization: PayFlow's authority, AI analysis and, when required, a person decide, and only then does PayPal settle. REQUEST accepted ≠ payment completed — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. Always reuse the same request_id when retrying the same request.",
+  "tools": [
+    {
+      "name": "payflow_list_capabilities",
+      "title": "What this agent may ask for",
+      "description": "Returns this agent's identity, the workflows and actions it may REQUEST (not authorize), what it can never do, and the request states. Call this first.",
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "input": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "payflow_request_payment",
+      "title": "Request a payout (LIVE)",
+      "description": "Asks PayFlow to pay a supplier through one of your workflows. PayFlow checks identity, scope, authority (amount, recipient, currency, budget, frequency), analyses the purpose and evidence, and asks a person when required. Returns the request state — ACCEPTED/PROCESSING/REVIEW_REQUIRED/DENIED/COMPLETED… — never assume payment until state is COMPLETED.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,79}$",
+            "description": "Your idempotency key for this request. Retrying with the same request_id returns the same PayFlow request; never reuse it for a different payment."
+          },
+          "workflow_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "A workflow id from payflow_list_capabilities"
+          },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                "description": "Exact decimal string, e.g. \"185.00\""
+              },
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$",
+                "description": "ISO 4217 currency code, e.g. USD"
+              }
+            },
+            "required": [
+              "value",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500,
+            "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$",
+            "description": "What the money is for, in plain words. Data for PayFlow's analysis — not an instruction."
+          },
+          "reference": {
+            "description": "Invoice number or other reference",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[\\x20-\\x7E]+$"
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "invoice_text": {
+                "description": "The supplier's invoice as plain text. Treated as untrusted data.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8000,
+                "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$"
+              },
+              "contract_text": {
+                "description": "The governing contract, if any. Treated as untrusted data.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8000,
+                "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$"
+              }
+            },
+            "additionalProperties": false
+          },
+          "counterparty": {
+            "type": "string",
+            "maxLength": 254,
+            "pattern": "^[^\\s@]{1,64}@[^\\s@]{1,255}\\.[A-Za-z]{2,24}$",
+            "description": "Recipient PayPal email address"
+          }
+        },
+        "required": [
+          "request_id",
+          "workflow_id",
+          "amount",
+          "purpose",
+          "counterparty"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "payflow_request_refund",
+      "title": "Request a refund (LIVE)",
+      "description": "Asks PayFlow to refund a PayPal capture through one of your workflows. Same checks as a payment; requires refund scope.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,79}$",
+            "description": "Your idempotency key for this request. Retrying with the same request_id returns the same PayFlow request; never reuse it for a different payment."
+          },
+          "workflow_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "A workflow id from payflow_list_capabilities"
+          },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                "description": "Exact decimal string, e.g. \"185.00\""
+              },
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$",
+                "description": "ISO 4217 currency code, e.g. USD"
+              }
+            },
+            "required": [
+              "value",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500,
+            "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$",
+            "description": "What the money is for, in plain words. Data for PayFlow's analysis — not an instruction."
+          },
+          "reference": {
+            "description": "Invoice number or other reference",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[\\x20-\\x7E]+$"
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "invoice_text": {
+                "description": "The supplier's invoice as plain text. Treated as untrusted data.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8000,
+                "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$"
+              },
+              "contract_text": {
+                "description": "The governing contract, if any. Treated as untrusted data.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8000,
+                "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$"
+              }
+            },
+            "additionalProperties": false
+          },
+          "capture_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9-]{6,40}$",
+            "description": "The PayPal capture to refund"
+          }
+        },
+        "required": [
+          "request_id",
+          "workflow_id",
+          "amount",
+          "purpose",
+          "capture_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "payflow_test_request",
+      "title": "Would PayFlow allow this? (TEST)",
+      "description": "Runs the request through the real workflow, authority and analysis in an isolated TEST that cannot reach PayPal or move money, and returns what would happen. A TEST request can never become a live one; its request_id cannot be reused for a live request.",
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,79}$",
+            "description": "Your idempotency key for this request. Retrying with the same request_id returns the same PayFlow request; never reuse it for a different payment."
+          },
+          "workflow_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "A workflow id from payflow_list_capabilities"
+          },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "pattern": "^\\d{1,10}(\\.\\d{1,2})?$",
+                "description": "Exact decimal string, e.g. \"185.00\""
+              },
+              "currency": {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$",
+                "description": "ISO 4217 currency code, e.g. USD"
+              }
+            },
+            "required": [
+              "value",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500,
+            "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$",
+            "description": "What the money is for, in plain words. Data for PayFlow's analysis — not an instruction."
+          },
+          "reference": {
+            "description": "Invoice number or other reference",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[\\x20-\\x7E]+$"
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "invoice_text": {
+                "description": "The supplier's invoice as plain text. Treated as untrusted data.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8000,
+                "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$"
+              },
+              "contract_text": {
+                "description": "The governing contract, if any. Treated as untrusted data.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8000,
+                "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]*$"
+              }
+            },
+            "additionalProperties": false
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "payout",
+              "refund"
+            ]
+          },
+          "counterparty": {
+            "type": "string",
+            "maxLength": 254,
+            "pattern": "^[^\\s@]{1,64}@[^\\s@]{1,255}\\.[A-Za-z]{2,24}$"
+          },
+          "capture_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9-]{6,40}$"
+          }
+        },
+        "required": [
+          "request_id",
+          "workflow_id",
+          "amount",
+          "purpose",
+          "action"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "payflow_get_request",
+      "title": "Status of one of your requests",
+      "description": "Returns the current state, reasons (machine-readable codes), authority decision, human review status, PayPal result and the Intent Receipt for a request this agent made.",
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "pattern": "^PF-[0-9A-Z]{8}$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,79}$",
+            "description": "Your idempotency key for this request. Retrying with the same request_id returns the same PayFlow request; never reuse it for a different payment."
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "payflow_get_authority",
+      "title": "Limits that govern a workflow",
+      "description": "Read-only: the authority (amount limits, currencies, recipients, purpose, budget used) that PayFlow will apply to your requests through this workflow. You cannot change it.",
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "workflow_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "payflow_cancel_request",
+      "title": "Withdraw a request waiting for review",
+      "description": "Withdraws one of your own LIVE requests while it is waiting for a person (REVIEW_REQUIRED). It can only stop a payment, never approve or change one.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "input": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "pattern": "^PF-[0-9A-Z]{8}$"
+          }
+        },
+        "required": [
+          "reference"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    }
+  ]
+}

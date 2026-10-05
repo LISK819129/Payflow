@@ -7,7 +7,7 @@
 ```
                  ┌───────────────────────── Next.js app (Render web service) ─────────────────────────┐
  Browser ───────▶│ UI (React, XYFlow canvas)   API route handlers (thin: auth → call a server module) │
- External agent ▶│ PayFlow MCP endpoint /api/mcp   Agent REST /api/agent/*                             │
+ External agent ▶│ PayFlow MCP endpoint /api/mcp  (agents: MCP only)                                  │
  PayPal ────────▶│ POST /api/webhooks/paypal  → verify → persist (unique event id) → enqueue          │
                  └──────────────────────────────────────┬─────────────────────────────────────────────┘
                                                         │ Postgres (single source of truth)
@@ -40,8 +40,8 @@ All financial logic lives in `src/server/**`. Route handlers only authenticate, 
 | workflow/nodes | `src/server/workflow/nodes` | One executor per node type; the UI node library is generated from this registry, so no UI node exists without a backend |
 | policy | `src/server/policy` | Budgets (ledger with row locks), frequency, counterparty, currency, category rules — pure functions + locked reads |
 | approvals | `src/server/approvals` | Approval requests, decisions, resume |
-| agents | `src/server/agents` | Ephemeral capabilities, token hashing, atomic use-counting, agent request handling, PayFlow MCP tools |
 | simulation | `src/server/simulation` | Test Run and Observe Mode: the real runtime inside a rolled-back transaction, with no PayPal write capability (§14) |
+| agents | `src/server/agents` | Agent Gateway: agent identity and credentials, request envelope, idempotency, Intent Receipts, binding check, PayFlow's MCP server (§15) |
 | ai | `src/server/ai` | `AIProvider` interface + Anthropic implementation, prompts, output schemas |
 | retrieval | `src/server/retrieval` | `ContextRetriever` interface: counterparty history, invoice candidates, prior anomalies/disputes |
 | audit | `src/server/audit` | Append-only, hash-chained audit records |
@@ -267,3 +267,38 @@ Test 20 deliberately calls each layer from inside a sandbox; all refuse, and a f
 **Versioning.** Every record stores the workflow version id and number, the full graph and its hash, the authority ids and versions, the input, the evaluation time and the provenance. Editing a draft never changes past observations.
 
 **UI.** Flow Builder: *Test this flow* (fields derived from the graph's `trigger.*` references; disabled while there are unsaved edits) and *Observe* for drafts. Result page `/simulations/[id]`: TEST RUN / OBSERVED banner, verdict (`WOULD_ALLOW / WOULD_REVIEW / WOULD_DENY / WOULD_END / WOULD_WAIT / WOULD_SUSPEND`), PayPal *Not contacted*, Money moved *$0*, Real budget reserved *$0*, the highlighted path, each step, the authority trace and the Intelligence panel. Observation feed `/flows/[id]/observations`.
+
+## 15. Agent Gateway & MCP (Phase 9)
+
+**The agent asks. PayFlow decides. PayPal settles.** External AI agents never reach PayPal; they reach PayFlow's own MCP server, and every request goes through the same engine as any other run.
+
+```
+AI agent ──MCP (Streamable HTTP)──► POST /api/mcp
+   size limit (64 KB) → per-IP limit on failed auth → bearer auth (status + expiry re-read every call) → per-agent limits
+   → stateless McpServer bound to that agent (7 tools)
+        payflow_request_payment / _refund / _test_request
+          strict envelope (zod .strict(): unknown fields reject the call) → scope (workflow + action + mode)
+          → idempotency (agent, request_id) → Intent Receipt (hashed, audit-anchored)
+          → LIVE: startRunTx in the same transaction  ·  TEST: Phase 8 simulate() (no PayPal capability)
+   → normal engine: policies · AI evidence · authority CHECK/RESERVE · approvals · binding check · PayPal · reconciliation · audit
+```
+
+**Identity** (`agents`). Immutable id, name, accountable owner (a person — the agent never inherits their permissions), status ACTIVE/REVOKED, scopes, expiry, last use. Credential `pfa_<credentialId>_<secret>`: only SHA-256(secret) is stored (a high-entropy secret needs no password KDF); compared in constant time; shown once at creation or rotation. Rotation swaps the hash (old token stops immediately); revocation takes the agent row `FOR UPDATE`, withdraws its requests waiting for a person, and is checked again at send time. Failed attempts by a known agent are audited (`agent.auth.refused`, at most once a minute). Spec note: MCP's optional HTTP authorization is OAuth 2.1; PayFlow uses a scoped, revocable bearer credential per agent, returned with `WWW-Authenticate: Bearer` on refusal. OAuth is a later step.
+
+**Least privilege.** A scope is `{ workflowId, actions: payout|refund, modes: LIVE|TEST }` — *permission to ask*. The workflow must be ACTIVE, start with `trigger.agent_request`, accept that action and contain a node for it. *Authority to move money* stays with the workflow's authority (limits, recipients, currency, budget, frequency, purpose policy) and, when it says REVIEW, a person. There is no tool to approve, edit authority or workflows, read secrets, or call PayPal; `decideApproval` itself refuses anyone who is not an OWNER/APPROVER user of the workspace.
+
+**Envelope** (`agents/envelope.ts`). `request_id`, `workflow_id`, `amount {value, currency}` (exact decimal, ISO code), `counterparty` (email) or `capture_id`, `purpose`, `reference`, `evidence {invoice_text, contract_text}`. Free text is data for the intelligence nodes (fenced, scanned for injection) — never a command. The agent's identity comes from the credential, never the envelope. Normalised (e.g. `185` → `185.00`, lower-case email) and hashed with the mode.
+
+**Idempotency.** Unique `(agent_id, request_id)`. Same request again → the existing request (`replayed: true`); a different request under the same id (amount, recipient, purpose, evidence or mode) → `IDEMPOTENCY_CONFLICT`. Concurrent duplicates serialise on the unique index; the run is keyed `agent:<request id>` on `(version, triggerRef)` as a second guard.
+
+**Intent Receipt** (`agents/receipt.ts`). Written once at acceptance: requester (agent, owner, credential version), request (action, amount, recipient, purpose, reference, request_id), evidence by SHA-256, workflow id/version/graph hash, authorities and versions at acceptance, request hash, timestamp, and a statement that it authorizes nothing. Canonical JSON → SHA-256, anchored in the audit chain (`agent.request.accepted`). What happens next is a hash chain of links on that hash — authority decision (with the authority versions actually used), human review requested/decided, PayPal result, final state, PayPal webhook confirmation — each anchored too (`agent.receipt.linked`). `verifyReceipt` recomputes everything and compares with the anchors, so editing a receipt, or a receipt and its stored hash together, is detected.
+
+**Binding.** In an agent-started run, every money-moving action must be exactly what the receipt says: same kind, amount and currency, recipient or capture — checked when the action is prepared and again in the execution preflight immediately before PayPal, together with receipt integrity and the agent still being active and unexpired. Otherwise the action is not sent (`INTENT_MISMATCH`, `RECEIPT_TAMPERED`, `AGENT_REVOKED`…). Removing the preflight check fails 1 test; removing the prepare check fails 3.
+
+**States returned to agents.** `ACCEPTED`, `PROCESSING`, `REVIEW_REQUIRED`, `APPROVED`, `REJECTED`, `DENIED`, `CANCELLED`, `COMPLETED` (PayPal accepted the action — never inferred from acceptance), `FAILED`, `UNKNOWN`, `ENDED`, and `TEST_COMPLETE` for tests; with machine-readable reason codes (`AMOUNT_OVER_TRANSACTION_LIMIT`, `PURPOSE_NOT_WITHIN_SCOPE`, `INSTRUCTIONS_IN_UNTRUSTED_TEXT`, `COUNTERPARTY_DENIED`, …), the authority decision and versions, human-review status and the PayPal result. Derived from the engine's own rows; the worker re-syncs after every advance.
+
+**TEST requests.** `payflow_test_request` runs Phase 8's Test Run (rolled-back transaction, no write capability). A TEST request id is hashed with its mode, so it can never be replayed as LIVE.
+
+**UI.** Agents page (register with scopes and expiry, credential shown once), agent page (can request / can never, credential, rotate, revoke, requests), request page (pipeline, reasons, verified receipt and its chain, evidence), a "Requested by AI agent" banner and pipeline on executions, and the requester on approval cards.
+
+**PayPal AI resources.** PayPal's MCP server and Agent Toolkit authenticate with the merchant's client credentials — full merchant access, with no per-agent identity, budget or approval. PayFlow deliberately does not hand them to agents; it is the controlled layer in front of PayPal. The Agent Toolkit has no payouts tool, which PayFlow's procurement case needs; PayFlow settles through its own audited adapter. During Phase 9 the PayPal Sandbox MCP server (connected to the development session, operator side only) was tried once, read-only, to cross-check the agent payouts; its own session failed authentication (401), so PayPal-side confirmation comes from PayPal's verified webhooks instead.

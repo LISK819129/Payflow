@@ -3,7 +3,7 @@ import { exprRefs, type Expr } from "./expression";
 import { Graph, SPEC_BY_TYPE, type Edge, type GraphNode, type NodeSpec, type WorkflowGraph } from "./nodes";
 
 /** The highest phase whose node executors exist. Bumped as phases land. */
-export const RUNTIME_PHASE = 7;
+export const RUNTIME_PHASE = 9;
 
 export type Issue = { severity: "error" | "warning"; code: string; message: string; nodeId?: string };
 

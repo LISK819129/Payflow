@@ -89,8 +89,11 @@ export default async function SimulationPage(props: PageProps<"/simulations/[id]
     return a ? `Assumed ${a.status.toLowerCase()} inside this test — no person decided and no approval exists${a.status === "REJECTED" ? "; PayPal would not be contacted" : ""}` : null;
   };
   // Said from the record's own provenance, never from the engine's generic trigger text.
+  const agentTest = (s.trigger as { kind?: string; payload?: { agent?: { name?: string } } }).kind === "agent_request";
   const triggerText = isTest
-    ? "Test input provided by a person — not a PayPal event"
+    ? agentTest
+      ? `TEST request from AI agent “${(s.trigger as { payload: { agent?: { name?: string } } }).payload.agent?.name ?? "unknown"}” — evaluated in isolation; it can never become a live request`
+      : "Test input provided by a person — not a PayPal event"
     : `Real PayPal event ${s.paypalEventId ?? ""} (confirmed with PayPal), evaluated in Observe Mode`;
   const pending = approvals.find((a) => a.status === "PENDING");
   const decision = s.authorityDecision as { request: { kind: string; amount: { value: string; currency: string } | null; counterparty: string | null; target: { type: string; id: string } | null }; outcome: AuthorityOutcome; evaluations: Evaluation[]; budget: BudgetSnapshot[]; frequency: FrequencySnapshot[]; authoritySnapshot: { id: string; name: string; version: number }[] } | null;

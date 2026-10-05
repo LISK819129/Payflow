@@ -13,6 +13,8 @@ import { getRun } from "@/server/workflow/queries";
 import { runLabel, runTone } from "@/components/flow/run-status";
 import { ApprovalCard } from "@/components/authority/approval-card";
 import { listApprovals } from "@/server/approvals/queries";
+import { AgentBanner, AgentPipeline } from "@/components/agents/agent-pipeline";
+import { getAgentRequestView } from "@/server/agents/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,7 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
   const data = await getRun(user.workspaceId, id);
   if (!data) notFound();
   const { run, wf, version, steps } = data;
+  const agentView = run.triggerKind === "agent_request" ? await getAgentRequestView(user.workspaceId, { runId: run.id }) : null;
   const graph = version.graph as WorkflowGraph;
   const amount = (run.triggerPayload as { amount?: { value?: string; currency_code?: string } }).amount;
   const pendingRow = data.approvals.find((a) => a.status === "PENDING");
@@ -37,6 +40,12 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
       <Link href="/executions" className="inline-flex items-center gap-1 text-body-sm text-muted hover:text-ink">
         <ArrowLeft size={13} aria-hidden /> Executions
       </Link>
+
+      {agentView && (
+        <div className="mt-4">
+          <AgentBanner v={agentView} />
+        </div>
+      )}
 
       <header className="mt-4 flex flex-wrap items-end justify-between gap-6">
         <div>
@@ -56,6 +65,15 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
         </div>
         {run.outcome && <p className="max-w-md text-body text-ink-2">{run.outcome}</p>}
       </header>
+
+      {agentView && (
+        <div className="mt-8">
+          <AgentPipeline v={agentView} />
+          <Link href={`/agents/requests/${agentView.ar.reference}`} className="mt-3 inline-block text-body-sm text-muted hover:text-ink">
+            Intent receipt and full request →
+          </Link>
+        </div>
+      )}
 
       {pending && (
         <div className="mt-8">

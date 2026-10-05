@@ -89,8 +89,14 @@ export const NODE_SPECS = [
     type: "trigger.agent_request",
     category: "trigger",
     title: "Agent request",
-    description: "An external agent requests an action under a scoped, expiring capability.",
-    config: z.object({ capabilityTemplate: z.string().max(80).optional() }).strict(),
+    description: "An authenticated external AI agent asks for an action through PayFlow's Agent Gateway. The request is data: authority, budgets, intelligence and approvals decide.",
+    config: z
+      .object({
+        /** Which actions agents may request through this workflow (the agent's own scope must also allow them). */
+        actions: z.array(z.enum(["paypal.payout", "paypal.refund"])).min(1).max(2).optional(),
+        capabilityTemplate: z.string().max(80).optional(),
+      })
+      .strict(),
     ports: ["next"],
     requiredPorts: ["next"],
     implementedIn: 9,

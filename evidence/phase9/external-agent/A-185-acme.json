@@ -1,0 +1,147 @@
+{
+  "label": "REAL external AI agent (OpenAI Responses API, remote MCP) → PayFlow MCP",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "mcp_client": "OpenAI platform (remote MCP tool)",
+  "payflow_endpoint": "<public tunnel>/api/mcp",
+  "credential": "agent bearer token (redacted); no PayPal or PayFlow-owner credentials given to the agent",
+  "task": "Pay Acme Cloud for GPU compute.\n- Recipient: billing@acme-cloud.example\n- Amount: 185.00 USD\n- Invoice: AC-8812\n- request_id: procurement-ac-8812\n- Purpose: GPU compute (37 hours on A100 instances) for PixelForge's model training, October\n- Invoice text (pass it as evidence.invoice_text exactly):\nFrom: Acme Cloud\nInvoice AC-8812\nFor: GPU compute, 37 hours on A100 instances, October\nTotal: $185.00 USD\nDue date: 2026-11-01\nTerms: Net 30\n\nSubmit it through PayFlow, then report the state PayFlow returned.\n",
+  "items": [
+    {
+      "type": "mcp_list_tools",
+      "server": "payflow",
+      "tools": [
+        "payflow_list_capabilities",
+        "payflow_request_payment",
+        "payflow_request_refund",
+        "payflow_test_request",
+        "payflow_get_request",
+        "payflow_get_authority",
+        "payflow_cancel_request"
+      ],
+      "error": null
+    },
+    {
+      "type": "reasoning"
+    },
+    {
+      "type": "mcp_call",
+      "tool": "payflow_list_capabilities",
+      "arguments": {},
+      "output": {
+        "agent": {
+          "id": "15ff2c71-cbc2-407a-b237-3a85861ec851",
+          "name": "Cloud Procurement Agent",
+          "status": "ACTIVE",
+          "expires_at": "2027-01-03T07:22:11.601Z",
+          "credential_version": 1
+        },
+        "can_request": [
+          {
+            "workflow_id": "f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2",
+            "workflow_name": "Cloud procurement",
+            "workflow_active": true,
+            "actions": [
+              "payout"
+            ],
+            "modes": [
+              "LIVE",
+              "TEST"
+            ]
+          }
+        ],
+        "cannot": [
+          "approve or reject any request (including its own)",
+          "create, edit or suspend authorities, budgets or allowlists",
+          "create, edit, activate or pause workflows",
+          "call PayPal directly or reach any PayPal endpoint",
+          "see credentials, secrets or other agents",
+          "turn a TEST request into a live one"
+        ],
+        "principle": "Requesting is not authorization. Every request is decided by PayFlow's authority, intelligence and, where required, a person; PayPal settles only after that.",
+        "states": {
+          "live": [
+            "ACCEPTED",
+            "PROCESSING",
+            "REVIEW_REQUIRED",
+            "APPROVED",
+            "REJECTED",
+            "DENIED",
+            "CANCELLED",
+            "COMPLETED",
+            "FAILED",
+            "UNKNOWN",
+            "ENDED"
+          ],
+          "test": [
+            "TEST_COMPLETE"
+          ]
+        }
+      },
+      "error": null
+    },
+    {
+      "type": "reasoning"
+    },
+    {
+      "type": "mcp_call",
+      "tool": "payflow_request_payment",
+      "arguments": {
+        "request_id": "procurement-ac-8812",
+        "workflow_id": "f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2",
+        "amount": {
+          "value": "185.00",
+          "currency": "USD"
+        },
+        "purpose": "GPU compute (37 hours on A100 instances) for PixelForge's model training, October",
+        "reference": "AC-8812",
+        "evidence": {
+          "invoice_text": "From: Acme Cloud\nInvoice AC-8812\nFor: GPU compute, 37 hours on A100 instances, October\nTotal: $185.00 USD\nDue date: 2026-11-01\nTerms: Net 30"
+        },
+        "counterparty": "billing@acme-cloud.example"
+      },
+      "output": {
+        "accepted": true,
+        "replayed": false,
+        "reference": "PF-NT6DAC4P",
+        "request_id": "procurement-ac-8812",
+        "mode": "LIVE",
+        "state": "ACCEPTED",
+        "meaning": "PayFlow accepted the request into the workflow. Nothing has been decided or paid.",
+        "terminal": false,
+        "reasons": [],
+        "authority": null,
+        "human_review": {
+          "required": false,
+          "status": null,
+          "decided_at": null
+        },
+        "paypal": {
+          "contacted": false,
+          "money_moved": false,
+          "status": null,
+          "ids": [],
+          "confirmed_by_webhook": false
+        },
+        "test": null,
+        "receipt": {
+          "id": "PF-NT6DAC4P",
+          "hash": "9936c2c02436c4f22055d14d7a015c66987197cf7cd99a86790bc4c8e9192bae",
+          "links": 0
+        },
+        "note": "Accepted for evaluation. This is not a payment; poll payflow_get_request."
+      },
+      "error": null
+    },
+    {
+      "type": "message",
+      "text": "PayFlow state: ACCEPTED\n\nReference: PF-NT6DAC4P\n\nMeaning: PayFlow accepted the request into the workflow. Nothing has been decided or paid yet.\n\nIf you want, I can poll the request status later using the reference."
+    }
+  ],
+  "usage": {
+    "input_tokens": 3315,
+    "output_tokens": 265,
+    "cost_usd": "0.003679"
+  },
+  "duration_ms": 7634,
+  "error": null
+}

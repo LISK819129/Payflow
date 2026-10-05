@@ -26,7 +26,7 @@ const primary: Item[] = [
   { href: "/executions", label: "Executions", icon: Activity },
   { href: "/approvals", label: "Approvals", icon: Stamp },
   { href: "/authority", label: "Authority", icon: Landmark },
-  { href: "/agents", label: "Agents", icon: KeyRound, phase: 9 },
+  { href: "/agents", label: "Agents", icon: KeyRound },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/events", label: "PayPal events", icon: Radio },
   { href: "/audit", label: "Audit", icon: ScrollText },

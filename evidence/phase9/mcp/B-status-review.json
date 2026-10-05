@@ -1,0 +1,116 @@
+{
+  "client": "@modelcontextprotocol/sdk Client (Streamable HTTP)",
+  "server": "https://<payflow>/api/mcp",
+  "at": "2026-10-05T07:23:58.524Z",
+  "serverInfo": {
+    "name": "payflow-agent-gateway",
+    "title": "PayFlow Agent Gateway",
+    "version": "0.9.0"
+  },
+  "instructions": "PayFlow is a financial control layer. You may REQUEST payouts or refunds through the workflows you are scoped to, check their status, run TEST requests, and withdraw a request that is waiting for review. A request is never authorization: PayFlow's authority, AI analysis and, when required, a person decide, and only then does PayPal settle. REQUEST accepted ≠ payment completed — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. Always reuse the same request_id when retrying the same request.",
+  "request": {
+    "tool": "payflow_get_request",
+    "arguments": {
+      "reference": "PF-7GK9NCJQ"
+    }
+  },
+  "response": {
+    "isError": false,
+    "structuredContent": {
+      "reference": "PF-7GK9NCJQ",
+      "request_id": "procurement-ac-8813",
+      "mode": "LIVE",
+      "state": "REVIEW_REQUIRED",
+      "meaning": "A person must decide. The agent cannot approve it. PayPal has not been contacted.",
+      "terminal": false,
+      "reasons": [
+        {
+          "code": "PURPOSE_NOT_WITHIN_SCOPE",
+          "detail": "AI interpretation: outside the delegated purpose (gift cards) — The request is for digital gift cards, which are not cloud infrastructure services.",
+          "source": "ai"
+        }
+      ],
+      "authority": {
+        "decision": "REVIEW",
+        "outcome": "REVIEW",
+        "authorities": [
+          {
+            "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+            "name": "Cloud procurement",
+            "version": 4
+          }
+        ]
+      },
+      "human_review": {
+        "required": true,
+        "status": "PENDING",
+        "decided_at": null
+      },
+      "paypal": {
+        "contacted": false,
+        "money_moved": false,
+        "status": null,
+        "ids": [],
+        "confirmed_by_webhook": false
+      },
+      "test": null,
+      "receipt": {
+        "id": "PF-7GK9NCJQ",
+        "hash": "f1bf4352da7b2cb66f190de3969464bdfd028972c3bd5592977145b394736b2a",
+        "links": 2
+      },
+      "intent_receipt": {
+        "mode": "LIVE",
+        "type": "payflow.intent_receipt",
+        "request": {
+          "action": "paypal.payout",
+          "amount": {
+            "value": "470.00",
+            "currency": "USD"
+          },
+          "purpose": "10 x $47 digital gift cards for the team",
+          "reference": "AC-8813",
+          "capture_id": null,
+          "request_id": "procurement-ac-8813",
+          "counterparty": "billing@acme-cloud.example"
+        },
+        "version": 1,
+        "evidence": [
+          {
+            "kind": "invoice_text",
+            "chars": 119,
+            "sha256": "80a8034cf9d11ac4219631d116aa9fcaf9cb1c84cb77edfb96aed2d5e5c35405"
+          }
+        ],
+        "workflow": {
+          "id": "f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2",
+          "name": "Cloud procurement",
+          "version": 3,
+          "graph_hash": "4e1ec3153ddd3c9cf40dc57332db348344f83a0fe13a482fa2bb17fe972e5b15",
+          "version_id": "bc802ddf-0cd7-4cdb-ac97-7d1cc0858540"
+        },
+        "issued_at": "2026-10-05T07:23:48.382Z",
+        "requester": {
+          "kind": "ai_agent",
+          "agent_id": "15ff2c71-cbc2-407a-b237-3a85861ec851",
+          "agent_name": "Cloud Procurement Agent",
+          "owner_user_id": "c786fce1-5238-4e29-815b-2160dd634622",
+          "authenticated_by": "bearer_credential",
+          "credential_version": 1
+        },
+        "statement": "This records what the agent asked for. It authorizes nothing: PayFlow's authority, intelligence and, where required, a person decide.",
+        "receipt_id": "PF-7GK9NCJQ",
+        "request_hash": "a67b56eed76c59c93eb53bbac78468312ea47dc3ddda861e41dde79d2017335b",
+        "authority_at_acceptance": [
+          {
+            "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+            "name": "Cloud procurement",
+            "status": "ACTIVE",
+            "version": 4
+          }
+        ]
+      }
+    },
+    "text": "{\n  \"reference\": \"PF-7GK9NCJQ\",\n  \"request_id\": \"procurement-ac-8813\",\n  \"mode\": \"LIVE\",\n  \"state\": \"REVIEW_REQUIRED\",\n  \"meaning\": \"A person must decide. The agent cannot approve it. PayPal has not been contacted.\",\n  \"terminal\": false,\n  \"reasons\": [\n    {\n      \"code\": \"PURPOSE_NOT_WITHIN_SCOPE\",\n      \"detail\": \"AI interpretation: outside the delegated purpose (gift cards) — The request is for digital gift cards, which are not cloud infrastructure services.\",\n      \"source\": \"ai\"\n    }\n  ],\n  \"authority\": {\n    \"decision\": \"REVIEW\",\n    \"outcome\": \"REVIEW\",\n    \"authorities\": [\n      {\n        \"id\": \"7ce40c80-ded4-4f4a-aa7c-52119cbc2915\",\n        \"name\": \"Cloud procurement\",\n        \"version\": 4\n      }\n    ]\n  },\n  \"human_review\": {\n    \"required\": true,\n    \"status\": \"PENDING\",\n    \"decided_at\": null\n  },\n  \"paypal\": {\n    \"contacted\": false,\n    \"money_moved\": false,\n    \"status\": null,\n    \"ids\": [],\n    \"confirmed_by_webhook\": false\n  },\n  \"test\": null,\n  \"receipt\": {\n    \"id\": \"PF-7GK9NCJQ\",\n    \"hash\": \"f1bf4352da7b2cb66f190de3969464bdfd028972c3bd5592977145b394736b2a\",\n    \"links\": 2\n  },\n  \"intent_receipt\": {\n    \"mode\": \"LIVE\",\n    \"type\": \"payflow.intent_receipt\",\n    \"request\": {\n      \"action\": \"paypal.payout\",\n      \"amount\": {\n        \"value\": \"470.00\",\n        \"currency\": \"USD\"\n      },\n      \"purpose\": \"10 x $47 digital gift cards for the team\",\n      \"reference\": \"AC-8813\",\n      \"capture_id\": null,\n      \"request_id\": \"procurement-ac-8813\",\n      \"counterparty\": \"billing@acme-cloud.example\"\n    },\n    \"version\": 1,\n    \"evidence\": [\n      {\n        \"kind\": \"invoice_text\",\n        \"chars\": 119,\n        \"sha256\": \"80a8034cf9d11ac4219631d116aa9fcaf9cb1c84cb77edfb96aed2d5e5c35405\"\n      }\n    ],\n    \"workflow\": {\n      \"id\": \"f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2\",\n      \"name\": \"Cloud procurement\",\n      \"version\": 3,\n      \"graph_hash\": \"4e1ec3153ddd3c9cf40dc57332db348344f83a0fe13a482fa2bb17fe972e5b15\",\n      \"version_id\": \"bc802ddf-0cd7-4cdb-ac97-7d1cc0858540\"\n    },\n    \"issued_at\": \"2026-10-05T07:23:48.382Z\",\n    \"requester\": {\n      \"kind\": \"ai_agent\",\n      \"agent_id\": \"15ff2c71-cbc2-407a-b237-3a85861ec851\",\n      \"agent_name\": \"Cloud Procurement Agent\",\n      \"owner_user_id\": \"c786fce1-5238-4e29-815b-2160dd634622\",\n      \"authenticated_by\": \"bearer_credential\",\n      \"credential_version\": 1\n    },\n    \"statement\": \"This records what the agent asked for. It authorizes nothing: PayFlow's authority, intelligence and, where required, a person decide.\",\n    \"receipt_id\": \"PF-7GK9NCJQ\",\n    \"request_hash\": \"a67b56eed76c59c93eb53bbac78468312ea47dc3ddda861e41dde79d2017335b\",\n    \"authority_at_acceptance\": [\n      {\n        \"id\": \"7ce40c80-ded4-4f4a-aa7c-52119cbc2915\",\n        \"name\": \"Cloud procurement\",\n        \"status\": \"ACTIVE\",\n        \"version\": 4\n      }\n    ]\n  }\n}"
+  }
+}

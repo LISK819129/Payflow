@@ -46,7 +46,7 @@ export type SimulationRequest = {
   workflowId: string;
   /** Default: the latest version (the draft, if there is one). */
   versionId?: string;
-  trigger: { kind: "manual" | "paypal_event"; payload: Record<string, unknown>; paypalEventId?: string };
+  trigger: { kind: "manual" | "paypal_event" | "agent_request"; payload: Record<string, unknown>; paypalEventId?: string };
   assumptions?: Record<string, Assumption>;
   userId?: string | null;
   parentId?: string | null;
@@ -216,7 +216,7 @@ async function sandboxPass(req: SimulationRequest, workflowId: string, versionId
         workspaceId: req.workspaceId,
         workflowId,
         versionId,
-        triggerKind: req.mode === "TEST" ? "test" : "observe",
+        triggerKind: req.mode === "TEST" ? (req.trigger.kind === "agent_request" ? "test_agent" : "test") : "observe",
         triggerRef: `sim:${simId}:${pass}`,
         triggerPayload: req.trigger.payload,
         provenance: req.mode === "TEST" ? "USER_PROVIDED" : "REAL_PAYPAL_SANDBOX",

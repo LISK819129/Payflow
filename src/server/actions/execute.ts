@@ -3,6 +3,7 @@ import { appendAudit } from "../audit/audit";
 import { db, type Tx } from "../db/client";
 import { actionExecutions, paypalEvents, workflowRuns, workflows } from "../db/schema";
 import { authorityProvider } from "../authority";
+import { checkAgentBinding } from "../agents/binding";
 import { eventStatus } from "./event-link";
 import { isGenuineWrite, livePayPalWrite, type PayPalWrite } from "./capability";
 import type { ActionIntent } from "./types";
@@ -80,17 +81,20 @@ async function preflight(executionId: string): Promise<RunActionResult | null> {
   const { ex, wf } = row;
   if (wf.state === "PAUSED" || (wf.state === "FROZEN" && wf.frozenByRunId !== ex.runId)) return "halted";
   const authorityIds = (ex.intent as ActionIntent).authorization.authority?.authorityIds ?? [];
-  if (authorityIds.length === 0) return null;
+  // Agent-started runs: the receipt must be intact, the agent still active, the action exactly what it asked for.
+  const binding = await checkAgentBinding(db(), ex.runId, ex.intent as ActionIntent);
+  if (binding.ok && authorityIds.length === 0) return null;
   return db().transaction(async (tx) => {
-    const ok = await authorityProvider().usable(tx, authorityIds, new Date());
+    const ok = binding.ok ? await authorityProvider().usable(tx, authorityIds, new Date()) : { ok: false as const, reason: binding.message };
     if (ok.ok) return null;
+    const code = binding.ok ? "AUTHORITY_WITHDRAWN" : binding.code;
     const neverSent = ex.attempts === 0;
     const [changed] = await tx
       .update(actionExecutions)
       .set(
         neverSent
-          ? { status: "FAILED", error: { code: "AUTHORITY_WITHDRAWN", message: ok.reason }, completedAt: new Date(), leaseUntil: null }
-          : { status: "UNKNOWN", error: { code: "AUTHORITY_WITHDRAWN_AFTER_SEND", message: `${ok.reason}; an earlier attempt may have reached PayPal, so it is not re-sent` }, completedAt: new Date(), leaseUntil: null },
+          ? { status: "FAILED", error: { code, message: ok.reason }, completedAt: new Date(), leaseUntil: null }
+          : { status: "UNKNOWN", error: { code: `${code}_AFTER_SEND`, message: `${ok.reason}; an earlier attempt may have reached PayPal, so it is not re-sent` }, completedAt: new Date(), leaseUntil: null },
       )
       .where(and(eq(actionExecutions.id, executionId), eq(actionExecutions.attempts, ex.attempts), sql`${actionExecutions.status} in ('PREPARED','SUBMITTING')`))
       .returning({ id: actionExecutions.id });

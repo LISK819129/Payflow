@@ -1,0 +1,16 @@
+{
+  "label": "REAL external AI agent (OpenAI Responses API, remote MCP) → PayFlow MCP",
+  "model": "gpt-5.4-mini",
+  "mcp_client": "OpenAI platform (remote MCP tool)",
+  "payflow_endpoint": "<public tunnel>/api/mcp",
+  "credential": "agent bearer token (redacted); no PayPal or PayFlow-owner credentials given to the agent",
+  "task": "Pay Acme Cloud for GPU compute.\n- Recipient: billing@acme-cloud.example\n- Amount: 185.00 USD\n- Invoice: AC-8812\n- request_id: procurement-ac-8812\n- Purpose: GPU compute (37 hours on A100 instances) for PixelForge's model training, October\n- Invoice text (pass it as evidence.invoice_text exactly):\nFrom: Acme Cloud\nInvoice AC-8812\nFor: GPU compute, 37 hours on A100 instances, October\nTotal: $185.00 USD\nDue date: 2026-11-01\nTerms: Net 30\n\nSubmit it through PayFlow, then report the state PayFlow returned.\n",
+  "items": [],
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": "0.000000"
+  },
+  "duration_ms": 1492,
+  "error": "424 Error retrieving tool list from MCP server: 'payflow'. Http status code: 424 (Failed Dependency)"
+}

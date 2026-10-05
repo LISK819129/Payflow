@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { addDecimal, compareDecimal, comparePctDiff } from "@/server/workflow/dsl/decimal";
 import { Expr, ExpressionError, evaluate, resolveRef } from "@/server/workflow/dsl/expression";
-import { validateGraph } from "@/server/workflow/dsl/validate";
+import { SPEC_BY_TYPE } from "@/server/workflow/dsl/nodes";
+import { RUNTIME_PHASE, validateGraph } from "@/server/workflow/dsl/validate";
 
 describe("decimal money", () => {
   it("compares without floating point error", () => {
@@ -182,12 +183,28 @@ describe("graph validation", () => {
   });
 
   it("drafts later-phase nodes but refuses to activate them", () => {
+    // Every node runs by Phase 9, so mark one as a later phase to exercise the gate.
+    const spec = SPEC_BY_TYPE["trigger.schedule"];
+    const was = spec.implementedIn;
+    spec.implementedIn = RUNTIME_PHASE + 1;
+    try {
+      const g = {
+        nodes: [{ id: "t", type: "trigger.schedule", config: { cron: "0 9 * * *" } }, end("ok")],
+        edges: [{ from: "t", to: "ok", port: "next" }],
+      };
+      expect(validateGraph(g).ok).toBe(true);
+      expect(codes(validateGraph(g, { forActivation: true }))).toContain("not_available");
+    } finally {
+      spec.implementedIn = was;
+    }
+  });
+
+  it("the agent trigger is executable from Phase 9", () => {
     const g = {
-      // trigger.agent_request runs from Phase 9.
-      nodes: [{ id: "t", type: "trigger.agent_request", config: {} }, end("ok")],
+      nodes: [{ id: "t", type: "trigger.agent_request", config: { actions: ["paypal.payout"] } }, end("ok")],
       edges: [{ from: "t", to: "ok", port: "next" }],
     };
-    expect(validateGraph(g).ok).toBe(true);
-    expect(codes(validateGraph(g, { forActivation: true }))).toContain("not_available");
+    expect(validateGraph(g, { forActivation: true }).ok).toBe(true);
+    expect(codes(validateGraph({ ...g, nodes: [{ id: "t", type: "trigger.agent_request", config: { actions: ["paypal.order_capture"] } }, end("ok")] }))).toContain("config");
   });
 });

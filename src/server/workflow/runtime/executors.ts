@@ -38,7 +38,14 @@ const trigger: Executor = async ({ run }) => ({
   explanation:
     run.triggerKind === "paypal_event"
       ? `Started by verified PayPal event ${(run.triggerPayload as { eventType?: string }).eventType ?? ""}`.trim()
-      : run.triggerKind === "observe"
+      : run.triggerKind === "agent_request"
+        ? (() => {
+            const t = run.triggerPayload as { agent?: { name?: string }; reference?: string };
+            return `Requested by AI agent “${t.agent?.name ?? "unknown"}” (${t.reference ?? "no reference"}); identity and scope checked by the Agent Gateway — the request itself authorizes nothing`;
+          })()
+        : run.triggerKind === "test_agent"
+          ? `TEST request from AI agent “${(run.triggerPayload as { agent?: { name?: string } }).agent?.name ?? "unknown"}” — evaluated in isolation; it can never become a live request`
+        : run.triggerKind === "observe"
         ? `Real PayPal event ${(run.triggerPayload as { eventType?: string }).eventType ?? ""} (confirmed with PayPal), evaluated in Observe Mode`
         : run.triggerKind === "test"
           ? "Test input provided by a person — not a PayPal event"
@@ -303,6 +310,7 @@ export const EXECUTORS: Record<string, Executor> = {
   "trigger.manual": trigger,
   "trigger.paypal_event": trigger,
   "trigger.schedule": trigger,
+  "trigger.agent_request": trigger,
   "control.condition": condition,
   "control.approval": approval,
   "control.delay": delay,

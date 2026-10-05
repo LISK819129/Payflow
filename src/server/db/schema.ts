@@ -23,6 +23,8 @@ export const provenance = pgEnum("provenance", [
   "SIMULATED",
   "AI_GENERATED",
   "USER_PROVIDED",
+  /** Phase 9: an authenticated external agent's request (still decided by PayFlow). */
+  "AGENT_REQUEST",
 ]);
 
 export const userRole = pgEnum("user_role", ["OWNER", "APPROVER", "VIEWER"]);
@@ -712,5 +714,90 @@ export const simulations = pgTable(
   (t) => [
     index("simulations_workflow_idx").on(t.workflowId, t.createdAt),
     uniqueIndex("simulations_observation_uq").on(t.workflowId, t.graphHash, t.paypalEventId),
+  ],
+);
+
+// ── Agent Gateway (Phase 9) ────────────────────────────────────────────────
+
+export const agentStatus = pgEnum("agent_status", ["ACTIVE", "REVOKED"]);
+
+/** What one agent may ASK for. Permission to request is not authority to move money. */
+export type AgentScope = { workflowId: string; actions: ("paypal.payout" | "paypal.refund")[]; modes: ("LIVE" | "TEST")[] };
+
+/**
+ * An external AI agent's PayFlow identity. The bearer credential is
+ * `pfa_<credentialId>_<secret>`; only a SHA-256 of the secret is stored, and
+ * the raw token is shown once. Every call re-reads status and expiry.
+ */
+export const agents = pgTable(
+  "agents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** The person accountable for this agent. It never inherits their permissions. */
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id),
+    status: agentStatus("status").notNull().default("ACTIVE"),
+    scopes: jsonb("scopes").$type<AgentScope[]>().notNull().default([]),
+    credentialId: text("credential_id").notNull(),
+    credentialHash: text("credential_hash").notNull(),
+    credentialVersion: integer("credential_version").notNull().default(1),
+    credentialIssuedAt: timestamp("credential_issued_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    lastUsedTool: text("last_used_tool"),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by").references(() => users.id),
+    revokeReason: text("revoke_reason"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("agents_credential_uq").on(t.credentialId), index("agents_workspace_idx").on(t.workspaceId)],
+);
+
+/**
+ * One request an agent made, keyed by the agent's own request id (idempotency).
+ * `receipt` is the immutable Intent Receipt written at acceptance; `links` is a
+ * hash chain anchored on it that records what PayFlow and PayPal then did.
+ */
+export const agentRequests = pgTable(
+  "agent_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Human-facing id, e.g. PF-7K2Q9X. */
+    reference: text("reference").notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    agentId: uuid("agent_id")
+      .notNull()
+      .references(() => agents.id),
+    requestId: text("request_id").notNull(),
+    mode: text("mode").$type<"LIVE" | "TEST">().notNull(),
+    requestHash: text("request_hash").notNull(),
+    envelope: jsonb("envelope").notNull(),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => workflows.id),
+    versionId: uuid("version_id").notNull(),
+    runId: uuid("run_id"),
+    simulationId: uuid("simulation_id"),
+    state: text("state").notNull(),
+    receipt: jsonb("receipt").notNull(),
+    receiptHash: text("receipt_hash").notNull(),
+    links: jsonb("links").notNull().default([]),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("agent_requests_idem_uq").on(t.agentId, t.requestId),
+    uniqueIndex("agent_requests_reference_uq").on(t.reference),
+    index("agent_requests_run_idx").on(t.runId),
+    index("agent_requests_agent_idx").on(t.agentId, t.createdAt),
   ],
 );

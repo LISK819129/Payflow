@@ -3,6 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { syncAgentRequestForRun } from "@/server/agents/status";
 import { canAuthorize, requireUser } from "@/server/auth/current";
 import { db } from "@/server/db/client";
 import { workflowVersions, workflows } from "@/server/db/schema";
@@ -91,6 +92,7 @@ export async function decideApprovalAction(approvalId: string, decision: "APPROV
   if (!canAuthorize(user)) return { ok: false, error: "Only owners and approvers can decide approvals" };
   const r = await decideApproval({ approvalId, workspaceId: user.workspaceId, userId: user.id, decision, note }, runtimeDeps);
   if (r.error) return { ok: false, error: r.error };
+  if (r.runId) await syncAgentRequestForRun(r.runId);
   revalidatePath("/executions");
   revalidatePath("/approvals");
   return { ok: true, message: decision === "APPROVED" ? "Approved" : "Rejected" };

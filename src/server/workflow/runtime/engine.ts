@@ -1,7 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { appendAudit } from "../../audit/audit";
 import { db, type Tx } from "../../db/client";
-import { actionExecutions, approvals, authorityDecisions, runSteps, workflowRuns, workflows, workflowVersions } from "../../db/schema";
+import { actionExecutions, approvals, authorityDecisions, runSteps, users, workflowRuns, workflows, workflowVersions } from "../../db/schema";
 import { authorityProvider } from "../../authority";
 import { requestFingerprint } from "../../authority/internal";
 import { settleRunReservations } from "../../authority/ledger";
@@ -18,6 +18,7 @@ import { aiNodeResult } from "../../intelligence/node";
 import { runAnalysis } from "../../intelligence/runner";
 import { gatewayFor } from "../../actions/paypal-gateway";
 import { isActionNode, prepareIntent } from "../../actions/prepare";
+import { checkAgentBinding, NOT_SENT_CODES } from "../../agents/binding";
 import type { NodeResult, RunContext, RunRow, RuntimeDeps, StepRow, WorkflowRow } from "./types";
 
 const MAX_STEPS_PER_ADVANCE = 100;
@@ -223,6 +224,11 @@ async function actionResult(
     const p = prepareIntent({ node: a.node, ctx: a.ctx, run: a.run, steps: a.steps });
     if (!p.ok) return { kind: "error", code: p.code, message: p.message, explanation: `Refused before contacting PayPal: ${p.message}` };
     const intent = p.intent;
+    if (a.run.triggerKind === "agent_request") {
+      // The agent's request authorizes nothing, but it bounds what this run may do: exactly what was asked.
+      const b = await checkAgentBinding(tx, a.run.id, intent, a.now);
+      if (!b.ok) return { kind: "end", outcome: "blocked", explanation: b.message, headline: `Blocked before PayPal was contacted: ${b.message}`, stepError: { code: b.code, message: b.message } };
+    }
     let authz: AuthorityResult | null = null;
     if (intent.movesMoney || intent.external) {
       const gate = await authorityGate(tx, a, intent);
@@ -244,7 +250,7 @@ async function actionResult(
       };
     case "FAILED": {
       const e = ex.error as { code: string; message: string; debugId?: string | null };
-      if (e.code === "AUTHORITY_WITHDRAWN") {
+      if (NOT_SENT_CODES.has(e.code)) {
         return { kind: "end", outcome: "blocked", explanation: e.message, headline: `Blocked before PayPal was contacted: ${e.message}`, stepError: { code: e.code, message: e.message } };
       }
       return { kind: "error", code: e.code, message: e.message, debugId: e.debugId ?? null, explanation: `PayPal refused: ${e.message}${e.debugId ? ` (debug_id ${e.debugId})` : ""}` };
@@ -291,7 +297,7 @@ async function authorityGate(
     return { result: { kind: "wait", waitFor: "approval", explanation: `Waiting for a person: ${review.reason}` } };
   }
   if (review && review.status !== "APPROVED") {
-    const why = review.status === "EXPIRED" ? "expired without a decision" : "was rejected by a person";
+    const why = review.status === "EXPIRED" ? "expired without a decision" : !review.decidedBy && review.note?.startsWith("Withdrawn") ? "was withdrawn (agent request cancelled)" : "was rejected by a person";
     return { result: { kind: "end", outcome: "rejected", explanation: `Authority review ${why}`, headline: `Authority review at “${a.title}” ${why}; PayPal was not contacted` } };
   }
 
@@ -365,65 +371,71 @@ async function finish(tx: Tx, run: RunRow, status: RunRow["status"], outcome: st
   await settleRunReservations(tx, run.id);
 }
 
+export type StartRunInput = {
+  workflowId: string;
+  triggerKind: "paypal_event" | "manual" | "schedule" | "agent_request";
+  triggerRef: string;
+  triggerPayload: Record<string, unknown>;
+  provenance: "REAL_PAYPAL_SANDBOX" | "USER_PROVIDED" | "SIMULATED" | "AGENT_REQUEST";
+  startedBy?: string | null;
+  /** Agent requests: the version the agent's request was accepted against. Refuses to run a different one. */
+  expectVersionId?: string;
+};
+
 /**
  * Creates a run for a workflow's ACTIVE version. Idempotent on (version,
  * triggerRef): the same PayPal event can never start the same version twice.
  */
-export async function startRun(
-  input: {
-    workflowId: string;
-    triggerKind: "paypal_event" | "manual" | "schedule";
-    triggerRef: string;
-    triggerPayload: Record<string, unknown>;
-    provenance: "REAL_PAYPAL_SANDBOX" | "USER_PROVIDED" | "SIMULATED";
-    startedBy?: string | null;
-  },
-  deps: RuntimeDeps,
-): Promise<{ runId: string; created: boolean } | { skipped: string }> {
-  const out = await db().transaction(async (tx) => {
-    const [wf] = await tx.select().from(workflows).where(eq(workflows.id, input.workflowId)).for("update");
-    if (!wf) return { skipped: "workflow not found" };
-    if (wf.state !== "ACTIVE" || !wf.activeVersionId) return { skipped: `workflow is ${wf.state.toLowerCase()}` };
-    const [version] = await tx.select().from(workflowVersions).where(eq(workflowVersions.id, wf.activeVersionId));
-    const graph = version.graph as WorkflowGraph;
-    const triggerNode = graph.nodes.find((n) => SPEC_BY_TYPE[n.type]?.category === "trigger")!;
-
-    const [run] = await tx
-      .insert(workflowRuns)
-      .values({
-        workspaceId: wf.workspaceId,
-        workflowId: wf.id,
-        versionId: version.id,
-        triggerKind: input.triggerKind,
-        triggerRef: input.triggerRef,
-        triggerPayload: input.triggerPayload,
-        provenance: input.provenance,
-        currentNodeId: triggerNode.id,
-        startedBy: input.startedBy ?? null,
-      })
-      .onConflictDoNothing({ target: [workflowRuns.versionId, workflowRuns.triggerRef] })
-      .returning();
-    if (!run) {
-      const [existing] = await tx
-        .select({ id: workflowRuns.id })
-        .from(workflowRuns)
-        .where(and(eq(workflowRuns.versionId, version.id), eq(workflowRuns.triggerRef, input.triggerRef)));
-      return { runId: existing.id, created: false };
-    }
-    await appendAudit(tx, {
-      workspaceId: wf.workspaceId,
-      actor: input.startedBy ? `user:${input.startedBy}` : "system",
-      kind: "run.started",
-      summary: `Workflow "${wf.name}" v${version.version} started (${input.triggerKind.replace("_", " ")})`,
-      payload: { triggerRef: input.triggerRef, provenance: input.provenance, version: version.version },
-      workflowId: wf.id,
-      runId: run.id,
-      paypalRef: (input.triggerPayload as { resourceId?: string }).resourceId ?? null,
-    });
-    return { runId: run.id, created: true };
-  });
+export async function startRun(input: StartRunInput, deps: RuntimeDeps): Promise<{ runId: string; created: boolean } | { skipped: string }> {
+  const out = await db().transaction((tx) => startRunTx(tx, input));
   if ("runId" in out && out.created) await deps.enqueueAdvance(out.runId);
   return out;
+}
+
+/** startRun inside the caller's transaction (the caller enqueues the advance after commit). */
+export async function startRunTx(tx: Tx, input: StartRunInput): Promise<{ runId: string; created: boolean } | { skipped: string }> {
+  const [wf] = await tx.select().from(workflows).where(eq(workflows.id, input.workflowId)).for("update");
+  if (!wf) return { skipped: "workflow not found" };
+  if (wf.state !== "ACTIVE" || !wf.activeVersionId) return { skipped: `workflow is ${wf.state.toLowerCase()}` };
+  if (input.expectVersionId && input.expectVersionId !== wf.activeVersionId) return { skipped: "the active version changed" };
+  const [version] = await tx.select().from(workflowVersions).where(eq(workflowVersions.id, wf.activeVersionId));
+  const graph = version.graph as WorkflowGraph;
+  const triggerNode = graph.nodes.find((n) => SPEC_BY_TYPE[n.type]?.category === "trigger")!;
+
+  const [run] = await tx
+    .insert(workflowRuns)
+    .values({
+      workspaceId: wf.workspaceId,
+      workflowId: wf.id,
+      versionId: version.id,
+      triggerKind: input.triggerKind,
+      triggerRef: input.triggerRef,
+      triggerPayload: input.triggerPayload,
+      provenance: input.provenance,
+      currentNodeId: triggerNode.id,
+      startedBy: input.startedBy ?? null,
+    })
+    .onConflictDoNothing({ target: [workflowRuns.versionId, workflowRuns.triggerRef] })
+    .returning();
+  if (!run) {
+    const [existing] = await tx
+      .select({ id: workflowRuns.id })
+      .from(workflowRuns)
+      .where(and(eq(workflowRuns.versionId, version.id), eq(workflowRuns.triggerRef, input.triggerRef)));
+    return { runId: existing.id, created: false };
+  }
+  const agent = input.triggerKind === "agent_request" ? (input.triggerPayload as { agent?: { id: string } }).agent : undefined;
+  await appendAudit(tx, {
+    workspaceId: wf.workspaceId,
+    actor: agent ? `agent:${agent.id}` : input.startedBy ? `user:${input.startedBy}` : "system",
+    kind: "run.started",
+    summary: `Workflow "${wf.name}" v${version.version} started (${input.triggerKind.replace("_", " ")})`,
+    payload: { triggerRef: input.triggerRef, provenance: input.provenance, version: version.version },
+    workflowId: wf.id,
+    runId: run.id,
+    paypalRef: (input.triggerPayload as { resourceId?: string }).resourceId ?? null,
+  });
+  return { runId: run.id, created: true };
 }
 
 /** Records a human decision on a waiting approval and wakes the run. */
@@ -432,6 +444,9 @@ export async function decideApproval(
   deps: RuntimeDeps,
 ) {
   const res = await db().transaction(async (tx) => {
+    // Only a person with authority in this workspace decides. An agent has no user id and can never get here.
+    const [decider] = await tx.select({ role: users.role }).from(users).where(and(eq(users.id, input.userId), eq(users.workspaceId, input.workspaceId)));
+    if (!decider || (decider.role !== "OWNER" && decider.role !== "APPROVER")) return { error: "Only owners and approvers can decide approvals", runId: undefined };
     const [a] = await tx
       .select()
       .from(approvals)

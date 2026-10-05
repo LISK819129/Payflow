@@ -27,6 +27,8 @@ export type ApprovalView = {
   budget: BudgetSnapshot[];
   frequency: FrequencySnapshot[];
   paypalContext: { eventType: string | null; resourceId: string | null };
+  /** Set when an external AI agent made the request (Phase 9). */
+  agent: { id: string; name: string; reference: string } | null;
   /** After the decision: what happened at PayPal for the action this approval covered. */
   execution: { status: string; refs: string[]; paypalStatus: string | null; failure: string | null } | null;
 };
@@ -119,7 +121,7 @@ export async function listApprovals(workspaceId: string, opts: { status?: "PENDI
     }
 
     const ex = actionNodeId ? execs.find((e) => e.runId === run.id && e.nodeId === actionNodeId) : undefined;
-    const trigger = run.triggerPayload as { eventType?: string; resourceId?: string };
+    const trigger = run.triggerPayload as { eventType?: string; resourceId?: string; agent?: { id: string; name: string }; reference?: string };
     return {
       id: a.id,
       kind: isAuthority ? "authority_review" : "workflow_approval",
@@ -138,6 +140,7 @@ export async function listApprovals(workspaceId: string, opts: { status?: "PENDI
       budget,
       frequency,
       paypalContext: { eventType: (isAuthority ? (s.paypalContext as { eventType?: string } | undefined)?.eventType : trigger.eventType) ?? null, resourceId: (isAuthority ? (s.paypalContext as { resourceId?: string } | undefined)?.resourceId : trigger.resourceId) ?? null },
+      agent: run.triggerKind === "agent_request" && trigger.agent ? { id: trigger.agent.id, name: trigger.agent.name, reference: trigger.reference ?? "" } : null,
       execution: ex
         ? { status: ex.status, refs: ex.paypalRefs, paypalStatus: ex.paypalStatus, failure: ex.status === "FAILED" ? ((ex.error as { code?: string } | null)?.code ?? "failed") : null }
         : null,

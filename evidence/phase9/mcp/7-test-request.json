@@ -1,0 +1,64 @@
+{
+  "client": "@modelcontextprotocol/sdk Client (Streamable HTTP)",
+  "server": "https://<payflow>/api/mcp",
+  "at": "2026-10-05T07:27:51.766Z",
+  "serverInfo": {
+    "name": "payflow-agent-gateway",
+    "title": "PayFlow Agent Gateway",
+    "version": "0.9.0"
+  },
+  "instructions": "PayFlow is a financial control layer. You may REQUEST payouts or refunds through the workflows you are scoped to, check their status, run TEST requests, and withdraw a request that is waiting for review. A request is never authorization: PayFlow's authority, AI analysis and, when required, a person decide, and only then does PayPal settle. REQUEST accepted ≠ payment completed — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. Always reuse the same request_id when retrying the same request.",
+  "request": {
+    "tool": "payflow_test_request",
+    "arguments": {
+      "request_id": "test-procurement-ac-8812",
+      "workflow_id": "f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2",
+      "amount": {
+        "value": "185.00",
+        "currency": "USD"
+      },
+      "purpose": "GPU compute (37 hours on A100 instances) for PixelForge's model training, October",
+      "reference": "AC-8812",
+      "evidence": {
+        "invoice_text": "From: Acme Cloud\nInvoice AC-8812\nFor: GPU compute, 37 hours on A100 instances, October\nTotal: $185.00 USD\nDue date: 2026-11-01\nTerms: Net 30"
+      },
+      "counterparty": "billing@acme-cloud.example",
+      "action": "payout"
+    }
+  },
+  "response": {
+    "isError": false,
+    "structuredContent": {
+      "accepted": true,
+      "replayed": false,
+      "reference": "PF-M3PUUR36",
+      "request_id": "test-procurement-ac-8812",
+      "mode": "TEST",
+      "state": "TEST_COMPLETE",
+      "meaning": "TEST only: evaluated in isolation. No money moved and PayPal was not contacted.",
+      "terminal": true,
+      "reasons": [],
+      "authority": null,
+      "human_review": null,
+      "paypal": {
+        "contacted": false,
+        "money_moved": false,
+        "status": null,
+        "ids": [],
+        "confirmed_by_webhook": false
+      },
+      "test": {
+        "verdict": "WOULD_REVIEW",
+        "headline": "Would wait for a person: Risk HIGH: 185.00 USD paid at 2026-10-05T07:23 UTC (UBYPWTPSCT2FG), invoice AC-8812 was paid on 2026-10-05 (UBYPWTPSCT2FG)",
+        "paypal_contacted": false
+      },
+      "receipt": {
+        "id": "PF-M3PUUR36",
+        "hash": "53b06e780491b432a681e169d9ef768b0b099de7db65aed09b54fa34fc08bef1",
+        "links": 2
+      },
+      "note": "TEST: evaluated in isolation; no money can move."
+    },
+    "text": "{\n  \"accepted\": true,\n  \"replayed\": false,\n  \"reference\": \"PF-M3PUUR36\",\n  \"request_id\": \"test-procurement-ac-8812\",\n  \"mode\": \"TEST\",\n  \"state\": \"TEST_COMPLETE\",\n  \"meaning\": \"TEST only: evaluated in isolation. No money moved and PayPal was not contacted.\",\n  \"terminal\": true,\n  \"reasons\": [],\n  \"authority\": null,\n  \"human_review\": null,\n  \"paypal\": {\n    \"contacted\": false,\n    \"money_moved\": false,\n    \"status\": null,\n    \"ids\": [],\n    \"confirmed_by_webhook\": false\n  },\n  \"test\": {\n    \"verdict\": \"WOULD_REVIEW\",\n    \"headline\": \"Would wait for a person: Risk HIGH: 185.00 USD paid at 2026-10-05T07:23 UTC (UBYPWTPSCT2FG), invoice AC-8812 was paid on 2026-10-05 (UBYPWTPSCT2FG)\",\n    \"paypal_contacted\": false\n  },\n  \"receipt\": {\n    \"id\": \"PF-M3PUUR36\",\n    \"hash\": \"53b06e780491b432a681e169d9ef768b0b099de7db65aed09b54fa34fc08bef1\",\n    \"links\": 2\n  },\n  \"note\": \"TEST: evaluated in isolation; no money can move.\"\n}"
+  }
+}

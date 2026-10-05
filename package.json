@@ -39,12 +39,17 @@
     "evidence:manifest:phase6": "tsx scripts/evidence/manifest-phase6.ts",
     "db:seed:phase7": "tsx scripts/seed-phase7.ts",
     "db:seed:phase8": "tsx scripts/seed-phase8.ts",
+    "db:seed:phase9": "tsx scripts/seed-phase9.ts",
+    "agent:mcp": "tsx scripts/agent-demo/mcp-client.ts",
+    "agent:openai": "tsx scripts/agent-demo/openai-agent.ts",
     "evidence:manifest:phase7": "tsx scripts/evidence/manifest-phase7.ts",
-    "evidence:manifest:phase8": "tsx scripts/evidence/manifest-phase8.ts"
+    "evidence:manifest:phase8": "tsx scripts/evidence/manifest-phase8.ts",
+    "evidence:manifest:phase9": "tsx scripts/evidence/manifest-phase9.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "@dagrejs/dagre": "^3.1.1",
+    "@modelcontextprotocol/sdk": "1.32.0",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "@xyflow/react": "^12.12.0",
     "drizzle-orm": "^0.45.3",

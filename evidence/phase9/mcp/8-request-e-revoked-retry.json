@@ -1,0 +1,6 @@
+{
+  "client": "@modelcontextprotocol/sdk Client (Streamable HTTP)",
+  "server": "https://<payflow>/api/mcp",
+  "at": "2026-10-05T07:37:32.453Z",
+  "error": "Streamable HTTP error: Error POSTing to endpoint: {\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32001,\"message\":\"AGENT_REVOKED: This agent has been revoked\"},\"id\":null}"
+}

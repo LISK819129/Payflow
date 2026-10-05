@@ -4,7 +4,8 @@ import { verifyChain } from "@/server/audit/audit";
 import { closeDb, db } from "@/server/db/client";
 import { approvals, paypalEvents, runSteps, workflowRuns, workflows } from "@/server/db/schema";
 import { routePayPalEvent } from "@/server/webhooks/route-event";
-import type { WorkflowGraph } from "@/server/workflow/dsl/nodes";
+import { SPEC_BY_TYPE, type WorkflowGraph } from "@/server/workflow/dsl/nodes";
+import { RUNTIME_PHASE } from "@/server/workflow/dsl/validate";
 import { advanceRun, decideApproval, startRun } from "@/server/workflow/runtime/engine";
 import type { RuntimeDeps } from "@/server/workflow/runtime/types";
 import { activateLatest, createWorkflow, saveDraft, setWorkflowState } from "@/server/workflow/service";
@@ -252,12 +253,18 @@ describe("workflow runtime", () => {
     const ws = await createWorkspace("PixelForge");
     const user = await createUser(ws.id);
     const g = novaGraph();
-    g.nodes[0] = { id: g.nodes[0].id, type: "trigger.agent_request", config: {} }; // a Phase 9 node
-    const c = await createWorkflow({ workspaceId: ws.id, userId: user.id, name: "x", graph: g });
-    if (!c.ok) throw new Error("setup");
-    const a = await activateLatest({ workspaceId: ws.id, userId: user.id, workflowId: c.workflowId });
-    expect(a.ok).toBe(false);
-    expect(!a.ok && "issues" in a && a.issues?.map((i) => i.code)).toContain("not_available");
+    const spec = SPEC_BY_TYPE[g.nodes[0].type];
+    const was = spec.implementedIn;
+    spec.implementedIn = RUNTIME_PHASE + 1; // every node runs by Phase 9: mark one as later to exercise the gate
+    try {
+      const c = await createWorkflow({ workspaceId: ws.id, userId: user.id, name: "x", graph: g });
+      if (!c.ok) throw new Error("setup");
+      const a = await activateLatest({ workspaceId: ws.id, userId: user.id, workflowId: c.workflowId });
+      expect(a.ok).toBe(false);
+      expect(!a.ok && "issues" in a && a.issues?.map((i) => i.code)).toContain("not_available");
+    } finally {
+      spec.implementedIn = was;
+    }
   });
 });
 

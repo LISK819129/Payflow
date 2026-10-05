@@ -1,0 +1,112 @@
+{
+  "client": "@modelcontextprotocol/sdk Client (Streamable HTTP)",
+  "server": "https://<payflow>/api/mcp",
+  "at": "2026-10-05T07:23:23.488Z",
+  "serverInfo": {
+    "name": "payflow-agent-gateway",
+    "title": "PayFlow Agent Gateway",
+    "version": "0.9.0"
+  },
+  "instructions": "PayFlow is a financial control layer. You may REQUEST payouts or refunds through the workflows you are scoped to, check their status, run TEST requests, and withdraw a request that is waiting for review. A request is never authorization: PayFlow's authority, AI analysis and, when required, a person decide, and only then does PayPal settle. REQUEST accepted ≠ payment completed — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. Always reuse the same request_id when retrying the same request.",
+  "request": {
+    "tool": "payflow_get_request",
+    "arguments": {
+      "reference": "PF-NT6DAC4P"
+    }
+  },
+  "response": {
+    "isError": false,
+    "structuredContent": {
+      "reference": "PF-NT6DAC4P",
+      "request_id": "procurement-ac-8812",
+      "mode": "LIVE",
+      "state": "COMPLETED",
+      "meaning": "PayPal accepted the action. See paypal.status for its PayPal state.",
+      "terminal": true,
+      "reasons": [],
+      "authority": {
+        "decision": "ALLOW",
+        "outcome": "ALLOW",
+        "authorities": [
+          {
+            "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+            "name": "Cloud procurement",
+            "version": 4
+          }
+        ]
+      },
+      "human_review": {
+        "required": false,
+        "status": null,
+        "decided_at": null
+      },
+      "paypal": {
+        "contacted": true,
+        "money_moved": true,
+        "status": "PENDING",
+        "ids": [
+          "UBYPWTPSCT2FG"
+        ],
+        "confirmed_by_webhook": false
+      },
+      "test": null,
+      "receipt": {
+        "id": "PF-NT6DAC4P",
+        "hash": "9936c2c02436c4f22055d14d7a015c66987197cf7cd99a86790bc4c8e9192bae",
+        "links": 3
+      },
+      "intent_receipt": {
+        "mode": "LIVE",
+        "type": "payflow.intent_receipt",
+        "request": {
+          "action": "paypal.payout",
+          "amount": {
+            "value": "185.00",
+            "currency": "USD"
+          },
+          "purpose": "GPU compute (37 hours on A100 instances) for PixelForge's model training, October",
+          "reference": "AC-8812",
+          "capture_id": null,
+          "request_id": "procurement-ac-8812",
+          "counterparty": "billing@acme-cloud.example"
+        },
+        "version": 1,
+        "evidence": [
+          {
+            "kind": "invoice_text",
+            "chars": 140,
+            "sha256": "6f06a4545ffac0c16ffa6123a6b4bdd7749a1dc6f9ba9a85922da64c15710809"
+          }
+        ],
+        "workflow": {
+          "id": "f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2",
+          "name": "Cloud procurement",
+          "version": 3,
+          "graph_hash": "4e1ec3153ddd3c9cf40dc57332db348344f83a0fe13a482fa2bb17fe972e5b15",
+          "version_id": "bc802ddf-0cd7-4cdb-ac97-7d1cc0858540"
+        },
+        "issued_at": "2026-10-05T07:23:02.945Z",
+        "requester": {
+          "kind": "ai_agent",
+          "agent_id": "15ff2c71-cbc2-407a-b237-3a85861ec851",
+          "agent_name": "Cloud Procurement Agent",
+          "owner_user_id": "c786fce1-5238-4e29-815b-2160dd634622",
+          "authenticated_by": "bearer_credential",
+          "credential_version": 1
+        },
+        "statement": "This records what the agent asked for. It authorizes nothing: PayFlow's authority, intelligence and, where required, a person decide.",
+        "receipt_id": "PF-NT6DAC4P",
+        "request_hash": "ad9f124925460c593368e9f220d3979ead74600d85b8b2bdb47046d3f507c996",
+        "authority_at_acceptance": [
+          {
+            "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+            "name": "Cloud procurement",
+            "status": "ACTIVE",
+            "version": 4
+          }
+        ]
+      }
+    },
+    "text": "{\n  \"reference\": \"PF-NT6DAC4P\",\n  \"request_id\": \"procurement-ac-8812\",\n  \"mode\": \"LIVE\",\n  \"state\": \"COMPLETED\",\n  \"meaning\": \"PayPal accepted the action. See paypal.status for its PayPal state.\",\n  \"terminal\": true,\n  \"reasons\": [],\n  \"authority\": {\n    \"decision\": \"ALLOW\",\n    \"outcome\": \"ALLOW\",\n    \"authorities\": [\n      {\n        \"id\": \"7ce40c80-ded4-4f4a-aa7c-52119cbc2915\",\n        \"name\": \"Cloud procurement\",\n        \"version\": 4\n      }\n    ]\n  },\n  \"human_review\": {\n    \"required\": false,\n    \"status\": null,\n    \"decided_at\": null\n  },\n  \"paypal\": {\n    \"contacted\": true,\n    \"money_moved\": true,\n    \"status\": \"PENDING\",\n    \"ids\": [\n      \"UBYPWTPSCT2FG\"\n    ],\n    \"confirmed_by_webhook\": false\n  },\n  \"test\": null,\n  \"receipt\": {\n    \"id\": \"PF-NT6DAC4P\",\n    \"hash\": \"9936c2c02436c4f22055d14d7a015c66987197cf7cd99a86790bc4c8e9192bae\",\n    \"links\": 3\n  },\n  \"intent_receipt\": {\n    \"mode\": \"LIVE\",\n    \"type\": \"payflow.intent_receipt\",\n    \"request\": {\n      \"action\": \"paypal.payout\",\n      \"amount\": {\n        \"value\": \"185.00\",\n        \"currency\": \"USD\"\n      },\n      \"purpose\": \"GPU compute (37 hours on A100 instances) for PixelForge's model training, October\",\n      \"reference\": \"AC-8812\",\n      \"capture_id\": null,\n      \"request_id\": \"procurement-ac-8812\",\n      \"counterparty\": \"billing@acme-cloud.example\"\n    },\n    \"version\": 1,\n    \"evidence\": [\n      {\n        \"kind\": \"invoice_text\",\n        \"chars\": 140,\n        \"sha256\": \"6f06a4545ffac0c16ffa6123a6b4bdd7749a1dc6f9ba9a85922da64c15710809\"\n      }\n    ],\n    \"workflow\": {\n      \"id\": \"f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2\",\n      \"name\": \"Cloud procurement\",\n      \"version\": 3,\n      \"graph_hash\": \"4e1ec3153ddd3c9cf40dc57332db348344f83a0fe13a482fa2bb17fe972e5b15\",\n      \"version_id\": \"bc802ddf-0cd7-4cdb-ac97-7d1cc0858540\"\n    },\n    \"issued_at\": \"2026-10-05T07:23:02.945Z\",\n    \"requester\": {\n      \"kind\": \"ai_agent\",\n      \"agent_id\": \"15ff2c71-cbc2-407a-b237-3a85861ec851\",\n      \"agent_name\": \"Cloud Procurement Agent\",\n      \"owner_user_id\": \"c786fce1-5238-4e29-815b-2160dd634622\",\n      \"authenticated_by\": \"bearer_credential\",\n      \"credential_version\": 1\n    },\n    \"statement\": \"This records what the agent asked for. It authorizes nothing: PayFlow's authority, intelligence and, where required, a person decide.\",\n    \"receipt_id\": \"PF-NT6DAC4P\",\n    \"request_hash\": \"ad9f124925460c593368e9f220d3979ead74600d85b8b2bdb47046d3f507c996\",\n    \"authority_at_acceptance\": [\n      {\n        \"id\": \"7ce40c80-ded4-4f4a-aa7c-52119cbc2915\",\n        \"name\": \"Cloud procurement\",\n        \"status\": \"ACTIVE\",\n        \"version\": 4\n      }\n    ]\n  }\n}"
+  }
+}

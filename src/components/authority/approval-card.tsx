@@ -53,10 +53,26 @@ export function ApprovalCard({ v, canDecide, now }: { v: ApprovalView; canDecide
             </Link>
             <ProvenanceTag value={v.run.provenance as Provenance} />
           </dd>
-          <dt className="text-muted">PayPal context</dt>
-          <dd className="font-mono text-meta text-ink-2">
-            {v.paypalContext.eventType ? `${v.paypalContext.eventType} · ${v.paypalContext.resourceId ?? ""}` : `${v.run.triggerKind.replace("_", " ")} trigger`}
-          </dd>
+          {v.agent ? (
+            <>
+              <dt className="text-muted">Requested by</dt>
+              <dd>
+                <span className="inline-flex items-center gap-1.5 bg-ink px-1.5 py-px text-label font-semibold uppercase tracking-[0.06em] text-surface">AI agent</span>{" "}
+                <Link href={`/agents/requests/${v.agent.reference}`} className="font-medium text-ink hover:underline">
+                  {v.agent.name}
+                </Link>{" "}
+                <span className="font-mono text-meta text-muted">{v.agent.reference}</span>
+                <div className="mt-0.5 text-meta text-muted">The agent can see this is waiting; it cannot approve it.</div>
+              </dd>
+            </>
+          ) : (
+            <>
+              <dt className="text-muted">PayPal context</dt>
+              <dd className="font-mono text-meta text-ink-2">
+                {v.paypalContext.eventType ? `${v.paypalContext.eventType} · ${v.paypalContext.resourceId ?? ""}` : `${v.run.triggerKind.replace("_", " ")} trigger`}
+              </dd>
+            </>
+          )}
           <dt className="text-muted">Requested</dt>
           <dd className="font-mono text-meta">
             {formatDay(v.requestedAt)} {formatClock(v.requestedAt)}

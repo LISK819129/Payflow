@@ -78,6 +78,13 @@
       "when": 1791131470211,
       "tag": "0010_test_and_observe",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791171922840,
+      "tag": "0011_agent_gateway",
+      "breakpoints": true
     }
   ]
 }

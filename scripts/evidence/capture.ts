@@ -21,6 +21,9 @@
  *                                            captures the result: no money moves, PayPal is not contacted
  *     assume <simulationId> <scenario> approved|rejected  "Assume …" inside a test (creates no approval)
  *     observe <workflowId> <scenario>        owner switches Observe Mode on for a draft
+ *     register-agent <scenario> <name> <workflowName>  owner registers an agent on the Agents page; the one-time
+ *                                            token is blurred in the screenshot and saved only to .env.agent.local
+ *     revoke-agent <agentId> <scenario> [reason]  owner revokes an agent on its page
  *
  * Credentials are the seeded local test owner from .env.local; the browser only
  * talks to localhost. Screenshots never include env files or secrets.
@@ -32,6 +35,7 @@ import { chromium, type Page } from "playwright-core";
 import { spentUsd } from "../../src/server/ai/usage";
 import { closeDb } from "../../src/server/db/client";
 import { PHASE4_STOP_USD, SCENARIOS, type ScenarioKey } from "./scenarios";
+import { writeAgentToken } from "../agent-demo/agent-token";
 
 const BASE = "http://localhost:3000";
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
@@ -475,6 +479,52 @@ async function observe(workflowId: string, scenario: string) {
   }
 }
 
+/** Phase 9: the owner registers an agent. The raw token never appears in evidence. */
+async function registerAgentStep(scenario: string, name: string, workflowName: string) {
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/agents`);
+    await page.getByRole("button", { name: "Register an agent" }).click();
+    await page.getByLabel("Name").fill(name);
+    await page.getByLabel("What it does (optional)").fill("Pays cloud suppliers' invoices for PixelForge Studio");
+    await page.locator("section[aria-label='Register an agent'] li").filter({ hasText: workflowName }).locator("input[type=checkbox]").first().check();
+    await page.waitForTimeout(500);
+    await shot(page, "register-agent-form", true);
+    await page.getByRole("button", { name: "Register and issue credential" }).click();
+    const code = page.getByTestId("one-time-token");
+    await code.waitFor();
+    writeAgentToken((await code.innerText()).trim());
+    await page.addStyleTag({ content: "[data-testid=one-time-token]{filter:blur(7px)!important;user-select:none}" });
+    await shot(page, "credential-shown-once-blurred");
+    await page.getByRole("button", { name: "I have stored it" }).click();
+    await page.waitForURL(/\/agents\/[0-9a-f-]{36}$/);
+    console.log(`  agent ${page.url().split("/").pop()}`);
+    await page.waitForTimeout(1200);
+    await shot(page, "agent-page", true);
+  } finally {
+    await browser.close();
+  }
+}
+
+/** Phase 9: the owner revokes an agent; takes effect on the agent's next call. */
+async function revokeAgentStep(agentId: string, scenario: string, reason = "Demo: credential retired") {
+  const shot = shooter(scenario);
+  const { browser, page } = await open();
+  try {
+    await page.goto(`${BASE}/agents/${agentId}`);
+    await page.getByRole("button", { name: "Revoke agent" }).click();
+    await page.getByLabel("Reason for revoking").fill(reason);
+    await shot(page, "revoke-confirm");
+    await page.getByRole("button", { name: "Revoke now" }).click();
+    await page.getByRole("button", { name: "Revoke agent" }).waitFor({ state: "detached" });
+    await page.waitForTimeout(800);
+    await shot(page, "agent-revoked", true);
+  } finally {
+    await browser.close();
+  }
+}
+
 async function main() {
   const [step, a, b, c] = process.argv.slice(2);
   console.log(`evidence: ${step} ${a ?? ""} ${b ?? ""}`);
@@ -515,6 +565,10 @@ async function main() {
       return assume(a, b, c);
     case "observe":
       return observe(a, b);
+    case "register-agent":
+      return registerAgentStep(a, b, c);
+    case "revoke-agent":
+      return revokeAgentStep(a, b, c);
     default:
       throw new Error(`unknown step ${step}`);
   }

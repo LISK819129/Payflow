@@ -20,6 +20,7 @@ import { runtimeDeps } from "../server/workflow/runtime/deps";
 import { advanceRun, dueTimers } from "../server/workflow/runtime/engine";
 import { onScheduleTick } from "../server/workflow/schedule";
 import { observeEvent } from "../server/simulation/run";
+import { syncAgentRequestForRun } from "../server/agents/status";
 
 const ID = `${hostname()}:${process.pid}`;
 const version = { ...gitInfo(), sourceHash: sourceHash() };
@@ -92,6 +93,8 @@ async function main() {
   const advance = guarded<JobPayloads[typeof QUEUES.runAdvance]>(QUEUES.runAdvance, async (data) => {
     const status = await advanceRun(data.runId, runtimeDeps);
     console.log(`[worker] ${QUEUES.runAdvance} run=${data.runId} → ${status}`);
+    // Agent-started runs: keep the agent's view and its Intent Receipt chain current.
+    await syncAgentRequestForRun(data.runId);
   });
   await b.work<JobPayloads[typeof QUEUES.runAdvance]>(QUEUES.runAdvance, { batchSize: 5 }, async (jobs) => {
     for (const job of jobs) await advance(job.data);

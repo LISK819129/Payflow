@@ -1,0 +1,69 @@
+{
+  "client": "@modelcontextprotocol/sdk Client (Streamable HTTP)",
+  "server": "https://<payflow>/api/mcp",
+  "at": "2026-10-05T07:22:36.327Z",
+  "serverInfo": {
+    "name": "payflow-agent-gateway",
+    "title": "PayFlow Agent Gateway",
+    "version": "0.9.0"
+  },
+  "instructions": "PayFlow is a financial control layer. You may REQUEST payouts or refunds through the workflows you are scoped to, check their status, run TEST requests, and withdraw a request that is waiting for review. A request is never authorization: PayFlow's authority, AI analysis and, when required, a person decide, and only then does PayPal settle. REQUEST accepted ≠ payment completed — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. Always reuse the same request_id when retrying the same request.",
+  "request": {
+    "tool": "payflow_list_capabilities",
+    "arguments": {}
+  },
+  "response": {
+    "isError": false,
+    "structuredContent": {
+      "agent": {
+        "id": "15ff2c71-cbc2-407a-b237-3a85861ec851",
+        "name": "Cloud Procurement Agent",
+        "status": "ACTIVE",
+        "expires_at": "2027-01-03T07:22:11.601Z",
+        "credential_version": 1
+      },
+      "can_request": [
+        {
+          "workflow_id": "f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2",
+          "workflow_name": "Cloud procurement",
+          "workflow_active": true,
+          "actions": [
+            "payout"
+          ],
+          "modes": [
+            "LIVE",
+            "TEST"
+          ]
+        }
+      ],
+      "cannot": [
+        "approve or reject any request (including its own)",
+        "create, edit or suspend authorities, budgets or allowlists",
+        "create, edit, activate or pause workflows",
+        "call PayPal directly or reach any PayPal endpoint",
+        "see credentials, secrets or other agents",
+        "turn a TEST request into a live one"
+      ],
+      "principle": "Requesting is not authorization. Every request is decided by PayFlow's authority, intelligence and, where required, a person; PayPal settles only after that.",
+      "states": {
+        "live": [
+          "ACCEPTED",
+          "PROCESSING",
+          "REVIEW_REQUIRED",
+          "APPROVED",
+          "REJECTED",
+          "DENIED",
+          "CANCELLED",
+          "COMPLETED",
+          "FAILED",
+          "UNKNOWN",
+          "ENDED"
+        ],
+        "test": [
+          "TEST_COMPLETE"
+        ]
+      }
+    },
+    "text": "{\n  \"agent\": {\n    \"id\": \"15ff2c71-cbc2-407a-b237-3a85861ec851\",\n    \"name\": \"Cloud Procurement Agent\",\n    \"status\": \"ACTIVE\",\n    \"expires_at\": \"2027-01-03T07:22:11.601Z\",\n    \"credential_version\": 1\n  },\n  \"can_request\": [\n    {\n      \"workflow_id\": \"f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2\",\n      \"workflow_name\": \"Cloud procurement\",\n      \"workflow_active\": true,\n      \"actions\": [\n        \"payout\"\n      ],\n      \"modes\": [\n        \"LIVE\",\n        \"TEST\"\n      ]\n    }\n  ],\n  \"cannot\": [\n    \"approve or reject any request (including its own)\",\n    \"create, edit or suspend authorities, budgets or allowlists\",\n    \"create, edit, activate or pause workflows\",\n    \"call PayPal directly or reach any PayPal endpoint\",\n    \"see credentials, secrets or other agents\",\n    \"turn a TEST request into a live one\"\n  ],\n  \"principle\": \"Requesting is not authorization. Every request is decided by PayFlow's authority, intelligence and, where required, a person; PayPal settles only after that.\",\n  \"states\": {\n    \"live\": [\n      \"ACCEPTED\",\n      \"PROCESSING\",\n      \"REVIEW_REQUIRED\",\n      \"APPROVED\",\n      \"REJECTED\",\n      \"DENIED\",\n      \"CANCELLED\",\n      \"COMPLETED\",\n      \"FAILED\",\n      \"UNKNOWN\",\n      \"ENDED\"\n    ],\n    \"test\": [\n      \"TEST_COMPLETE\"\n    ]\n  }\n}"
+  }
+}

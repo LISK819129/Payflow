@@ -1,0 +1,75 @@
+{
+  "client": "@modelcontextprotocol/sdk Client (Streamable HTTP)",
+  "server": "https://<payflow>/api/mcp",
+  "at": "2026-10-05T07:27:28.965Z",
+  "serverInfo": {
+    "name": "payflow-agent-gateway",
+    "title": "PayFlow Agent Gateway",
+    "version": "0.9.0"
+  },
+  "instructions": "PayFlow is a financial control layer. You may REQUEST payouts or refunds through the workflows you are scoped to, check their status, run TEST requests, and withdraw a request that is waiting for review. A request is never authorization: PayFlow's authority, AI analysis and, when required, a person decide, and only then does PayPal settle. REQUEST accepted ≠ payment completed — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. Always reuse the same request_id when retrying the same request.",
+  "request": {
+    "tool": "payflow_request_payment",
+    "arguments": {
+      "request_id": "procurement-ac-8812",
+      "workflow_id": "f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2",
+      "amount": {
+        "value": "185.00",
+        "currency": "USD"
+      },
+      "purpose": "GPU compute (37 hours on A100 instances) for PixelForge's model training, October",
+      "reference": "AC-8812",
+      "evidence": {
+        "invoice_text": "From: Acme Cloud\nInvoice AC-8812\nFor: GPU compute, 37 hours on A100 instances, October\nTotal: $185.00 USD\nDue date: 2026-11-01\nTerms: Net 30"
+      },
+      "counterparty": "billing@acme-cloud.example"
+    }
+  },
+  "response": {
+    "isError": false,
+    "structuredContent": {
+      "accepted": true,
+      "replayed": true,
+      "reference": "PF-NT6DAC4P",
+      "request_id": "procurement-ac-8812",
+      "mode": "LIVE",
+      "state": "COMPLETED",
+      "meaning": "PayPal accepted the action. See paypal.status for its PayPal state.",
+      "terminal": true,
+      "reasons": [],
+      "authority": {
+        "decision": "ALLOW",
+        "outcome": "ALLOW",
+        "authorities": [
+          {
+            "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+            "name": "Cloud procurement",
+            "version": 4
+          }
+        ]
+      },
+      "human_review": {
+        "required": false,
+        "status": null,
+        "decided_at": null
+      },
+      "paypal": {
+        "contacted": true,
+        "money_moved": true,
+        "status": "PENDING",
+        "ids": [
+          "UBYPWTPSCT2FG"
+        ],
+        "confirmed_by_webhook": true
+      },
+      "test": null,
+      "receipt": {
+        "id": "PF-NT6DAC4P",
+        "hash": "9936c2c02436c4f22055d14d7a015c66987197cf7cd99a86790bc4c8e9192bae",
+        "links": 3
+      },
+      "note": "Accepted for evaluation. This is not a payment; poll payflow_get_request."
+    },
+    "text": "{\n  \"accepted\": true,\n  \"replayed\": true,\n  \"reference\": \"PF-NT6DAC4P\",\n  \"request_id\": \"procurement-ac-8812\",\n  \"mode\": \"LIVE\",\n  \"state\": \"COMPLETED\",\n  \"meaning\": \"PayPal accepted the action. See paypal.status for its PayPal state.\",\n  \"terminal\": true,\n  \"reasons\": [],\n  \"authority\": {\n    \"decision\": \"ALLOW\",\n    \"outcome\": \"ALLOW\",\n    \"authorities\": [\n      {\n        \"id\": \"7ce40c80-ded4-4f4a-aa7c-52119cbc2915\",\n        \"name\": \"Cloud procurement\",\n        \"version\": 4\n      }\n    ]\n  },\n  \"human_review\": {\n    \"required\": false,\n    \"status\": null,\n    \"decided_at\": null\n  },\n  \"paypal\": {\n    \"contacted\": true,\n    \"money_moved\": true,\n    \"status\": \"PENDING\",\n    \"ids\": [\n      \"UBYPWTPSCT2FG\"\n    ],\n    \"confirmed_by_webhook\": true\n  },\n  \"test\": null,\n  \"receipt\": {\n    \"id\": \"PF-NT6DAC4P\",\n    \"hash\": \"9936c2c02436c4f22055d14d7a015c66987197cf7cd99a86790bc4c8e9192bae\",\n    \"links\": 3\n  },\n  \"note\": \"Accepted for evaluation. This is not a payment; poll payflow_get_request.\"\n}"
+  }
+}
