@@ -82,7 +82,7 @@ Add PayPal Sandbox app credentials and an OpenAI key to `.env.local` for live Sa
 
 ## Deployment
 
-Render: web service + background worker + PostgreSQL, from `render.yaml`. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Render: web service + background worker + PostgreSQL (~$20.30/month), from `render.yaml`. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) is a from-zero guide with a checklist; the commands `pnpm deploy:check`, `deploy:setup`, `deploy:webhook <url>` and `deploy:verify` do the post-deploy configuration and report PASS/WARN/FAIL without moving money.
 
 ## Sandbox disclaimer
 

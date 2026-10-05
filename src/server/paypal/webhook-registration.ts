@@ -44,6 +44,36 @@ export const WEBHOOK_PATH = "/api/webhooks/paypal";
 
 export type Registration = { action: "updated" | "unchanged" | "created"; id: string; url: string; removed: string[] };
 
+export type WebhookPlan = {
+  /** What registerWebhook would do: move an existing webhook, nothing, or create the first one. */
+  action: "move" | "already_here" | "create";
+  url: string;
+  existing: { id: string; url: string } | null;
+  /** Other PayFlow webhooks (old tunnels) that would be removed. */
+  remove: { id: string; url: string }[];
+};
+
+/** Read-only: what `registerWebhook` would do for this host (one GET to PayPal). */
+export async function planWebhook(http: Http, host: string): Promise<WebhookPlan> {
+  if (!/^https:\/\//.test(host)) throw new Error("The webhook host must be an https:// URL");
+  const url = new URL(WEBHOOK_PATH, host).toString();
+  const { data } = await http.request<{ webhooks: Webhook[] }>({ method: "GET", path: "/v1/notifications/webhooks" });
+  const ours = data.webhooks.filter((w) => {
+    try {
+      return new URL(w.url).pathname === WEBHOOK_PATH;
+    } catch {
+      return false;
+    }
+  });
+  const existing = ours.find((w) => w.url === url) ?? ours[0] ?? null;
+  return {
+    action: !existing ? "create" : existing.url === url ? "already_here" : "move",
+    url,
+    existing: existing ? { id: existing.id, url: existing.url } : null,
+    remove: ours.filter((w) => w.id !== existing?.id).map((w) => ({ id: w.id, url: w.url })),
+  };
+}
+
 export async function registerWebhook(http: Http, host: string): Promise<Registration> {
   if (!/^https:\/\//.test(host)) throw new Error("The webhook host must be an https:// URL");
   const url = new URL(WEBHOOK_PATH, host).toString();

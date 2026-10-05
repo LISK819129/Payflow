@@ -2,7 +2,7 @@
 # No secrets live here. Values marked `sync: false` are entered once in the
 # Render Dashboard when the Blueprint is created (Render ignores them on later
 # Blueprint syncs). PayPal stays in Sandbox; PayFlow refuses to boot against
-# live PayPal.
+# live PayPal. Check this file with `pnpm deploy:check` before creating anything.
 #
 # Exactly ONE web instance: rate limits are per process (documented). Do not
 # enable autoscaling or raise numInstances without moving them to Postgres.
@@ -71,12 +71,15 @@ services:
         value: "true"
       - key: TRUSTED_PROXY_HOPS
         value: "1"
-      - key: SEED_OWNER_EMAIL # the judge login
+      - key: SEED_OWNER_EMAIL # the judge login (an identifier, not a secret)
+        value: judge@payflow.demo
+      - key: SEED_OWNER_PASSWORD # a NEW strong password, entered in the Dashboard; share with judges privately
         sync: false
-      - key: SEED_OWNER_PASSWORD # a NEW strong password; share with judges privately
-        sync: false
-      # DEMO_SUPPLIER_ACME_EMAIL / DEMO_SUPPLIER_AWS_EMAIL (the two Sandbox personal accounts) are added
-      # after the first deploy, then `Restore demo setup` updates the demo authority's allow-list.
+      # The two PayPal Sandbox *personal* accounts that receive demo payouts (identifiers, not secrets).
+      - key: DEMO_SUPPLIER_ACME_EMAIL # Acme Cloud
+        value: sb-yluat53193698@personal.example.com
+      - key: DEMO_SUPPLIER_AWS_EMAIL # AWS Demo
+        value: sb-mnylb53193692@personal.example.com
 
   - type: worker
     name: payflow-worker

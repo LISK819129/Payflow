@@ -46,7 +46,12 @@
     "evidence:manifest:phase7": "tsx scripts/evidence/manifest-phase7.ts",
     "evidence:manifest:phase8": "tsx scripts/evidence/manifest-phase8.ts",
     "evidence:manifest:phase9": "tsx scripts/evidence/manifest-phase9.ts",
-    "evidence:manifest:phase10": "tsx scripts/evidence/manifest-phase10.ts"
+    "evidence:manifest:phase10": "tsx scripts/evidence/manifest-phase10.ts",
+    "deploy:check": "tsx scripts/deploy/check.ts",
+    "deploy:setup": "tsx scripts/deploy/setup.ts",
+    "deploy:webhook": "tsx scripts/deploy/webhook.ts",
+    "deploy:verify": "tsx scripts/deploy/verify.ts",
+    "deploy:judge-password": "tsx scripts/deploy/judge-password.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -82,7 +87,8 @@
     "selfsigned": "^5.5.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "yaml": "^2.9.1"
   },
   "packageManager": "pnpm@11.15.1",
   "engines": {

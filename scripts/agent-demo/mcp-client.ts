@@ -6,7 +6,7 @@
  *   pnpm agent:mcp call <tool> <args.json> [label]
  *
  * Env: PAYFLOW_MCP_URL (default http://localhost:3000/api/mcp). The agent
- * credential is read from .env.agent.local and never printed. With a label,
+ * credential is read from .env.agent.local (or AGENT_TOKEN_FILE) and never printed. With a label,
  * the redacted exchange is saved to evidence/<EVIDENCE_PHASE|phase9>/mcp/<label>.json.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";

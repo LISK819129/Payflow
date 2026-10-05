@@ -48,7 +48,9 @@ export function gitInfo(): { commit: string | null; dirty: boolean } {
     const dirty = execFileSync("git", ["status", "--porcelain", "--", ...WATCHED], { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim().length > 0;
     return { commit, dirty };
   } catch {
-    return { commit: process.env.PAYFLOW_COMMIT ?? null, dirty: false };
+    // On Render the checkout may have no git metadata; Render provides the deployed commit.
+    const deployed = process.env.PAYFLOW_COMMIT ?? process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? null;
+    return { commit: deployed, dirty: false };
   }
 }
 

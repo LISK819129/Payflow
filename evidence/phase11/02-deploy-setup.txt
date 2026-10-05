@@ -1,0 +1,15 @@
+# pnpm deploy:setup --allow-local   (local rehearsal of the Render deployment; run 3 — idempotent)
+PayFlow deploy:setup → http://localhost:3000 (local rehearsal)
+
+PASS  Web service — answers /api/health
+PASS  Database schema — up to date (13 migrations), job queues ready
+PASS  Judge login — judge@payflow.demo is the workspace owner
+PASS  Demo setup — already as configured — nothing changed
+      Suppliers — Acme Cloud → sb-yluat53193698@personal.example.com; AWS Demo → sb-mnylb53193692@personal.example.com
+PASS  Demo agent credential — .env.agent.deploy.local already holds the current credential
+
+deploy:setup: 5 passed, 0 warning(s), 0 failed
+
+Next:
+  pnpm deploy:webhook http://localhost:3000   (needs the real https URL)
+  pnpm deploy:verify --allow-local

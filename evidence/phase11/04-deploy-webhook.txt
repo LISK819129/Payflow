@@ -1,0 +1,9 @@
+# pnpm deploy:webhook https://payflow-web.onrender.com --dry-run   (read-only: one GET to PayPal; nothing moved)
+Target:   https://payflow-web.onrender.com/api/webhooks/paypal
+Existing: 9MJ408823R309725D → https://kilometers-cbs-knock-jeans.trycloudflare.com/api/webhooks/paypal
+Action:   MOVE the existing webhook (same id)
+
+--dry-run: nothing changed.
+
+# pnpm deploy:webhook https://example.invalid   (refuses before contacting PayPal: site not ready)
+https://example.invalid/api/health/ready is not ready (unreachable). Deploy and run pnpm deploy:setup first — PayPal would otherwise deliver to a site that cannot verify events.

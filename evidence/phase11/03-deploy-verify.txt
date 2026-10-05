@@ -1,0 +1,27 @@
+# pnpm deploy:verify --allow-local --scenarios   (local rehearsal; scenarios replayed, no new AI)
+PayFlow deploy:verify → http://localhost:3000 (local rehearsal)
+
+PASS  Web liveness — /api/health → 200
+PASS  Readiness — /api/health/ready → 200 ready
+PASS    database — ok
+PASS    migrations — current
+PASS    paypal — configured
+PASS    paypalWebhook — configured
+PASS    ai — configured
+PASS    worker — recent
+PASS  Security headers — login page 200; frame-ancestors none, nosniff, no X-Powered-By
+PASS  MCP refuses strangers — unauthenticated POST /api/mcp → 401
+PASS  MCP as the demo agent — 7 tools; Cloud Procurement Agent ACTIVE; may request payout via Cloud procurement (LIVE+TEST)
+PASS    Test Run: $185 · Acme Cloud · GPU compute — WOULD_ALLOW (replayed, no new AI) — expected WOULD_ALLOW; PayPal not contacted
+PASS    Test Run: $470 · Acme Cloud · digital gift cards — WOULD_REVIEW (replayed, no new AI) — expected WOULD_REVIEW; PayPal not contacted
+PASS    Test Run: $650 · AWS · GPU compute — WOULD_REVIEW (replayed, no new AI) — expected WOULD_REVIEW; PayPal not contacted
+PASS  Judge login — judge@payflow.demo (OWNER)
+PASS  Demo setup — 2 demo flows (Cloud procurement ACTIVE, Customer refunds ACTIVE); 2 authorities; agent Cloud Procurement Agent until 2026-12-04; suppliers mapped
+PASS  Worker version — last seen 8 s ago, running 51f5f3c (origin/main is 51f5f3c)
+      AI spend (hosted) — last 24 h: 15 calls $0.0235 (cap $1/day in render.yaml); total 15 calls $0.0235 (cap $5)
+PASS  Audit chain — 51 records, intact
+      PayPal webhook — skipped for a local rehearsal (PayPal needs a public https URL)
+PASS  OpenAI key — valid (checked with the free model list — no tokens spent)
+      → make sure Render has the same key
+
+deploy:verify: 19 passed, 0 warning(s), 0 failed

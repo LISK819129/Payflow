@@ -1,0 +1,12 @@
+# pnpm deploy:check   (2026-10-05T17:38:36Z)
+PASS  render.yaml — exactly the 3 approved resources, 1 web instance, auto-deploy off, no secrets in the file
+        payflow-db — database, plan 0.1c-256mb, ~$6.30/month
+        payflow-web — web, plan 0.5c-512mb, ~$7.00/month
+        payflow-worker — worker, plan 0.5c-512mb, ~$7.00/month
+      Expected cost — ~$20.30/month (charged per second while the resources exist)
+      Render will ask for (payflow-web) — PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, OPENAI_API_KEY, SEED_OWNER_PASSWORD
+      Render will ask for (payflow-worker) — PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, OPENAI_API_KEY
+WARN  Render validator — file accepted; Render needs a payment method before it can create 3 paid resources
+      → Render Dashboard → Workspace Settings → Billing → add a payment method (only when you are ready to deploy)
+
+deploy:check: 1 passed, 1 warning(s), 0 failed
