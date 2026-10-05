@@ -67,7 +67,7 @@ export default async function ApprovalsPage() {
                         <span className="text-danger">PayPal refused: {v.execution.failure}</span>
                       ) : (
                         <span className="inline-flex flex-wrap items-center gap-1.5 text-ink">
-                          PayPal {v.execution.paypalStatus ?? v.execution.status.toLowerCase()}
+                          PayPal: {v.execution.settlement ?? v.execution.paypalStatus ?? v.execution.status.toLowerCase()}
                           {v.execution.refs[0] && <CopyId value={v.execution.refs[0]} />}
                         </span>
                       )

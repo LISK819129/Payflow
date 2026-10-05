@@ -14,7 +14,7 @@ export default async function LoginPage() {
 
           <div className="my-14 max-w-sm">
             <Wordmark size="lg" draw />
-            <p className="mt-3 text-lead text-muted">Tell PayPal how your money should behave.</p>
+            <p className="mt-3 text-lead text-muted">Financial authority for AI agents.</p>
             <div className="mt-12">
               <LoginForm />
             </div>

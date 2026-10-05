@@ -8,7 +8,7 @@ const plexMono = IBM_Plex_Mono({ variable: "--font-plex-mono", subsets: ["latin"
 
 export const metadata: Metadata = {
   title: "PayFlow",
-  description: "Tell PayPal how your money should behave.",
+  description: "Financial authority for AI agents.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -52,7 +52,7 @@ export default async function HomePage() {
           <span className="pf-mark">PayFlow</span> decides whether money moves.
         </h1>
         <p className="mt-5 max-w-2xl text-lead text-ink-2">
-          Describe what your money should do. AI drafts the workflow; you test it safely, give it a delegated authority and switch it on. People and AI agents can then ask for payments — PayFlow checks every request against your rules and your intent, asks you when it should, and only then does PayPal settle.
+          PayFlow is the financial permission layer between AI agents and real money. Agents and automated workflows can ask for payouts and refunds; PayFlow checks who is asking, what they were delegated, who they may pay, how much and what for — asks a person when a request goes beyond that — and only then does PayPal move the money.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-2">
           <a href="#try" className={buttonClass("primary", "lg")}>

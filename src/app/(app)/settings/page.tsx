@@ -2,7 +2,7 @@ import { CopyId, PageHeader, Section, SetupRequired, Status } from "@/components
 import { requireUser } from "@/server/auth/current";
 import { env, integrationStatus } from "@/server/config/env";
 import { describeConnection } from "@/server/paypal/capabilities";
-import { compileModel, fastModel } from "@/server/ai";
+import { compileModel } from "@/server/ai";
 import { usageSummary } from "@/server/ai/usage";
 import { db } from "@/server/db/client";
 import { workerHeartbeats } from "@/server/db/schema";
@@ -90,8 +90,8 @@ export default async function SettingsPage() {
               <dl className="mt-3 grid grid-cols-[120px_1fr] gap-y-1 text-body-sm">
                 <dt className="text-muted">Compiler</dt>
                 <dd className="font-mono text-meta">{compileModel()}</dd>
-                <dt className="text-muted">Classification</dt>
-                <dd className="font-mono text-meta">{fastModel()}</dd>
+                <dt className="text-muted">AI evidence</dt>
+                <dd className="font-mono text-meta">{compileModel()}</dd>
               </dl>
             </div>
           </Section>

@@ -96,7 +96,7 @@ Every displayed money record carries one of: `REAL_PAYPAL_SANDBOX`, `SIMULATED`,
 
 ## 7. AI usage
 
-`AIProvider` exposes `compileWorkflow`, `patchWorkflow`, `analyzeTransaction`, `analyzeBehavior`, `matchInvoice`, `classifyPurpose`, `explainDecision`, `analyzeSimulation`. Each returns a zod-validated object; invalid output triggers a bounded repair attempt, then fails safe. Model per task is configurable (strong model for compile/patch/simulation analysis, small fast model for classification). Default provider: Anthropic Claude; the interface allows another provider without touching the runtime.
+`AIProvider` exposes `compileWorkflow`, `patchWorkflow`, `analyzeTransaction`, `analyzeBehavior`, `matchInvoice`, `classifyPurpose`, `explainDecision`, `analyzeSimulation`. Each returns a zod-validated object; invalid output triggers a bounded repair attempt, then fails safe. The submission runs on **OpenAI `gpt-5.4-mini`** (Responses API with Structured Outputs from zod schemas) for both compilation and AI evidence; every call is metered against hard caps. An Anthropic adapter exists behind the same interface but is not used by the submission.
 
 ## 8. Infrastructure
 
@@ -123,6 +123,8 @@ pg-boss over Render Workflows for the core runtime: approvals can wait days, rem
 | Bryntum | Not planned (possible: overdue-invoice / approval timeline) | Trial licence only |
 
 A project can win at most one sponsor prize, so we optimise for one (AG Grid or Render or APIMatic) rather than sponsor stuffing.
+
+**Outcome (Phase 12):** used — Render (`render.yaml`, deploy commands; deployment prepared, created by the owner near judging) and the APIMatic-generated PayPal server SDK at runtime (APIMatic Context Plugin at build time). Not used — AG Grid, Elastic, KERNEL, Bryntum.
 
 ## 10. Compiler: known limit and the decomposition seam (Phase 4.1)
 

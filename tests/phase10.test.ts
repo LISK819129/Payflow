@@ -14,7 +14,7 @@ import { env, productionProblems, resetEnvCache } from "@/server/config/env";
 import { closeDb, db } from "@/server/db/client";
 import { actionExecutions, agentRequests, agents, auditRecords, authorities, paypalEvents, simulations, workflowRuns, workflowVersions, workflows } from "@/server/db/schema";
 import { environmentLabel } from "@/server/demo/queries";
-import { cloudTestExamples, DEMO_KEYS, restoreDemo } from "@/server/demo/setup";
+import { cloudTestExamples, DEMO_KEYS, demoSuppliers, restoreDemo } from "@/server/demo/setup";
 import { readiness } from "@/server/health";
 import { MockAnalysisProvider } from "@/server/intelligence/mock";
 import { setAnalysisProviderForTests } from "@/server/intelligence/runner";
@@ -167,7 +167,7 @@ describe("judge / demo environment", () => {
   it("6 · the judge agent cannot approve", async () => {
     const d = await restoreDemo({ workspaceId: ws.id, userId: owner.id });
     const c = await connect(d.agentToken!);
-    const r = await call(c, "payflow_request_payment", { request_id: "judge-aws-650b", workflow_id: d.cloudWorkflowId, amount: { value: "650.00", currency: "USD" }, counterparty: "aws-billing@amazon.example", purpose: "GPU compute" });
+    const r = await call(c, "payflow_request_payment", { request_id: "judge-aws-650b", workflow_id: d.cloudWorkflowId, amount: { value: "650.00", currency: "USD" }, counterparty: demoSuppliers().aws, purpose: "GPU compute" });
     await drive();
     const [ar] = await db().select().from(agentRequests).where(eq(agentRequests.reference, r.reference!));
     const { approvals } = await import("@/server/db/schema");
@@ -236,7 +236,7 @@ describe("payment status semantics", () => {
     expect(settlementOf(ex({}), [{ eventType: "PAYMENT.PAYOUTS-ITEM.UNCLAIMED", status: "UNCLAIMED" }])).toMatchObject({ stage: "AWAITING_RECIPIENT", final: false, label: "Awaiting recipient" });
     const d = await restoreDemo({ workspaceId: ws.id, userId: owner.id });
     const c = await connect(d.agentToken!);
-    const r = await call(c, "payflow_request_payment", { request_id: "judge-acme-185", workflow_id: d.cloudWorkflowId, amount: { value: "185.00", currency: "USD" }, counterparty: "billing@acme-cloud.example", purpose: "GPU compute" });
+    const r = await call(c, "payflow_request_payment", { request_id: "judge-acme-185", workflow_id: d.cloudWorkflowId, amount: { value: "185.00", currency: "USD" }, counterparty: demoSuppliers().acme, purpose: "GPU compute" });
     await drive();
     expect((await call(c, "payflow_get_request", { reference: r.reference })).state).toBe("SUBMITTED_TO_PAYPAL");
     await db().insert(paypalEvents).values({ workspaceId: ws.id, eventId: "WH-U1", eventType: "PAYMENT.PAYOUTS-ITEM.UNCLAIMED", verification: "SELF", provenance: "REAL_PAYPAL_SANDBOX", raw: { id: "WH-U1", resource: { payout_batch_id: "B-1", transaction_status: "UNCLAIMED" } }, routedAt: new Date() });
@@ -269,7 +269,7 @@ describe("protection for a public deployment", () => {
     const d = await restoreDemo({ workspaceId: ws.id, userId: owner.id });
     const c = await connect(d.agentToken!);
     const out = [];
-    for (let i = 0; i < 21; i++) out.push(await call(c, "payflow_test_request", { request_id: `rate-test-${i}-xx`, workflow_id: d.cloudWorkflowId, action: "payout", amount: { value: "10.00", currency: "USD" }, counterparty: "billing@acme-cloud.example", purpose: "GPU compute" }));
+    for (let i = 0; i < 21; i++) out.push(await call(c, "payflow_test_request", { request_id: `rate-test-${i}-xx`, workflow_id: d.cloudWorkflowId, action: "payout", amount: { value: "10.00", currency: "USD" }, counterparty: demoSuppliers().acme, purpose: "GPU compute" }));
     expect(out.at(-1)?.error?.code).toBe("RATE_LIMITED");
   });
 
@@ -367,7 +367,7 @@ describe("protection for a public deployment", () => {
   it("16 · the Intent Receipt page verifies the stored chain (and shows when it does not)", async () => {
     const d = await restoreDemo({ workspaceId: ws.id, userId: owner.id });
     const c = await connect(d.agentToken!);
-    const r = await call(c, "payflow_request_payment", { request_id: "judge-receipt-1", workflow_id: d.cloudWorkflowId, amount: { value: "650.00", currency: "USD" }, counterparty: "aws-billing@amazon.example", purpose: "GPU compute" });
+    const r = await call(c, "payflow_request_payment", { request_id: "judge-receipt-1", workflow_id: d.cloudWorkflowId, amount: { value: "650.00", currency: "USD" }, counterparty: demoSuppliers().aws, purpose: "GPU compute" });
     await drive();
     const v = await getAgentRequestView(ws.id, { reference: r.reference });
     expect(v?.verification).toMatchObject({ ok: true });

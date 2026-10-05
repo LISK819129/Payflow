@@ -1,6 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, ilike, lt, or, sql } from "drizzle-orm";
 import { ChevronRight } from "lucide-react";
-import { CopyId, Empty, PageHeader, Status, formatClock } from "@/components/ui";
+import Link from "next/link";
+import { CopyId, Empty, PageHeader, Status, buttonClass, formatClock } from "@/components/ui";
 import { verifyChain } from "@/server/audit/audit";
 import { requireUser } from "@/server/auth/current";
 import { db } from "@/server/db/client";
@@ -17,6 +18,17 @@ function headingFor(kind: string) {
   if (kind.startsWith("policy.")) return "Policy";
   if (kind.startsWith("approval.")) return "Approval";
   if (kind.startsWith("workspace.")) return "Workspace";
+  if (kind.startsWith("action.")) return "PayPal action";
+  if (kind.startsWith("budget.")) return "Budget";
+  if (kind.startsWith("authority.")) return "Authority";
+  if (kind.startsWith("agent.")) return "AI agent";
+  if (kind.startsWith("node.")) return "Workflow step";
+  if (kind.startsWith("run.")) return "Workflow run";
+  if (kind.startsWith("workflow.")) return "Workflow";
+  if (kind === "simulation.observed" || kind.startsWith("observe.")) return "Observe Mode";
+  if (kind.startsWith("simulation.")) return "Test run";
+  if (kind.startsWith("demo.")) return "Demo setup";
+  if (kind.startsWith("user.")) return "Account";
   return kind;
 }
 
@@ -27,12 +39,26 @@ function dotFor(actor: string) {
   return "bg-surface border-line-strong";
 }
 
-export default async function AuditPage() {
+const PAGE = 200;
+
+export default async function AuditPage(props: PageProps<"/audit">) {
   const user = await requireUser();
+  const params = await props.searchParams;
+  // Search by request reference, PayPal id, run id or words in the summary; page back with ?before=<seq>.
+  const q = (typeof params.q === "string" ? params.q : "").trim().slice(0, 80);
+  const before = typeof params.before === "string" && /^\d{1,12}$/.test(params.before) ? Number(params.before) : null;
+  // ILIKE wildcards in the search text are literal.
+  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const where = and(
+    eq(auditRecords.workspaceId, user.workspaceId),
+    q ? or(ilike(auditRecords.summary, like), ilike(auditRecords.paypalRef, like), sql`${auditRecords.runId}::text = ${q}`, sql`${auditRecords.payload}::text ilike ${like}`) : undefined,
+    before !== null ? lt(auditRecords.seq, before) : undefined,
+  );
   const [records, chain] = await Promise.all([
-    db().select().from(auditRecords).where(eq(auditRecords.workspaceId, user.workspaceId)).orderBy(desc(auditRecords.seq)).limit(200),
+    db().select().from(auditRecords).where(where).orderBy(desc(auditRecords.seq)).limit(PAGE),
     verifyChain(user.workspaceId),
   ]);
+  const older = records.length === PAGE ? `/audit?${new URLSearchParams({ ...(q ? { q } : {}), before: String(records[records.length - 1].seq) })}` : null;
 
   // Group by calendar day, newest first.
   const days = new Map<string, typeof records>();
@@ -62,7 +88,32 @@ export default async function AuditPage() {
         }
       />
 
-      {records.length === 0 && <Empty>Nothing recorded yet. Every decision, approval and PayPal call will appear here, in a hash-chained log.</Empty>}
+      <form action="/audit" className="mb-10 flex max-w-xl items-end gap-3" role="search">
+        <label className="block flex-1">
+          <span className="pf-label">Find</span>
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="request PF-…, PayPal id, run id or words"
+            className="mt-1 block w-full border-0 border-b border-field bg-transparent pb-1.5 text-body outline-none focus:border-ink"
+          />
+        </label>
+        <button type="submit" className={buttonClass("secondary")}>
+          Search
+        </button>
+        {(q || before !== null) && (
+          <Link href="/audit" className="pb-1.5 text-body-sm text-muted hover:text-ink">
+            Latest
+          </Link>
+        )}
+      </form>
+
+      {records.length === 0 &&
+        (q || before !== null ? (
+          <Empty>No records match. The chain itself is verified above, whatever is shown.</Empty>
+        ) : (
+          <Empty>Nothing recorded yet. Every decision, approval and PayPal call will appear here, in a hash-chained log.</Empty>
+        ))}
 
       {[...days.entries()].map(([day, rows]) => (
         <section key={day} className="mb-12">
@@ -117,6 +168,12 @@ export default async function AuditPage() {
           </ol>
         </section>
       ))}
+
+      {older && (
+        <Link href={older} className={buttonClass("quiet")}>
+          Older records →
+        </Link>
+      )}
     </>
   );
 }

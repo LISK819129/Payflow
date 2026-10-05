@@ -10,7 +10,7 @@ import { Button } from "@/components/ui";
  */
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div className="max-w-2xl py-10">
+    <div className="max-w-2xl px-5 py-10 md:px-12">
       <div className="pf-label">Something went wrong</div>
       <h1 className="mt-2 text-headline font-semibold tracking-[-0.02em]">This page couldn&rsquo;t be shown.</h1>
       <dl className="mt-6 grid grid-cols-[200px_minmax(0,1fr)] gap-x-6 gap-y-2 text-body">

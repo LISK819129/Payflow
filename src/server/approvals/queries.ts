@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { settlementsFor } from "../actions/settlement";
 import { db } from "../db/client";
 import { actionExecutions, approvals, authorities, authorityDecisions, runSteps, users, workflowRuns, workflowVersions, workflows } from "../db/schema";
 import type { BudgetSnapshot, Evaluation, FrequencySnapshot } from "../authority/types";
@@ -30,7 +31,8 @@ export type ApprovalView = {
   /** Set when an external AI agent made the request (Phase 9). */
   agent: { id: string; name: string; reference: string } | null;
   /** After the decision: what happened at PayPal for the action this approval covered. */
-  execution: { status: string; refs: string[]; paypalStatus: string | null; failure: string | null } | null;
+  /** settlement: PayPal's own outcome in PayFlow's words (e.g. "Awaiting recipient"), not the submission status. */
+  execution: { status: string; refs: string[]; paypalStatus: string | null; settlement: string | null; failure: string | null } | null;
 };
 
 /** The first PayPal action reachable from the approval's "approved" edge. */
@@ -73,6 +75,7 @@ export async function listApprovals(workspaceId: string, opts: { status?: "PENDI
   const actives = activeIds.length ? await db().select({ id: workflowVersions.id, version: workflowVersions.version }).from(workflowVersions).where(inArray(workflowVersions.id, activeIds)) : [];
   const steps = await db().select().from(runSteps).where(inArray(runSteps.runId, runIds)).orderBy(asc(runSteps.seq));
   const execs = await db().select().from(actionExecutions).where(inArray(actionExecutions.runId, runIds));
+  const settled = await settlementsFor(workspaceId, execs);
   const auths = await db().select({ id: authorities.id, name: authorities.name, version: authorities.version }).from(authorities).where(eq(authorities.workspaceId, workspaceId));
   const decisionRows = await db().select().from(authorityDecisions).where(inArray(authorityDecisions.runId, runIds));
 
@@ -142,7 +145,7 @@ export async function listApprovals(workspaceId: string, opts: { status?: "PENDI
       paypalContext: { eventType: (isAuthority ? (s.paypalContext as { eventType?: string } | undefined)?.eventType : trigger.eventType) ?? null, resourceId: (isAuthority ? (s.paypalContext as { resourceId?: string } | undefined)?.resourceId : trigger.resourceId) ?? null },
       agent: run.triggerKind === "agent_request" && trigger.agent ? { id: trigger.agent.id, name: trigger.agent.name, reference: trigger.reference ?? "" } : null,
       execution: ex
-        ? { status: ex.status, refs: ex.paypalRefs, paypalStatus: ex.paypalStatus, failure: ex.status === "FAILED" ? ((ex.error as { code?: string } | null)?.code ?? "failed") : null }
+        ? { status: ex.status, refs: ex.paypalRefs, paypalStatus: ex.paypalStatus, settlement: settled.get(ex.id)?.label ?? null, failure: ex.status === "FAILED" ? ((ex.error as { code?: string } | null)?.code ?? "failed") : null }
         : null,
     };
   });

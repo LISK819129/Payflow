@@ -3,14 +3,14 @@ import { PayPalApiError } from "./errors";
 
 /** What each PayFlow feature needs from the sandbox app's OAuth scopes. */
 export const PAYPAL_FEATURES = [
-  { key: "orders", name: "Orders & payments", scope: /services\/payments\/payment\/authcapture|checkout\/payment-resources/, usedFor: "Client payments, capture" },
-  { key: "refunds", name: "Refunds", scope: /services\/payments\/refund/, usedFor: "Reject-anomaly path, Scenario F" },
-  { key: "payouts", name: "Payouts", scope: /payments\/payouts/, usedFor: "Procurement agent pays suppliers" },
-  { key: "invoicing", name: "Invoicing", scope: /services\/invoicing/, usedFor: "Nova Labs invoices, reminders" },
-  { key: "disputes", name: "Disputes", scope: /services\/disputes\/read-seller/, usedFor: "Dispute trigger → freeze" },
-  { key: "subscriptions", name: "Subscriptions", scope: /services\/subscriptions/, usedFor: "Subscription triggers" },
-  { key: "transactionSearch", name: "Transaction search", scope: /reporting\/search\/read/, usedFor: "Historical context back-fill" },
-  { key: "webhooks", name: "Webhooks", scope: /applications\/webhooks/, usedFor: "Every workflow trigger" },
+  { key: "orders", name: "Orders & payments", scope: /services\/payments\/payment\/authcapture|checkout\/payment-resources/, usedFor: "Capture approved checkout orders" },
+  { key: "refunds", name: "Refunds", scope: /services\/payments\/refund/, usedFor: "Refund captured payments" },
+  { key: "payouts", name: "Payouts", scope: /payments\/payouts/, usedFor: "Pay suppliers, including on an AI agent's request" },
+  { key: "invoicing", name: "Invoicing", scope: /services\/invoicing/, usedFor: "Send invoices and reminders; reconcile paid ones" },
+  { key: "disputes", name: "Disputes", scope: /services\/disputes\/read-seller/, usedFor: "Disputes can pause a workflow" },
+  { key: "subscriptions", name: "Subscriptions", scope: /services\/subscriptions/, usedFor: "Subscription and billing-plan events" },
+  { key: "transactionSearch", name: "Transaction search", scope: /reporting\/search\/read/, usedFor: "Payment history behind risk signals" },
+  { key: "webhooks", name: "Webhooks", scope: /applications\/webhooks/, usedFor: "Real-time events: triggers and confirmations" },
 ] as const;
 
 export type FeatureKey = (typeof PAYPAL_FEATURES)[number]["key"];

@@ -1,0 +1,6 @@
+{
+  "amount": { "value": "185.00", "currency": "USD" },
+  "counterparty": "sb-yluat53193698@personal.example.com",
+  "purpose": "GPU compute for model training",
+  "evidence": { "invoice_text": "From: Acme Cloud\nInvoice AC-9204\nFor: GPU compute, 37 hours on A100 instances\nTotal: $185.00 USD\nTerms: Net 30" }
+}

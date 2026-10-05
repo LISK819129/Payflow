@@ -4,6 +4,8 @@
  *
  *   pnpm agent:mcp tools [label]
  *   pnpm agent:mcp call <tool> <args.json> [label]
+ *     ready-made requests: scripts/agent-demo/requests/*.json (workflow_id and request_id are
+ *     filled in when the file leaves them out)
  *
  * Env: PAYFLOW_MCP_URL (default http://localhost:3000/api/mcp). The agent
  * credential is read from .env.agent.local (or AGENT_TOKEN_FILE) and never printed. With a label,
@@ -31,7 +33,14 @@ async function main() {
       const t = await client.listTools();
       exchange.tools = t.tools.map((x) => ({ name: x.name, title: x.title, description: x.description, annotations: x.annotations, input: x.inputSchema }));
     } else if (cmd === "call") {
-      const args = JSON.parse(readFileSync(b, "utf8"));
+      const args = JSON.parse(readFileSync(b, "utf8")) as Record<string, unknown>;
+      // Like any agent: discover the workflow it may ask through, and use a fresh request id
+      // unless the file pins one (the same id replays the stored answer instead of asking again).
+      if (!args.workflow_id && a !== "payflow_list_capabilities") {
+        const caps = (await client.callTool({ name: "payflow_list_capabilities", arguments: {} })).structuredContent as { can_request?: { workflow_id: string }[] };
+        args.workflow_id = caps.can_request?.[0]?.workflow_id;
+      }
+      if (!args.request_id && a !== "payflow_list_capabilities" && a !== "payflow_get_authority") args.request_id = `demo-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
       exchange.request = { tool: a, arguments: args };
       const r = await client.callTool({ name: a, arguments: args });
       exchange.response = { isError: !!r.isError, structuredContent: r.structuredContent ?? null, text: (r.content as { text?: string }[])[0]?.text ?? null };

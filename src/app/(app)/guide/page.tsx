@@ -64,10 +64,15 @@ export default async function GuidePage() {
             The <span className="text-ink">Cloud Procurement Agent</span> may <em>ask</em> for payouts through Cloud procurement. It cannot approve, change its authority or workflow, or reach PayPal. Its requests arrive through PayFlow&rsquo;s MCP server and get the same checks as everything else.
           </p>
         </Step>
-        <Step n={5} title="A person approves once" minutes="~1 min" href="/approvals" cta="Open approvals">
+        <Step n={5} title="A person approves once" minutes="~1 min" href={s.pending > 0 ? "/approvals" : `${flow}?test=1`} cta={s.pending > 0 ? "Open approvals" : "Test the $650 request"}>
           <p>
             A <span className="text-ink">$650 AWS GPU compute</span> request exceeds the $500 delegated limit by $150, so it waits for a person. <span className="text-ink">Approve once</span> covers that single request; it never raises the limit.
           </p>
+          {s.pending === 0 && (
+            <p>
+              Nothing is waiting right now (requests for a person expire after 24 hours). See the same decision with the <span className="text-ink">$650 · AWS</span> example in Test this flow, then press <span className="text-ink">Assume approved</span> to follow the rest of the path — inside the test only.
+            </p>
+          )}
         </Step>
         <Step n={6} title="Check the record" minutes="~30 s" href="/audit" cta="Open the audit trail">
           <p>

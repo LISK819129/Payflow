@@ -1,4 +1,5 @@
 import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { JUDGE_DEPLOYMENT } from "../deploy/config";
 import { appendAudit } from "../audit/audit";
 import { canonicalJson } from "../audit/canonical";
 import { createAuthority, setAuthorityStatus, updateAuthority } from "../authority/service";
@@ -25,11 +26,14 @@ export function demoModeEnabled(): boolean {
   return process.env.PAYFLOW_DEMO_MODE === "true";
 }
 
-/** Demo suppliers. Phase 12 points these at real PayPal Sandbox personal accounts (see docs/DEPLOYMENT.md). */
+/**
+ * Demo suppliers: two real PayPal Sandbox *personal* accounts (identifiers, not secrets), so a
+ * demo payout ends Settled. DEMO_SUPPLIER_*_EMAIL can point the demo elsewhere.
+ */
 export function demoSuppliers() {
   return {
-    acme: process.env.DEMO_SUPPLIER_ACME_EMAIL || "billing@acme-cloud.example",
-    aws: process.env.DEMO_SUPPLIER_AWS_EMAIL || "aws-billing@amazon.example",
+    acme: process.env.DEMO_SUPPLIER_ACME_EMAIL || JUDGE_DEPLOYMENT.suppliers.acme.email,
+    aws: process.env.DEMO_SUPPLIER_AWS_EMAIL || JUDGE_DEPLOYMENT.suppliers.aws.email,
   };
 }
 

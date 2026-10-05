@@ -3,7 +3,9 @@
 This page is everything needed to put PayFlow online for judging on Render, check it works, hand it to judges, and delete it afterwards. It assumes nothing except this repository, a Render account and the PixelForge PayPal Sandbox app. Work through it top to bottom; every step says what you should see.
 
 **Time:** about 30 minutes, most of it waiting for Render's first build.
-**Cost:** about **$20.30/month**, charged per second only while the three resources exist. Create them close to judging and delete them right after.
+**Cost:** about **$20.30/month**, charged per second only while the three resources exist. Create them close to the deadline and delete them after judging.
+
+**When:** the submission (deadline **Nov 12, 2026, 12:00 PM PT**) must include demo access, and judges test between **Dec 1 and Dec 15**. So deploy around **Nov 8–10**, put the URL in Devpost, and keep it running until judging ends (winners are announced around Dec 21 — keeping it until then is safest). Nov 9 → Dec 21 is about 6 weeks ≈ **$28** — inside the $50 hackathon credit. Do **not** delete it right after submitting.
 
 ---
 
@@ -23,7 +25,7 @@ This page is everything needed to put PayFlow online for judging on Render, chec
 [ ] Run judge Test Run scenarios
 ```
 
-Each item is a section below (§2–§12).
+Each item is a section below (§2–§12; §13 is optional).
 
 ---
 
@@ -263,6 +265,17 @@ In the app as the judge: left menu **Flows** → **Cloud procurement** → **Tes
 Each is marked *Test input* — PayPal is never contacted and no budget is reserved. The **Demo guide** page (left menu) walks judges through the rest in ~5 minutes.
 
 Deployment done. ✔
+
+## 13. Optional: one real settled payout on the hosted site
+
+Judges see real PayPal Sandbox evidence most clearly in an Intent Receipt that ends **Settled**. This moves Sandbox test money ($185 from the PixelForge Sandbox merchant to the Acme Cloud Sandbox personal account) — do it only if you want that evidence. In PowerShell, from `D:\Payflow` (use your URL):
+
+```bash
+$env:AGENT_TOKEN_FILE=".env.agent.deploy.local"; $env:PAYFLOW_MCP_URL="https://payflow-web.onrender.com/api/mcp"; pnpm agent:mcp call payflow_request_payment scripts/agent-demo/requests/request-185-acme.json
+```
+
+Expected: `"state": "ACCEPTED"`. Within about a minute the judge account's **Agents → Cloud Procurement Agent** shows the request *Submitted to PayPal*, then **Settled** when PayPal's signed `PAYMENT.PAYOUTS-ITEM.SUCCEEDED` webhook arrives (§9 must be done). For a waiting approval judges can open, run the same command with `request-650-aws.json` (it stops for a person; nothing is paid unless someone presses **Approve once**; it expires after 24 hours).
+
 
 ---
 
