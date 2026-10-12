@@ -15,7 +15,8 @@ import { EXPECTED_MONTHLY_USD, JUDGE_DEPLOYMENT } from "../../src/server/deploy/
 import { Report } from "../../src/server/deploy/report";
 
 function renderCli(): string | null {
-  for (const c of [process.env.RENDER_CLI, "D:\\.cache\\bin\\render.exe", "render"]) {
+  // RENDER_CLI points at the binary when it is not on PATH (e.g. a downloaded render.exe).
+  for (const c of [process.env.RENDER_CLI, "render"]) {
     if (!c) continue;
     try {
       execFileSync(c, ["--version"], { stdio: "ignore", timeout: 20_000 });

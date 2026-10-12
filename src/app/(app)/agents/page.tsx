@@ -1,4 +1,4 @@
-import { ArrowRight, Ban, Bot } from "lucide-react";
+import { Ban, Bot } from "lucide-react";
 import Link from "next/link";
 import { RegisterAgent } from "@/components/agents/register-agent";
 import { ago, RequestState } from "@/components/agents/request-state";
@@ -31,29 +31,33 @@ async function agentWorkflows(workspaceId: string) {
   });
 }
 
-export default async function AgentsPage() {
+export default async function AgentsPage(props: PageProps<"/agents">) {
   const user = await requireUser();
+  const { workflow } = await props.searchParams;
   const [list, options] = await Promise.all([listAgents(user.workspaceId), agentWorkflows(user.workspaceId)]);
   const now = new Date();
   return (
     <>
       <PageHeader
         title="Agents"
-        lead="External AI agents that may ask PayFlow to move money — through PayFlow's MCP server, never straight to PayPal. The agent asks; PayFlow decides; PayPal settles."
+        lead="AI agents that may ask PayFlow for payouts and refunds. An agent gets permission to ask — never PayPal credentials, and never permission to pay."
       />
 
-      <ol className="mb-10 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-meta text-muted" aria-label="How an agent request is handled">
-        {["AI agent", "MCP", "identity", "scope", "intent receipt", "authority", "intelligence", "person if needed", "PayPal"].map((s, i, a) => (
-          <li key={s} className="inline-flex items-center gap-2">
-            <span className={i === 0 || i === a.length - 1 ? "text-ink" : ""}>{s}</span>
-            {i < a.length - 1 && <ArrowRight size={11} aria-hidden />}
-          </li>
-        ))}
-      </ol>
+      <ul className="mb-10 grid max-w-4xl gap-x-8 gap-y-2 text-body-sm text-ink-2 sm:grid-cols-3">
+        <li>
+          <span className="font-medium text-ink">Every request is checked.</span> Financial authority is evaluated separately for each one, before PayPal is contacted.
+        </li>
+        <li>
+          <span className="font-medium text-ink">Agents never decide.</span> They cannot approve their own requests, raise limits or change a recipient.
+        </li>
+        <li>
+          <span className="font-medium text-ink">Revocable at once.</span> Revoking an agent refuses its next call; nothing approved is sent afterwards.
+        </li>
+      </ul>
 
       {user.role === "OWNER" && (
-        <div className="mb-12">
-          <RegisterAgent workflows={options} />
+        <div id="register" className="mb-12 scroll-mt-8">
+          <RegisterAgent workflows={options} preselect={typeof workflow === "string" ? workflow : undefined} />
         </div>
       )}
 

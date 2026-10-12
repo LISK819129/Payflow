@@ -6,7 +6,7 @@ What the rules require (from the official rules, researched 2026-10-03): a video
 
 Judging criteria (equally weighted): **Technological Implementation** (thorough PayPal + AI integration), **Design** (complete, coherent product), **Potential Impact**, **Innovation/Idea**, **Presentation** (video and pitch).
 
-Before submitting, the repository must be **public** (GitHub → Settings → General → Danger zone → Change visibility). It is MIT-licensed already.
+Before submitting, the repository must be **public** (GitHub → Settings → General → Danger zone → Change visibility) — go through `docs/PUBLIC_RELEASE_CHECKLIST.md` first. It is MIT-licensed already. The whole list of what must exist at submission is in `docs/SUBMISSION_CHECKLIST.md`.
 
 ---
 
@@ -16,34 +16,38 @@ PayFlow
 
 ## Tagline
 
-Financial authority for AI agents.
+Financial authority for AI agents — they can ask; PayFlow decides; PayPal moves the money.
 
 ## Short description
 
-PayFlow is the financial permission layer between AI agents and real money. Agents ask for payouts and refunds through PayFlow's own MCP server; PayFlow checks who is asking, what they were delegated, who they may pay, how much and what for — and asks a person when a request goes beyond that — before PayPal moves anything.
+Financial authority for AI agents. AI agents shouldn't hold unrestricted payment credentials: with PayFlow they get permission to *ask*, and every request is checked against the authority you delegated — to whom, how much, how often, for what, until when — before PayPal is contacted. Proven on PayPal Sandbox with real agent requests over MCP, human approvals, verified webhooks and Intent Receipts.
 
 ## Inspiration
 
-AI agents are getting good at real work: provisioning cloud capacity, chasing invoices, paying suppliers. The moment they need to *spend*, the standard answer is to give them payment credentials. But a PayPal token only answers "can this software call the API?" Nobody in finance would hand a new employee the company card with no limit, no list of approved suppliers and no idea what the money is for. We wanted the equivalent of a spending policy, a manager's sign-off and a receipt — for software.
+AI agents are getting good at real work: provisioning cloud capacity, chasing invoices, paying suppliers. The moment they need to *spend*, the usual answer is to give them payment credentials. But a PayPal key answers only "can this software call the API?" — it can pay anyone, any amount, for anything, and nothing records why. Nobody in finance would hand a new employee the company card with no limit, no approved suppliers and no idea what the money is for. We wanted the equivalent of a spending mandate, a manager's sign-off and a receipt — for software.
 
 ## What it does
 
-PayFlow gives agents and automated workflows **delegated authority** instead of credentials. An authority says, in one readable sentence, who may be paid, how much per transaction and per month, in which currency, until when — and *what the money is for*.
+**AI can ask. PayFlow decides. PayPal moves the money.**
 
-When an agent asks to pay — say, $470 to an approved cloud supplier — PayFlow:
+An agent receives permission to *request* financial actions — never to execute them. PayFlow evaluates each request against explicit, revocable **authority**:
 
-1. verifies the agent's identity and that it may ask through this workflow,
-2. records an **Intent Receipt** (who asked, for what, how much, to whom, why) in a hash chain,
-3. runs the workflow: AI reads the invoice, checks the purpose, compares with history,
-4. applies the authority deterministically: limits, allowlist, currency, budget, frequency, and the purpose policy,
-5. allows it, sends it to a person (**approve once** or **reject** — never "always allow"), or denies it,
-6. only then calls PayPal — and the call must match the receipt exactly,
-7. confirms the outcome from PayPal's signed webhooks and reconciles *settled* vs *awaiting recipient*,
-8. writes every step to a tamper-evident audit trail.
+> *The Cloud Procurement Agent may ask to pay Acme Cloud and AWS, in USD, up to $500 each and $5,000 a month, for cloud infrastructure. Never Blocked Vendor.*
 
-The $470 request passes every classic check — and still stops, because it's for gift cards and the authority covers cloud infrastructure. A $650 request stops because it's $150 over the limit. A request to a deny-listed vendor is refused before PayPal is ever contacted.
+| The agent asks | PayFlow decides |
+|---|---|
+| $185 → Acme Cloud · GPU compute | **Allowed** — every check passes; PayPal pays |
+| $470 → Acme Cloud · digital gift cards | **A person decides** — Supplier ✓ Currency ✓ Amount ✓ Budget ✓ **Purpose ✕**: outside the purpose this agent was authorized for |
+| $650 → AWS · cloud compute | **A person decides** — $150 over the limit. *Approve once*; the authority doesn't change |
+| $120 → Blocked Vendor | **Denied** — PayPal is never contacted |
 
-People can also describe a workflow in plain English ("refund customers automatically up to $100; anything larger needs approval"); PayFlow drafts it, validates it, and leaves it as a draft for a person to activate. **Test Run** shows what PayFlow would decide for any input — with the real engine, but no PayPal contact and no budget — and **Observe Mode** lets a draft evaluate real PayPal events without acting.
+The $470 case is *semantic authorization*: the request states its purpose, and that purpose is outside what was delegated. It isn't fraud detection or mind-reading — it's checking meaning as well as limits.
+
+The agent can never approve itself, raise its limits, change the recipient after a decision, or reach PayPal credentials. Revoke it and its next call is refused. Every request becomes an **Intent Receipt** — who asked, what, how much, to whom, why, under which authority, whether a person decided, and what PayPal reported — hash-linked into a tamper-evident audit trail.
+
+**Why not just give the agent a PayPal key with limits?** A PayPal credential can't express "only these suppliers, only this purpose, only this budget, until this date, and a person decides the rest". PayFlow keeps the credential behind that boundary; the agent holds permission to ask, not the ability to pay.
+
+Underneath, each authority bounds a **workflow** — what should happen when a request arrives (AI reads the invoice and checks the purpose; deterministic code checks limits; a person approves exceptions). Workflows can be written in plain English: the AI drafts, PayFlow validates, a person activates — and the authority is always the ceiling. A **Test run** shows what PayFlow would decide for any request using the real engine, without contacting PayPal.
 
 ## How we built it
 
@@ -53,7 +57,7 @@ People can also describe a workflow in plain English ("refund customers automati
 - **OpenAI `gpt-5.4-mini`** with Structured Outputs for the workflow compiler and five AI evidence nodes; every call is metered against hard caps in code.
 - **PayFlow's own MCP server** (official MCP TypeScript SDK) as the agent gateway.
 - **Render Blueprint** for a one-click deployment (web, worker, PostgreSQL) with commands that configure and verify it without moving money.
-- 294 automated tests against a real PostgreSQL database, including 36 adversarial tests of the agent gateway.
+- 315 automated tests against a real PostgreSQL database, including 36 adversarial tests of the agent gateway.
 
 ## PayPal technologies used
 
@@ -74,10 +78,11 @@ The model never authorizes or moves money: its output is evidence for determinis
 
 ## Accomplishments that we're proud of
 
-- An AI agent paying a supplier through MCP, end to end on PayPal Sandbox — with an Intent Receipt that verifies the request, the human decision, PayPal's result and the settlement webhook as one hash-linked chain.
+- A real, settled payment requested by an AI agent: over MCP the agent asked for $15 to a supplier's PayPal Sandbox account; PayFlow's authority allowed it with no person needed; PayPal paid it and confirmed with a signed webhook; and the Intent Receipt links request → decision → PayPal result → settlement in one verified chain. PayFlow showed *Submitted* until PayPal confirmed, and only then *Settled*.
+- The same path with a person in it: a $650 request over the agent's $500 limit waited for one-time approval — and approving it changed nothing about what the agent may do next.
 - The purpose check: catching a payment that passes every limit but isn't for what the money was delegated for.
 - A product a non-engineer can read — the authority is one sentence, every decision shows its checks (Supplier ✓ Amount ✕ …), and AI interpretation is visibly separate from facts.
-- The whole build used about half a dollar of OpenAI credit, because analyses are cached by content and every call is capped in code.
+- The whole build used about sixty cents of OpenAI credit, because analyses are cached by content and every call is capped in code.
 
 ## What we learned
 
@@ -99,7 +104,9 @@ Live-mode readiness reviews, more PayPal actions as agent tools (invoices, subsc
 
 ## Testing instructions (for judges)
 
-> **Hosted:** open the URL above and sign in as `judge@payflow.demo` with password `<the SEED_OWNER_PASSWORD you entered in Render>`. Open **Demo guide** (left menu) — about five minutes. Short path: **Flows → Cloud procurement → Test this flow →** try the three examples ($185 allowed, $470 gift cards → review for purpose, $650 → review for amount). Then **Approvals**, **Agents → Cloud Procurement Agent**, and an Intent Receipt. Everything runs on PayPal **Sandbox**; Test Runs never contact PayPal. **Settings → Restore demo setup** resets the demo at any time.
+Replace the two placeholders (`<your-app>` and the password) with the real values **in the Devpost form only** — never in this file or anywhere in the repository.
+
+> **Hosted:** open `https://<your-app>.onrender.com` and sign in as `judge@payflow.demo` with password `<the SEED_OWNER_PASSWORD you entered in Render>`. The Home page explains PayFlow in one table; **Demo guide** (left menu) walks the story in about three minutes. Short path: **Try a request — no money moves** → the four examples ($185 allowed; $470 gift cards → a person decides, Purpose ✕; $650 → a person decides, Amount ✕; Blocked Vendor → denied). Then **Approvals**, **Agents → Cloud Procurement Agent**, and an Intent Receipt. Everything runs on PayPal **Sandbox**; test runs never contact PayPal. **Settings → Restore demo setup** resets the demo at any time.
 >
 > **Local:** see `docs/JUDGE_TESTING.md` in the repository (Windows/macOS/Linux with Node 24 and pnpm; PostgreSQL is bundled).
 

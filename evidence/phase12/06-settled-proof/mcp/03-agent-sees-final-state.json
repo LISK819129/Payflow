@@ -1,0 +1,120 @@
+{
+  "client": "@modelcontextprotocol/sdk Client (Streamable HTTP)",
+  "server": "http://<payflow>/api/mcp",
+  "at": "2026-10-11T15:08:58.496Z",
+  "serverInfo": {
+    "name": "payflow-agent-gateway",
+    "title": "PayFlow Agent Gateway",
+    "version": "0.9.0"
+  },
+  "instructions": "PayFlow is a financial control layer. You may REQUEST payouts or refunds through the workflows you are scoped to, check their status, run TEST requests, and withdraw a request that is waiting for review. A request is never authorization: PayFlow's authority, AI analysis and, when required, a person decide, and only then does PayPal settle. REQUEST accepted ≠ submitted to PayPal ≠ settled — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. Always reuse the same request_id when retrying the same request.",
+  "request": {
+    "tool": "payflow_get_request",
+    "arguments": {
+      "reference": "PF-3YA8N6MA"
+    }
+  },
+  "response": {
+    "isError": false,
+    "structuredContent": {
+      "reference": "PF-3YA8N6MA",
+      "request_id": "settled-proof-aws-15-20261011",
+      "mode": "LIVE",
+      "state": "COMPLETED",
+      "meaning": "PayPal confirmed the money reached its destination (or, for actions that move no money, that it was done).",
+      "terminal": true,
+      "reasons": [],
+      "authority": {
+        "decision": "ALLOW",
+        "outcome": "ALLOW",
+        "authorities": [
+          {
+            "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+            "name": "Cloud procurement",
+            "version": 6
+          }
+        ]
+      },
+      "human_review": {
+        "required": false,
+        "status": null,
+        "decided_at": null
+      },
+      "paypal": {
+        "contacted": true,
+        "submitted": true,
+        "settled": true,
+        "settlement": {
+          "stage": "SETTLED",
+          "label": "Settled",
+          "final": true,
+          "paypal_status": "SUCCESS",
+          "explanation": "PayPal reports the recipient was paid"
+        },
+        "status": "PENDING",
+        "ids": [
+          "PNEA99DU4KEVW"
+        ],
+        "confirmed_by_webhook": true
+      },
+      "test": null,
+      "receipt": {
+        "id": "PF-3YA8N6MA",
+        "hash": "e34d0119ac845e3a4edd680c0322530ca4d6efb3ec9f36b56502891fbea9ed54",
+        "links": 5
+      },
+      "intent_receipt": {
+        "mode": "LIVE",
+        "type": "payflow.intent_receipt",
+        "request": {
+          "action": "paypal.payout",
+          "amount": {
+            "value": "15.00",
+            "currency": "USD"
+          },
+          "purpose": "EC2 GPU compute for model training",
+          "reference": "AWS-9301",
+          "capture_id": null,
+          "request_id": "settled-proof-aws-15-20261011",
+          "counterparty": "sb-mnylb53193692@personal.example.com"
+        },
+        "version": 1,
+        "evidence": [
+          {
+            "kind": "invoice_text",
+            "chars": 104,
+            "sha256": "0ed6d7ec3635eaa88b3725e4ee5e8aa3bcaa36d84b8b6213f03d05f8ad9332e9"
+          }
+        ],
+        "workflow": {
+          "id": "f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2",
+          "name": "Cloud procurement",
+          "version": 5,
+          "graph_hash": "cb470a3223a14fad41790c9c6bb77ab4cb76cd848cae2d0b37d5ad7dfe2f3cf2",
+          "version_id": "1e93baf0-011c-44aa-a2c6-42c7b3d86629"
+        },
+        "issued_at": "2026-10-11T15:07:30.771Z",
+        "requester": {
+          "kind": "ai_agent",
+          "agent_id": "9f3c18ba-dfe6-43bb-8dc8-d4f64dc9bb1f",
+          "agent_name": "Cloud Procurement Agent",
+          "owner_user_id": "c786fce1-5238-4e29-815b-2160dd634622",
+          "authenticated_by": "bearer_credential",
+          "credential_version": 1
+        },
+        "statement": "This records what the agent asked for. It authorizes nothing: PayFlow's authority, intelligence and, where required, a person decide.",
+        "receipt_id": "PF-3YA8N6MA",
+        "request_hash": "a0459d3975de88f129bfc807c8b1461b95aa74ede4a4bef66bc7d35ec6e297f4",
+        "authority_at_acceptance": [
+          {
+            "id": "7ce40c80-ded4-4f4a-aa7c-52119cbc2915",
+            "name": "Cloud procurement",
+            "status": "ACTIVE",
+            "version": 6
+          }
+        ]
+      }
+    },
+    "text": "{\n  \"reference\": \"PF-3YA8N6MA\",\n  \"request_id\": \"settled-proof-aws-15-20261011\",\n  \"mode\": \"LIVE\",\n  \"state\": \"COMPLETED\",\n  \"meaning\": \"PayPal confirmed the money reached its destination (or, for actions that move no money, that it was done).\",\n  \"terminal\": true,\n  \"reasons\": [],\n  \"authority\": {\n    \"decision\": \"ALLOW\",\n    \"outcome\": \"ALLOW\",\n    \"authorities\": [\n      {\n        \"id\": \"7ce40c80-ded4-4f4a-aa7c-52119cbc2915\",\n        \"name\": \"Cloud procurement\",\n        \"version\": 6\n      }\n    ]\n  },\n  \"human_review\": {\n    \"required\": false,\n    \"status\": null,\n    \"decided_at\": null\n  },\n  \"paypal\": {\n    \"contacted\": true,\n    \"submitted\": true,\n    \"settled\": true,\n    \"settlement\": {\n      \"stage\": \"SETTLED\",\n      \"label\": \"Settled\",\n      \"final\": true,\n      \"paypal_status\": \"SUCCESS\",\n      \"explanation\": \"PayPal reports the recipient was paid\"\n    },\n    \"status\": \"PENDING\",\n    \"ids\": [\n      \"PNEA99DU4KEVW\"\n    ],\n    \"confirmed_by_webhook\": true\n  },\n  \"test\": null,\n  \"receipt\": {\n    \"id\": \"PF-3YA8N6MA\",\n    \"hash\": \"e34d0119ac845e3a4edd680c0322530ca4d6efb3ec9f36b56502891fbea9ed54\",\n    \"links\": 5\n  },\n  \"intent_receipt\": {\n    \"mode\": \"LIVE\",\n    \"type\": \"payflow.intent_receipt\",\n    \"request\": {\n      \"action\": \"paypal.payout\",\n      \"amount\": {\n        \"value\": \"15.00\",\n        \"currency\": \"USD\"\n      },\n      \"purpose\": \"EC2 GPU compute for model training\",\n      \"reference\": \"AWS-9301\",\n      \"capture_id\": null,\n      \"request_id\": \"settled-proof-aws-15-20261011\",\n      \"counterparty\": \"sb-mnylb53193692@personal.example.com\"\n    },\n    \"version\": 1,\n    \"evidence\": [\n      {\n        \"kind\": \"invoice_text\",\n        \"chars\": 104,\n        \"sha256\": \"0ed6d7ec3635eaa88b3725e4ee5e8aa3bcaa36d84b8b6213f03d05f8ad9332e9\"\n      }\n    ],\n    \"workflow\": {\n      \"id\": \"f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2\",\n      \"name\": \"Cloud procurement\",\n      \"version\": 5,\n      \"graph_hash\": \"cb470a3223a14fad41790c9c6bb77ab4cb76cd848cae2d0b37d5ad7dfe2f3cf2\",\n      \"version_id\": \"1e93baf0-011c-44aa-a2c6-42c7b3d86629\"\n    },\n    \"issued_at\": \"2026-10-11T15:07:30.771Z\",\n    \"requester\": {\n      \"kind\": \"ai_agent\",\n      \"agent_id\": \"9f3c18ba-dfe6-43bb-8dc8-d4f64dc9bb1f\",\n      \"agent_name\": \"Cloud Procurement Agent\",\n      \"owner_user_id\": \"c786fce1-5238-4e29-815b-2160dd634622\",\n      \"authenticated_by\": \"bearer_credential\",\n      \"credential_version\": 1\n    },\n    \"statement\": \"This records what the agent asked for. It authorizes nothing: PayFlow's authority, intelligence and, where required, a person decide.\",\n    \"receipt_id\": \"PF-3YA8N6MA\",\n    \"request_hash\": \"a0459d3975de88f129bfc807c8b1461b95aa74ede4a4bef66bc7d35ec6e297f4\",\n    \"authority_at_acceptance\": [\n      {\n        \"id\": \"7ce40c80-ded4-4f4a-aa7c-52119cbc2915\",\n        \"name\": \"Cloud procurement\",\n        \"status\": \"ACTIVE\",\n        \"version\": 6\n      }\n    ]\n  }\n}"
+  }
+}

@@ -57,11 +57,7 @@ export default async function AgentRequestPage(props: PageProps<"/agents/request
         </div>
       </header>
 
-      <div className="mt-8">
-        <AgentPipeline v={v} showRunLink />
-      </div>
-
-      <Section label="The receipt in plain words" aside={v.verification.ok ? "integrity verified" : "integrity FAILED"} className="mt-10">
+      <Section label="Intent Receipt — in plain words" aside={v.verification.ok ? "integrity verified" : "integrity FAILED"} className="mt-8">
         <dl className="mt-3 grid gap-x-10 gap-y-2.5 text-body sm:grid-cols-[180px_minmax(0,1fr)]">
           {(
             [
@@ -72,7 +68,7 @@ export default async function AgentRequestPage(props: PageProps<"/agents/request
               ["Why (the agent's words)", `“${r.purpose}”${r.reference ? ` · ref ${r.reference}` : ""}`],
               ["Through", `${v.receipt.workflow.name} v${v.receipt.workflow.version}`],
               ["Under authority", v.status.authority?.authorities.map((a) => `${a.name} v${a.version}`).join(", ") || v.receipt.authority_at_acceptance.map((a) => `${a.name} v${a.version} (at acceptance)`).join(", ") || "none"],
-              ["Did a person decide?", v.status.human_review?.required ? `Yes — ${String(v.status.human_review.status ?? "").toLowerCase()}` : v.status.authority ? "No — within delegated authority" : "Not yet"],
+              ["Did a person decide?", v.ar.mode === "TEST" ? "No — a TEST request never creates an approval" : v.status.human_review?.required ? `Yes — ${String(v.status.human_review.status ?? "").toLowerCase()}` : v.status.authority ? "No — within delegated authority" : "Not yet"],
               ["Was PayPal contacted?", v.ar.mode === "TEST" ? "No — TEST requests cannot reach PayPal" : v.status.paypal.contacted ? `Yes — ${v.status.paypal.ids.join(", ")}` : "No"],
               ["What happened", `${v.status.state.replaceAll("_", " ")} — ${v.status.meaning}`],
             ] as [string, string][]
@@ -84,6 +80,11 @@ export default async function AgentRequestPage(props: PageProps<"/agents/request
           ))}
         </dl>
       </Section>
+
+      <div className="mt-10">
+        <AgentPipeline v={v} showRunLink />
+      </div>
+
 
       {v.status.reasons.length > 0 && (
         <Section label="Reasons (as returned to the agent)" className="mt-10">

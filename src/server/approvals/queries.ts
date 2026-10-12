@@ -23,7 +23,9 @@ export type ApprovalView = {
   run: { id: string; status: string; version: number; provenance: string; triggerKind: string };
   workflow: { id: string; name: string; activeVersion: number | null; state: string };
   action: { kind: string; label: string; amount: { value: string; currency: string } | null; counterparty: string | null; target: { type: string; id: string } | null } | null;
-  authorities: { id: string; name: string; version: number | null; perTransactionMax?: string | null }[];
+  authorities: { id: string; name: string; version: number | null; perTransactionMax?: string | null; purposeScope?: string | null }[];
+  /** What the request says the money is for (shown next to the delegated purpose when Purpose fails). */
+  requestedPurpose: string | null;
   evaluations: Evaluation[];
   budget: BudgetSnapshot[];
   frequency: FrequencySnapshot[];
@@ -97,8 +99,8 @@ export async function listApprovals(workspaceId: string, opts: { status?: "PENDI
       budget = (s.budget as BudgetSnapshot[]) ?? [];
       frequency = (s.frequency as FrequencySnapshot[]) ?? [];
       const decision = decisionRows.find((d) => d.id === s.decisionId);
-      const snap = (decision?.authoritySnapshot as { id: string; name: string; version: number; perTransactionMax?: string | null }[] | null) ?? [];
-      auth = snap.map((x) => ({ id: x.id, name: x.name, version: x.version, perTransactionMax: x.perTransactionMax ?? null }));
+      const snap = (decision?.authoritySnapshot as { id: string; name: string; version: number; perTransactionMax?: string | null; purposeScope?: string | null }[] | null) ?? [];
+      auth = snap.map((x) => ({ id: x.id, name: x.name, version: x.version, perTransactionMax: x.perTransactionMax ?? null, purposeScope: x.purposeScope ?? null }));
       actionNodeId = a.nodeId;
     } else {
       // A workflow approval node: the policy results that routed the run here are the evidence.
@@ -143,6 +145,7 @@ export async function listApprovals(workspaceId: string, opts: { status?: "PENDI
       budget,
       frequency,
       paypalContext: { eventType: (isAuthority ? (s.paypalContext as { eventType?: string } | undefined)?.eventType : trigger.eventType) ?? null, resourceId: (isAuthority ? (s.paypalContext as { resourceId?: string } | undefined)?.resourceId : trigger.resourceId) ?? null },
+      requestedPurpose: typeof (run.triggerPayload as { purpose?: unknown }).purpose === "string" ? ((run.triggerPayload as { purpose: string }).purpose) : null,
       agent: run.triggerKind === "agent_request" && trigger.agent ? { id: trigger.agent.id, name: trigger.agent.name, reference: trigger.reference ?? "" } : null,
       execution: ex
         ? { status: ex.status, refs: ex.paypalRefs, paypalStatus: ex.paypalStatus, settlement: settled.get(ex.id)?.label ?? null, failure: ex.status === "FAILED" ? ((ex.error as { code?: string } | null)?.code ?? "failed") : null }

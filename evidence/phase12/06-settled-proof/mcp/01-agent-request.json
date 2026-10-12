@@ -1,0 +1,65 @@
+{
+  "client": "@modelcontextprotocol/sdk Client (Streamable HTTP)",
+  "server": "http://<payflow>/api/mcp",
+  "at": "2026-10-11T15:07:30.473Z",
+  "serverInfo": {
+    "name": "payflow-agent-gateway",
+    "title": "PayFlow Agent Gateway",
+    "version": "0.9.0"
+  },
+  "instructions": "PayFlow is a financial control layer. You may REQUEST payouts or refunds through the workflows you are scoped to, check their status, run TEST requests, and withdraw a request that is waiting for review. A request is never authorization: PayFlow's authority, AI analysis and, when required, a person decide, and only then does PayPal settle. REQUEST accepted ≠ submitted to PayPal ≠ settled — poll payflow_get_request until state is terminal. You cannot approve requests or change limits; amounts over the limits go to a person. Always reuse the same request_id when retrying the same request.",
+  "request": {
+    "tool": "payflow_request_payment",
+    "arguments": {
+      "request_id": "settled-proof-aws-15-20261011",
+      "amount": {
+        "value": "15.00",
+        "currency": "USD"
+      },
+      "counterparty": "sb-mnylb53193692@personal.example.com",
+      "purpose": "EC2 GPU compute for model training",
+      "reference": "AWS-9301",
+      "evidence": {
+        "invoice_text": "From: Amazon Web Services\nInvoice AWS-9301\nFor: EC2 GPU compute, 3 hours\nTotal: $15.00 USD\nTerms: Net 30"
+      },
+      "workflow_id": "f54d6b34-6d55-425d-9ab4-d3b1bd8ee7e2"
+    }
+  },
+  "response": {
+    "isError": false,
+    "structuredContent": {
+      "accepted": true,
+      "replayed": false,
+      "reference": "PF-3YA8N6MA",
+      "request_id": "settled-proof-aws-15-20261011",
+      "mode": "LIVE",
+      "state": "ACCEPTED",
+      "meaning": "PayFlow accepted the request into the workflow. Nothing has been decided or paid.",
+      "terminal": false,
+      "reasons": [],
+      "authority": null,
+      "human_review": {
+        "required": false,
+        "status": null,
+        "decided_at": null
+      },
+      "paypal": {
+        "contacted": false,
+        "submitted": false,
+        "settled": false,
+        "settlement": null,
+        "status": null,
+        "ids": [],
+        "confirmed_by_webhook": false
+      },
+      "test": null,
+      "receipt": {
+        "id": "PF-3YA8N6MA",
+        "hash": "e34d0119ac845e3a4edd680c0322530ca4d6efb3ec9f36b56502891fbea9ed54",
+        "links": 0
+      },
+      "note": "Accepted for evaluation. This is not a payment; poll payflow_get_request."
+    },
+    "text": "{\n  \"accepted\": true,\n  \"replayed\": false,\n  \"reference\": \"PF-3YA8N6MA\",\n  \"request_id\": \"settled-proof-aws-15-20261011\",\n  \"mode\": \"LIVE\",\n  \"state\": \"ACCEPTED\",\n  \"meaning\": \"PayFlow accepted the request into the workflow. Nothing has been decided or paid.\",\n  \"terminal\": false,\n  \"reasons\": [],\n  \"authority\": null,\n  \"human_review\": {\n    \"required\": false,\n    \"status\": null,\n    \"decided_at\": null\n  },\n  \"paypal\": {\n    \"contacted\": false,\n    \"submitted\": false,\n    \"settled\": false,\n    \"settlement\": null,\n    \"status\": null,\n    \"ids\": [],\n    \"confirmed_by_webhook\": false\n  },\n  \"test\": null,\n  \"receipt\": {\n    \"id\": \"PF-3YA8N6MA\",\n    \"hash\": \"e34d0119ac845e3a4edd680c0322530ca4d6efb3ec9f36b56502891fbea9ed54\",\n    \"links\": 0\n  },\n  \"note\": \"Accepted for evaluation. This is not a payment; poll payflow_get_request.\"\n}"
+  }
+}

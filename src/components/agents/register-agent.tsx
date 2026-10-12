@@ -10,12 +10,13 @@ import { OneTimeToken } from "./one-time-token";
 type Option = { id: string; name: string; actions: ("paypal.payout" | "paypal.refund")[] };
 
 /** Owner registers an agent: a name, what it may ASK for, and an optional expiry. */
-export function RegisterAgent({ workflows }: { workflows: Option[] }) {
+export function RegisterAgent({ workflows, preselect }: { workflows: Option[]; /** From "Connect an AI agent" on a workflow: open the form with it chosen. */ preselect?: string }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const chosen = preselect ? workflows.find((w) => w.id === preselect) : undefined;
+  const [open, setOpen] = useState(!!chosen);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [picked, setPicked] = useState<Record<string, { actions: string[]; live: boolean; test: boolean }>>({});
+  const [picked, setPicked] = useState<Record<string, { actions: string[]; live: boolean; test: boolean }>>(chosen ? { [chosen.id]: { actions: [chosen.actions[0]], live: true, test: true } } : {});
   const [days, setDays] = useState<number | null>(90);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<{ token: string; id: string } | null>(null);

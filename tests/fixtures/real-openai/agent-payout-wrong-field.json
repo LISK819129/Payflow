@@ -1,0 +1,157 @@
+{
+  "evidenceType": "REAL_OPENAI (recorded output, replayed in tests at $0)",
+  "compilationId": "8d62ddc6-668f-44e5-b367-33463bc237f9",
+  "model": "gpt-5.4-mini",
+  "recordedAt": "2026-10-06T03:41:22.186Z",
+  "note": "Recorded BEFORE the fix: the model chose the agent-request trigger but read the recipient from trigger.receiver, a field agent requests never carry (they carry trigger.counterparty). The validator accepted it.",
+  "instruction": "When our Cloud Procurement Agent asks to pay a supplier, pay sb-yluat53193698@personal.example.com (Acme Cloud) or sb-mnylb53193692@personal.example.com (AWS) automatically if the payment is in USD and is $200 or less. If it is above $200, ask me for approval. Never pay payments@blocked-vendor.example.",
+  "output": {
+    "status": "compiled",
+    "workflow": {
+      "name": "Cloud supplier payments",
+      "edges": [
+        {
+          "to": "usd_only",
+          "from": "agent_request",
+          "port": "next"
+        },
+        {
+          "to": "allowed_suppliers",
+          "from": "usd_only",
+          "port": "pass"
+        },
+        {
+          "to": "blocked",
+          "from": "usd_only",
+          "port": "block"
+        },
+        {
+          "to": "needs_review",
+          "from": "usd_only",
+          "port": "error"
+        },
+        {
+          "to": "under_limit",
+          "from": "allowed_suppliers",
+          "port": "pass"
+        },
+        {
+          "to": "blocked",
+          "from": "allowed_suppliers",
+          "port": "block"
+        },
+        {
+          "to": "needs_review",
+          "from": "allowed_suppliers",
+          "port": "error"
+        },
+        {
+          "to": "send_payout",
+          "from": "under_limit",
+          "port": "pass"
+        },
+        {
+          "to": "ask_approval",
+          "from": "under_limit",
+          "port": "block"
+        },
+        {
+          "to": "needs_review",
+          "from": "under_limit",
+          "port": "error"
+        },
+        {
+          "to": "send_payout",
+          "from": "ask_approval",
+          "port": "approved"
+        },
+        {
+          "to": "rejected",
+          "from": "ask_approval",
+          "port": "rejected"
+        },
+        {
+          "to": "completed",
+          "from": "send_payout",
+          "port": "done"
+        },
+        {
+          "to": "needs_review",
+          "from": "send_payout",
+          "port": "error"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "agent_request",
+          "type": "trigger.agent_request",
+          "label": "Supplier payment request",
+          "config_json": "{\"actions\":[\"paypal.payout\"]}"
+        },
+        {
+          "id": "usd_only",
+          "type": "policy.currency",
+          "label": "USD only",
+          "config_json": "{\"amountRef\":\"trigger.amount\",\"allowed\":[\"USD\"]}"
+        },
+        {
+          "id": "allowed_suppliers",
+          "type": "policy.counterparty",
+          "label": "Approved suppliers only",
+          "config_json": "{\"ref\":\"trigger.receiver\",\"allowed\":[\"sb-yluat53193698@personal.example.com\",\"sb-mnylb53193692@personal.example.com\"]}"
+        },
+        {
+          "id": "under_limit",
+          "type": "policy.amount_limit",
+          "label": "$200 or less",
+          "config_json": "{\"amountRef\":\"trigger.amount\",\"max\":{\"value\":\"200.00\",\"currency\":\"USD\"},\"comparison\":\"lte\"}"
+        },
+        {
+          "id": "ask_approval",
+          "type": "control.approval",
+          "label": "Ask me to approve",
+          "config_json": "{\"reason\":\"Approve supplier payment over $200\",\"amountRef\":\"trigger.amount\",\"counterpartyRef\":\"trigger.receiver\"}"
+        },
+        {
+          "id": "send_payout",
+          "type": "paypal.payout",
+          "label": "Pay supplier",
+          "config_json": "{\"receiverRef\":\"trigger.receiver\",\"amountRef\":\"trigger.amount\",\"note\":\"Supplier payment\"}"
+        },
+        {
+          "id": "blocked",
+          "type": "control.terminal",
+          "label": "Blocked",
+          "config_json": "{\"outcome\":\"blocked\",\"message\":\"Payment is not allowed for this supplier or currency.\"}"
+        },
+        {
+          "id": "rejected",
+          "type": "control.terminal",
+          "label": "Rejected",
+          "config_json": "{\"outcome\":\"rejected\",\"message\":\"Payment was not approved.\"}"
+        },
+        {
+          "id": "needs_review",
+          "type": "control.terminal",
+          "label": "Needs review",
+          "config_json": "{\"outcome\":\"needs_review\",\"message\":\"Payment details were missing or invalid, or the payout failed.\"}"
+        },
+        {
+          "id": "completed",
+          "type": "control.terminal",
+          "label": "Completed",
+          "config_json": "{\"outcome\":\"completed\",\"message\":\"Payment sent.\"}"
+        }
+      ],
+      "description": "Auto-pay approved cloud suppliers in USD up to $200, otherwise ask for approval."
+    },
+    "questions": [],
+    "assumptions": [
+      "The agent request includes the supplier email in trigger.receiver and the payment amount in trigger.amount.",
+      "The two allowed supplier emails are the only suppliers that should be paid automatically; the blocked vendor is excluded by the counterparty policy.",
+      "A generic payout note is acceptable for the PayPal payout step."
+    ],
+    "unsupported": [],
+    "interpretation": "When the Cloud Procurement Agent requests a supplier payment, this workflow will pay only the two approved supplier emails, only in USD, and only automatically up to $200. Any payment over $200 will pause for your approval first, and the blocked vendor will never be paid."
+  }
+}

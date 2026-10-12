@@ -37,7 +37,10 @@ export function demoSuppliers() {
   };
 }
 
-export const CLOUD_SCOPE = "Cloud infrastructure for PixelForge's own systems: compute (including GPU), storage, networking, managed databases, and support for those services.";
+/** On the Cloud procurement deny list: never paid, not even with a person's approval. */
+export const BLOCKED_VENDOR = "payments@blocked-vendor.example";
+
+export const CLOUD_SCOPE = "Cloud infrastructure for the company's own systems: compute (including GPU), storage, networking, managed databases, and support for those services.";
 
 export function cloudGraph(): WorkflowGraph {
   return {
@@ -48,7 +51,7 @@ export function cloudGraph(): WorkflowGraph {
       { id: "purpose", type: "ai.purpose_classification", label: "What is it for?", config: { textRefs: ["trigger.purpose", "trigger.invoice"], amountRef: "trigger.amount", counterpartyRef: "trigger.counterparty", action: "paypal.payout" } },
       { id: "behavior", type: "ai.behavior_analysis", label: "Compare with history", config: { paymentRef: "trigger.amount", counterpartyRef: "trigger.counterparty", descriptionRef: "trigger.purpose", action: "paypal.payout", explain: "when_flagged" } },
       { id: "usd", type: "policy.currency", label: "Bill is in USD", config: { amountRef: "trigger.amount", allowed: ["USD"] } },
-      { id: "pay", type: "paypal.payout", label: "Pay the cloud supplier", config: { receiverRef: "trigger.counterparty", amountRef: "trigger.amount", note: "Payment from PixelForge Studio" } },
+      { id: "pay", type: "paypal.payout", label: "Pay the cloud supplier", config: { receiverRef: "trigger.counterparty", amountRef: "trigger.amount", note: "Cloud supplier payment" } },
       { id: "sent", type: "control.terminal", label: "Sent to PayPal", config: { outcome: "completed", message: "Payout submitted to PayPal" } },
       { id: "not_usd", type: "control.terminal", label: "Not USD", config: { outcome: "needs_review", message: "Bill is not in USD; handle manually" } },
       { id: "refused", type: "control.terminal", label: "PayPal refused", config: { outcome: "needs_review", message: "PayPal refused the payout; see the PayPal error" } },
@@ -72,7 +75,7 @@ export function refundsGraph(): WorkflowGraph {
     nodes: [
       { id: "ask", type: "trigger.manual", label: "Customer refund requested", config: {} },
       { id: "usd", type: "policy.currency", label: "Refund is in USD", config: { amountRef: "trigger.amount", allowed: ["USD"] } },
-      { id: "refund", type: "paypal.refund", label: "Refund the customer", config: { captureIdRef: "trigger.captureId", amountRef: "trigger.amount", note: "Refund from PixelForge Studio" } },
+      { id: "refund", type: "paypal.refund", label: "Refund the customer", config: { captureIdRef: "trigger.captureId", amountRef: "trigger.amount", note: "Customer refund" } },
       { id: "sent", type: "control.terminal", label: "Sent to PayPal", config: { outcome: "completed", message: "Refund submitted to PayPal" } },
       { id: "not_usd", type: "control.terminal", label: "Not USD", config: { outcome: "needs_review", message: "Refund is not in USD; handle manually" } },
       { id: "refused", type: "control.terminal", label: "PayPal refused", config: { outcome: "needs_review", message: "PayPal refused the refund; see the PayPal error" } },
@@ -100,6 +103,7 @@ export function cloudTestExamples(): TestExample[] {
     { label: "$185 · Acme Cloud · GPU compute", values: { amount: { value: "185.00", currency_code: "USD" }, counterparty: s.acme, purpose: "GPU compute for model training", invoice: inv("Acme Cloud", "AC-9101", "GPU compute, 37 hours on A100 instances", "185.00") } },
     { label: "$470 · Acme Cloud · digital gift cards", values: { amount: { value: "470.00", currency_code: "USD" }, counterparty: s.acme, purpose: "10 x $47 digital gift cards", invoice: inv("Acme Cloud", "AC-9102", "10 x $47 digital gift cards", "470.00") } },
     { label: "$650 · AWS · GPU compute", values: { amount: { value: "650.00", currency_code: "USD" }, counterparty: s.aws, purpose: "EC2 GPU instances for model training", invoice: inv("Amazon Web Services", "AWS-9103", "EC2 GPU instances (p4d)", "650.00") } },
+    { label: "$120 · Blocked Vendor", values: { amount: { value: "120.00", currency_code: "USD" }, counterparty: BLOCKED_VENDOR, purpose: "GPU compute for model training", invoice: inv("Blocked Vendor", "BV-9104", "GPU compute, 24 hours", "120.00") } },
   ];
 }
 
@@ -115,7 +119,7 @@ function cloudAuthority(workflowId: string) {
       { id: s.acme, name: "Acme Cloud" },
       { id: s.aws, name: "AWS" },
     ],
-    deniedCounterparties: [{ id: "payments@blocked-vendor.example", name: "Blocked Vendor" }],
+    deniedCounterparties: [{ id: BLOCKED_VENDOR, name: "Blocked Vendor" }],
     currencies: ["USD"],
     perTransactionMax: "500",
     budgetAmount: "5000",

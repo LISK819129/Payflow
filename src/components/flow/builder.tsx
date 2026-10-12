@@ -16,6 +16,8 @@ import { NODE_SPECS, SPEC_BY_TYPE, type GraphNode, type WorkflowGraph } from "@/
 import { RUNTIME_PHASE, validateGraph, type Issue } from "@/server/workflow/dsl/validate";
 import { edgeKey, GraphCanvas } from "./graph-canvas";
 import { Inspector } from "./inspector";
+import { RulePanel } from "./rule-panel";
+import type { AuthorityTerms } from "@/server/workflow/rule-summary";
 import { layoutGraph } from "./layout";
 import { PatchBar } from "./patch-bar";
 
@@ -33,10 +35,14 @@ type Props = {
   aiInstruction?: string | null;
   observing?: boolean;
   observations?: number;
-  /** Open "Test this flow" straight away (from the home page / guide). */
+  /** Open the Test run straight away (from the home page / guide). */
   autoTest?: boolean;
   suppliers?: { id: string; name: string }[];
   testExamples?: TestExample[];
+  /** Authorities covering this workflow, and how many agents may ask through it — for the "This rule" summary. */
+  authorities?: AuthorityTerms[];
+  agentCount?: number;
+  isOwner?: boolean;
 };
 
 const CATEGORY_ORDER = ["trigger", "policy", "control", "paypal", "ai", "ledger"] as const;
@@ -65,9 +71,9 @@ function defaultConfig(type: string): Record<string, unknown> {
     case "policy.counterparty":
       return { ref: "trigger.payer.email", allowed: [] };
     case "paypal.refund":
-      return { captureIdRef: "trigger.resourceId", amountRef: "trigger.amount", note: "Refund from PixelForge Studio" };
+      return { captureIdRef: "trigger.resourceId", amountRef: "trigger.amount", note: "Refund via PayFlow" };
     case "paypal.payout":
-      return { receiverRef: "trigger.supplierEmail", amountRef: "trigger.amount", note: "Payment from PixelForge Studio" };
+      return { receiverRef: "trigger.supplierEmail", amountRef: "trigger.amount", note: "Payment via PayFlow" };
     case "paypal.order_capture":
       return { orderIdRef: "trigger.resourceId", amountRef: "trigger.amount" };
     case "paypal.invoice_send":
@@ -105,7 +111,7 @@ export function FlowBuilder(props: Props) {
   );
 }
 
-function Builder({ workflowId, name, state, latestVersion, latestStatus, activeVersion, initialGraph, canAuthorize, aiConfigured, provenance, aiInstruction, observing = false, observations = 0, autoTest = false, suppliers = [], testExamples = [] }: Props) {
+function Builder({ workflowId, name, state, latestVersion, latestStatus, activeVersion, initialGraph, canAuthorize, aiConfigured, provenance, aiInstruction, observing = false, observations = 0, autoTest = false, suppliers = [], testExamples = [], authorities = [], agentCount = 0, isOwner = false }: Props) {
   const [testOpen, setTestOpen] = useState(autoTest && canAuthorize);
   const [observeOn, setObserveOn] = useState(observing);
   const router = useRouter();
@@ -215,16 +221,18 @@ function Builder({ workflowId, name, state, latestVersion, latestStatus, activeV
           <Button size="sm" onClick={save} disabled={pending || !dirty}>
             <Save size={14} aria-hidden /> {dirty ? "Save draft" : "Saved"}
           </Button>
-          {canAuthorize && (
+          {canAuthorize && (latestStatus === "DRAFT" || dirty) ? (
             <Button
               size="sm"
               variant="primary"
               onClick={activate}
               disabled={pending || dirty || latestStatus !== "DRAFT" || errors.length > 0 || state === "FROZEN"}
-              title={dirty ? "Save first" : latestStatus !== "DRAFT" ? "Nothing new to activate" : undefined}
+              title={dirty ? "Save first" : undefined}
             >
               <Rocket size={14} aria-hidden /> Activate v{latestVersion}
             </Button>
+          ) : (
+            activeVersion !== null && <span className="text-body-sm text-muted">v{activeVersion} is active</span>
           )}
           {canAuthorize && state === "ACTIVE" && (
             <Button size="sm" variant="quiet" onClick={() => setState("PAUSED")} disabled={pending}>
@@ -242,8 +250,8 @@ function Builder({ workflowId, name, state, latestVersion, latestStatus, activeV
             </Button>
           )}
           {canAuthorize && (
-            <Button size="sm" onClick={() => setTestOpen(true)} disabled={pending || dirty} title={dirty ? "Save first: a test runs the saved version" : "Run a hypothetical transaction through this flow — no money moves"}>
-              <FlaskConical size={14} aria-hidden /> Test this flow
+            <Button size="sm" onClick={() => setTestOpen(true)} disabled={pending || dirty} title={dirty ? "Save first: a test runs the saved version" : "See what PayFlow would decide for a request — PayPal is not contacted, no money moves"}>
+              <FlaskConical size={14} aria-hidden /> Test run
             </Button>
           )}
           {canAuthorize && latestStatus === "DRAFT" && (
@@ -352,6 +360,18 @@ function Builder({ workflowId, name, state, latestVersion, latestStatus, activeV
             />
           ) : (
             <div>
+              <RulePanel
+                workflowId={workflowId}
+                workflowName={name}
+                graph={graph}
+                state={state}
+                latestStatus={latestStatus}
+                latestVersion={latestVersion}
+                authorities={authorities}
+                agentCount={agentCount}
+                isOwner={isOwner}
+                onTest={() => setTestOpen(true)}
+              />
               <div className="pf-label">Validation</div>
               {issues.length === 0 ? (
                 <p className="mt-2 text-body-sm text-ok">No problems. Every money path passes a policy or approval gate.</p>

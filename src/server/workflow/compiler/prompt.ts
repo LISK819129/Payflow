@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { NODE_SPECS, type NodeSpec } from "../dsl/nodes";
+import { AGENT_REQUEST_FIELDS, NODE_SPECS, type NodeSpec } from "../dsl/nodes";
 import { RUNTIME_PHASE } from "../dsl/validate";
 
 /**
@@ -44,6 +44,16 @@ function configSignature(spec: NodeSpec): string {
   } catch {
     return "{ … }";
   }
+}
+
+/** The fixed shape of an agent request, so the model never invents a field name for it. */
+function agentRequestFields(): string {
+  const shown = ["counterparty", "amount", "purpose", "invoice", "contract", "captureId", "invoiceNumber", "agent"];
+  return [
+    "- For trigger.agent_request (an AI agent asks through PayFlow) the request carries EXACTLY these fields — never invent another name:",
+    ...shown.map((f) => `  - trigger.${f} — ${AGENT_REQUEST_FIELDS[f]}`),
+    "  The recipient of an agent's payout is always trigger.counterparty: use it for receiverRef, counterpartyRef and the ref of policy.counterparty. Who is asking (trigger.agent, or the agent's name in the instruction) is the requester, never the recipient: never read a recipient from trigger.agent and never put an agent's name in a counterparty list. Counterparty lists for agent requests are the PayPal email addresses the owner stated.",
+  ].join("\n");
 }
 
 function catalog(): string {
@@ -118,6 +128,7 @@ Workflows read data through dotted references:
 - trigger.payer.email, trigger.payer.name, trigger.payer.payerId
 - trigger.invoiceId, trigger.orderId, trigger.resourceId (the PayPal id of the capture/invoice/payout/dispute), trigger.eventType, trigger.summary
 - trigger.<field> for a manual trigger: whatever fields the person supplies (e.g. trigger.dueDate, trigger.supplier, trigger.amount)
+${agentRequestFields()}
 - nodes.<nodeId>.output.<field> — output of an earlier node. Policy nodes output { passed }, conditions output { result }; AI nodes output evidence: ai.behavior_analysis → { level: "LOW"|"ELEVATED"|"HIGH"|"UNCERTAIN" }; ai.purpose_classification → { classification: "WITHIN_SCOPE"|"OUTSIDE_SCOPE"|"UNCERTAIN" }; ai.contract_match → { verdict: "MATCH"|"MISMATCH"|"UNCERTAIN" }; ai.invoice_match → { verdict, matchedInvoiceId }; ai.invoice_extract → { extraction.fields.<name>.value }.
 
 # Conditions (Expr)

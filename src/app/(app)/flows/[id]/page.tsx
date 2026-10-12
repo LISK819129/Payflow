@@ -6,7 +6,8 @@ import type { WorkflowGraph } from "@/server/workflow/dsl/nodes";
 import { getWorkflowForEditing } from "@/server/workflow/queries";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
-import { authorities } from "@/server/db/schema";
+import { agents, authorities } from "@/server/db/schema";
+import type { AuthorityTerms } from "@/server/workflow/rule-summary";
 import { cloudTestExamples, DEMO_KEYS } from "@/server/demo/setup";
 
 export default async function FlowPage(props: PageProps<"/flows/[id]">) {
@@ -18,10 +19,31 @@ export default async function FlowPage(props: PageProps<"/flows/[id]">) {
   const q = await props.searchParams;
   // Suppliers the covering authorities name, so a tester picks "Acme Cloud" rather than typing an address.
   const covering = await db()
-    .select({ counterparties: authorities.counterparties })
+    .select()
     .from(authorities)
     .where(and(eq(authorities.workspaceId, user.workspaceId), eq(authorities.status, "ACTIVE"), sql`${authorities.workflowIds} @> ${JSON.stringify([id])}::jsonb`));
   const suppliers = covering.flatMap((a) => a.counterparties.map((c) => ({ id: c.id, name: c.name ?? c.id })));
+  const terms: AuthorityTerms[] = covering.map((a) => ({
+    id: a.id,
+    name: a.name,
+    version: a.version,
+    actions: a.actions,
+    counterpartyRule: a.counterpartyRule,
+    counterparties: a.counterparties,
+    denied: a.deniedCounterparties,
+    currencies: a.currencies,
+    perTransactionMax: a.perTransactionMax,
+    budgetAmount: a.budgetAmount,
+    budgetPeriod: a.budgetPeriod,
+    purposeScope: a.purposeScope,
+    expiresAt: a.expiresAt?.toISOString() ?? null,
+  }));
+  // Agents that may ask through this workflow (active, unexpired, scoped to it).
+  const scoped = await db()
+    .select({ scopes: agents.scopes, expiresAt: agents.expiresAt })
+    .from(agents)
+    .where(and(eq(agents.workspaceId, user.workspaceId), eq(agents.status, "ACTIVE")));
+  const agentCount = scoped.filter((a) => (!a.expiresAt || a.expiresAt > new Date()) && a.scopes.some((s) => s.workflowId === id)).length;
   return (
     <FlowBuilder
       key={data.latest.id + data.latest.updatedAt.toISOString()}
@@ -41,6 +63,9 @@ export default async function FlowPage(props: PageProps<"/flows/[id]">) {
       autoTest={q.test === "1"}
       suppliers={suppliers}
       testExamples={data.wf.demoKey === DEMO_KEYS.cloud ? cloudTestExamples() : []}
+      authorities={terms}
+      agentCount={agentCount}
+      isOwner={user.role === "OWNER"}
     />
   );
 }

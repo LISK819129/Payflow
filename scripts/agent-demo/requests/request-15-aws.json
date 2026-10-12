@@ -1,0 +1,6 @@
+{
+  "amount": { "value": "15.00", "currency": "USD" },
+  "counterparty": "sb-mnylb53193692@personal.example.com",
+  "purpose": "EC2 GPU compute for model training",
+  "evidence": { "invoice_text": "From: Amazon Web Services\nInvoice AWS-9302\nFor: EC2 GPU compute, 3 hours\nTotal: $15.00 USD\nTerms: Net 30" }
+}

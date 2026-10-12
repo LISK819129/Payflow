@@ -17,7 +17,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <Link href="/" className="rounded-sm">
             <Wordmark size="sm" />
           </Link>
-          <div className="mt-1 truncate text-meta text-muted">{user.workspaceName}</div>
+          <div className="mt-1 truncate text-meta text-muted" title="The fictional company this demo workspace belongs to">
+            {user.workspaceName} · demo workspace
+          </div>
           <div
             className={`mt-3 inline-flex items-center gap-1.5 rounded-sm border px-1.5 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] ${environment.sandbox ? "border-line-strong text-ink-2" : "border-danger text-danger"}`}
             title={environment.sandbox ? "Every PayPal call goes to PayPal's Sandbox — test money only" : "LIVE PayPal"}

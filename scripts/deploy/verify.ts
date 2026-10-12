@@ -4,7 +4,7 @@
  * Checks the deployed PayFlow without moving money and, by default, without
  * spending OpenAI credit. PASS / WARN / FAIL per check; exit code 1 on any FAIL.
  *
- *   --scenarios     also run the three judge Test Runs through MCP (TEST mode: PayPal is never
+ *   --scenarios     also run the four judge Test Runs through MCP (TEST mode: PayPal is never
  *                   contacted). The first run makes a few small OpenAI calls (well under $0.05);
  *                   later runs replay the same request ids and cost nothing.
  *   --webhook-test  also prove real webhook delivery: creates ONE harmless Sandbox catalog product
@@ -95,7 +95,7 @@ async function main() {
         cloudId = scope?.workflow_id ?? null;
         r.add("MCP as the demo agent", tools.length === 7 && caps.agent?.status === "ACTIVE" ? "PASS" : "FAIL", `${tools.length} tools; ${caps.agent?.name} ${caps.agent?.status}; may request ${scope?.actions.join("/")} via ${scope?.workflow_name} (${scope?.modes.join("+")})`);
         if (scenarios && cloudId) {
-          const expected = ["WOULD_ALLOW", "WOULD_REVIEW", "WOULD_REVIEW"];
+          const expected = ["WOULD_ALLOW", "WOULD_REVIEW", "WOULD_REVIEW", "WOULD_DENY"];
           for (const [i, ex] of cloudTestExamples().entries()) {
             const v = ex.values as { amount: { value: string; currency_code: string }; counterparty: string; purpose: string; invoice: string };
             const args = { workflow_id: cloudId, action: "payout", amount: { value: v.amount.value, currency: v.amount.currency_code }, counterparty: v.counterparty, purpose: v.purpose, evidence: { invoice_text: v.invoice } };
@@ -194,7 +194,7 @@ async function main() {
   }
 
   const ok = r.summary("deploy:verify");
-  if (ok && !scenarios) console.log(`\nOptional: pnpm deploy:verify --scenarios${allowLocal ? " --allow-local" : ""}   (the three judge Test Runs through MCP; no money, < $0.05 of AI once)`);
+  if (ok && !scenarios) console.log(`\nOptional: pnpm deploy:verify --scenarios${allowLocal ? " --allow-local" : ""}   (the four judge Test Runs through MCP; no money, < $0.05 of AI once)`);
   await closeDb();
   // exitCode, not exit(): exiting while a failed socket is still closing trips a libuv assertion on Windows.
   process.exitCode = ok ? 0 : 1;

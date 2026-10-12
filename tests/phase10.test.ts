@@ -145,7 +145,7 @@ describe("judge / demo environment", () => {
     expect(await n(workflowRuns)).toBe(0);
     expect(await n(actionExecutions)).toBe(0);
     const verdicts = (await db().select().from(simulations).orderBy(asc(simulations.createdAt))).map((s) => s.verdict);
-    expect(verdicts).toEqual(["WOULD_ALLOW", "WOULD_REVIEW", "WOULD_REVIEW"]);
+    expect(verdicts).toEqual(["WOULD_ALLOW", "WOULD_REVIEW", "WOULD_REVIEW", "WOULD_DENY"]);
   });
 
   it("5 · the judge agent has normal, narrow scopes — payouts through Cloud procurement only", async () => {
@@ -175,6 +175,33 @@ describe("judge / demo environment", () => {
     expect((await decideApproval({ approvalId: ap.id, workspaceId: ws.id, userId: ar.agentId, decision: "APPROVED" }, deps)).error).toMatch(/Only owners and approvers/);
     expect((await call(c, "payflow_approve", { reference: r.reference })).error).toBeTruthy();
     expect(fake.calls).toHaveLength(0);
+  });
+
+  it("6b · Approve once covers one request: the authority is unchanged and the next identical request still needs a person", async () => {
+    const d = await restoreDemo({ workspaceId: ws.id, userId: owner.id });
+    const c = await connect(d.agentToken!);
+    const { approvals } = await import("@/server/db/schema");
+    const authority = async () => (await db().select().from(authorities).where(eq(authorities.demoKey, DEMO_KEYS.cloudAuthority)))[0];
+    const before = await authority();
+    const ask = (id: string) => call(c, "payflow_request_payment", { request_id: id, workflow_id: d.cloudWorkflowId, amount: { value: "650.00", currency: "USD" }, counterparty: demoSuppliers().aws, purpose: "GPU compute" });
+
+    const first = await ask("approve-once-first");
+    await drive();
+    const [ar] = await db().select().from(agentRequests).where(eq(agentRequests.reference, first.reference!));
+    const [ap] = await db().select().from(approvals).where(eq(approvals.runId, ar.runId!));
+    expect((await decideApproval({ approvalId: ap.id, workspaceId: ws.id, userId: owner.id, decision: "APPROVED" }, deps)).error).toBeUndefined();
+    await drive();
+    expect(fake.calls).toHaveLength(1); // that one request was paid…
+    expect(fake.calls[0]).toMatchObject({ amount: { value: "650.00" }, counterparty: demoSuppliers().aws });
+
+    const after = await authority();
+    expect({ version: after.version, perTransactionMax: after.perTransactionMax, counterparties: after.counterparties }).toEqual({ version: before.version, perTransactionMax: before.perTransactionMax, counterparties: before.counterparties });
+
+    // …and asking for the same thing again is not "now allowed": it waits for a person again.
+    const second = await ask("approve-once-second");
+    await drive();
+    expect((await call(c, "payflow_get_request", { reference: second.reference })).state).toBe("REVIEW_REQUIRED");
+    expect(fake.calls).toHaveLength(1);
   });
 
   it("7 · the environment indicator says Sandbox, and live PayPal is refused at boot", () => {
@@ -417,7 +444,7 @@ describe("security fixes", () => {
     await restoreDemo({ workspaceId: ws.id, userId: owner.id });
     const [a] = await db().select().from(authorities).where(eq(authorities.demoKey, DEMO_KEYS.cloudAuthority));
     expect(authoritySentence(a, ["Cloud procurement"])).toBe(
-      "Cloud procurement may pay Acme Cloud and AWS up to $500.00 USD per transaction, up to $5,000.00 a month, for cloud infrastructure for PixelForge's own systems: compute (including GPU), storage, networking, managed databases, and support for those services. Anything outside that purpose, over these limits or to anyone else goes to a person.",
+      "Cloud procurement may pay Acme Cloud and AWS up to $500.00 USD per transaction, up to $5,000.00 a month, for cloud infrastructure for the company's own systems: compute (including GPU), storage, networking, managed databases, and support for those services. Anything outside that purpose, over these limits or to anyone else goes to a person.",
     );
   });
 });

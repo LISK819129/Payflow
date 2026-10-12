@@ -82,7 +82,8 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
         (() => {
           const d = data.decisions.at(-1);
           if (!d) return null;
-          const snap = (d.authoritySnapshot as { perTransactionMax?: string | null }[] | null) ?? [];
+          const snap = (d.authoritySnapshot as { perTransactionMax?: string | null; purposeScope?: string | null }[] | null) ?? [];
+          const asked = (run.triggerPayload as { purpose?: unknown }).purpose;
           const human = data.approvals.find((a) => a.nodeId === d.nodeId)?.status ?? null;
           return (
             <div className="mt-8">
@@ -94,6 +95,7 @@ export default async function RunPage(props: PageProps<"/executions/[id]">) {
                 limits={snap.map((a) => a.perTransactionMax ?? null)}
                 agent={agentView ? { name: agentView.agent.name } : null}
                 humanDecision={human}
+                purpose={{ delegated: snap.find((a) => a.purposeScope)?.purposeScope ?? null, requested: typeof asked === "string" ? asked : null }}
               />
             </div>
           );

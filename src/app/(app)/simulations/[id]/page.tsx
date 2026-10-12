@@ -162,7 +162,21 @@ export default async function SimulationPage(props: PageProps<"/simulations/[id]
             limits={(decision.authoritySnapshot ?? []).map((a) => a.perTransactionMax ?? null)}
             agent={(s.trigger as { kind?: string; payload?: { agent?: { name: string } } }).kind === "agent_request" ? ((s.trigger as { payload: { agent?: { name: string } } }).payload.agent ?? null) : null}
             humanDecision={approvals.find((a) => a.assumed)?.status ?? null}
+            purpose={{
+              delegated: (decision.authoritySnapshot as { purposeScope?: string | null }[]).find((a) => a.purposeScope)?.purposeScope ?? null,
+              requested: typeof trigger.payload?.purpose === "string" ? trigger.payload.purpose : null,
+            }}
           />
+          {decision.evaluations.some((e) => e.check === "authority" && e.detail.startsWith("No delegated authority covers")) && (
+            <p className="mt-3 max-w-3xl text-body-sm text-ink-2">
+              This workflow has no delegated authority yet, so every payment it asks for waits for a person — even one its own rules allow. To let it pay on its own, a person delegates a bounded authority (who it may pay, how much, for what).{" "}
+              {user.role === "OWNER" && (
+                <Link href={`/authority/new?workflow=${s.workflowId}`} className="font-medium text-ink underline underline-offset-4">
+                  Create an authority for {workflowName}
+                </Link>
+              )}
+            </p>
+          )}
         </div>
       )}
 

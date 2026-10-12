@@ -53,6 +53,7 @@ export function DecisionChecks({
   limits = [],
   agent,
   humanDecision,
+  purpose,
 }: {
   evaluations: Evaluation[];
   decision: "ALLOW" | "REVIEW" | "DENY" | string;
@@ -62,6 +63,8 @@ export function DecisionChecks({
   /** For agent requests: identity and scope already passed at the gateway. */
   agent?: { name: string } | null;
   humanDecision?: string | null;
+  /** What the authority was delegated for, and what this request says it is for — shown side by side when Purpose fails. */
+  purpose?: { delegated: string | null; requested: string | null } | null;
 }) {
   const byCheck = new Map<string, Mark>();
   for (const e of evaluations) {
@@ -120,6 +123,15 @@ export function DecisionChecks({
             </li>
           ))}
         </ul>
+      )}
+      {byCheck.get("purpose") && byCheck.get("purpose")!.result !== "pass" && purpose?.delegated && purpose.requested && (
+        <dl className="mt-3 grid gap-x-4 gap-y-1 border-t border-line pt-3 text-body-sm sm:grid-cols-[150px_minmax(0,1fr)]">
+          <dt className="text-muted">Delegated for</dt>
+          <dd className="text-ink">{purpose.delegated}</dd>
+          <dt className="text-muted">Requested for</dt>
+          <dd className="font-medium text-ink">{purpose.requested}</dd>
+          <dd className="text-warn sm:col-start-2">The request states this purpose, and it falls outside what this authority was delegated for — so a person decides.</dd>
+        </dl>
       )}
     </div>
   );

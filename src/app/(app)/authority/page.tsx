@@ -212,7 +212,7 @@ export default async function AuthorityPage() {
     <>
       <PageHeader
         title="Authority"
-        lead="What each workflow is allowed to do with money: who, what, to whom, how much, how often, until when. Anything outside it goes to a person, or is refused."
+        lead="What each workflow — and every AI agent asking through it — is permitted to do with money: what, to whom, how much, how often, for what, until when. A workflow says what should happen; its authority is the ceiling for paying without a person. Anything outside goes to a person; anything it forbids is refused."
         actions={
           isOwner ? (
             <Link href="/authority/new" className={buttonClass("primary")}>

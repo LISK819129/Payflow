@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { exprRefs, type Expr } from "./expression";
-import { Graph, SPEC_BY_TYPE, type Edge, type GraphNode, type NodeSpec, type WorkflowGraph } from "./nodes";
+import { AGENT_REQUEST_FIELDS, Graph, SPEC_BY_TYPE, type Edge, type GraphNode, type NodeSpec, type WorkflowGraph } from "./nodes";
 
 /** The highest phase whose node executors exist. Bumped as phases land. */
 export const RUNTIME_PHASE = 9;
@@ -18,6 +18,10 @@ const GATE_PASS_PORTS: Record<string, string> = { pass: "pass", approved: "appro
  * Structural and safety validation of a workflow graph.
  * `forActivation` additionally requires every node's executor to exist.
  */
+/** Config keys that name who gets paid or billed. */
+const RECIPIENT_KEYS = ["receiverRef", "counterpartyRef", "recipientRef"] as const;
+const PAYPAL_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function validateGraph(input: unknown, opts: { forActivation?: boolean } = {}): ValidationResult {
   const issues: Issue[] = [];
   const err = (code: string, message: string, nodeId?: string) => issues.push({ severity: "error", code, message, nodeId });
@@ -139,6 +143,33 @@ export function validateGraph(input: unknown, opts: { forActivation?: boolean } 
         err("ref_not_guaranteed", `"${n.label ?? n.id}" reads ${ref}, but "${src}" does not run on every path before it`, n.id);
       } else if ((s.movesMoney || s.external) && SPEC_BY_TYPE[byId.get(src)!.type].isAI) {
         err("ai_feeds_money", `"${n.label ?? n.id}" takes ${ref} straight from an AI node; AI output may only inform policy or condition nodes`, n.id);
+      }
+    }
+  }
+
+  // Agent-request workflows: the trigger carries a fixed set of fields, and the recipient is one of them.
+  // (A manual trigger carries whatever the person types, and a PayPal event its own shape — not checked here.)
+  if (trigger?.type === "trigger.agent_request") {
+    const carried = "Agent requests carry trigger.counterparty (the recipient's PayPal email), trigger.amount, trigger.purpose, trigger.invoice, trigger.contract and trigger.captureId";
+    for (const n of nodes) {
+      const s = SPEC_BY_TYPE[n.type];
+      const label = n.label ?? n.id;
+      for (const ref of nodeRefs(n, s)) {
+        if (!ref.startsWith("trigger.")) continue;
+        const field = ref.split(".")[1];
+        if (!(field in AGENT_REQUEST_FIELDS)) err("unknown_agent_field", `"${label}" reads ${ref}, but an agent request has no "${field}". ${carried}`, n.id);
+      }
+      // Who is asked to be paid: always the request's own counterparty — never the requester, never another field.
+      const recipientRefs = [...RECIPIENT_KEYS.map((k) => n.config[k]), n.type === "policy.counterparty" ? n.config.ref : undefined].filter((v): v is string => typeof v === "string" && v.startsWith("trigger."));
+      for (const ref of recipientRefs) {
+        if (ref !== "trigger.counterparty" && ref.split(".")[1] in AGENT_REQUEST_FIELDS) {
+          err("requester_not_recipient", `"${label}" takes the recipient from ${ref}. In an agent request the recipient is trigger.counterparty; who is asking (trigger.agent) is never who is paid`, n.id);
+        }
+      }
+      if (n.type === "policy.counterparty" && n.config.ref === "trigger.counterparty") {
+        for (const entry of (n.config.allowed as string[] | undefined) ?? []) {
+          if (!PAYPAL_EMAIL.test(entry)) err("unmatchable_counterparty", `"${label}" allows "${entry}", which is not a PayPal email address. An agent request names its recipient by PayPal email, so this entry could never match — and an agent's or company's name is not a recipient`, n.id);
+        }
       }
     }
   }

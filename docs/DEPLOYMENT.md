@@ -25,7 +25,7 @@ This page is everything needed to put PayFlow online for judging on Render, chec
 [ ] Run judge Test Run scenarios
 ```
 
-Each item is a section below (§2–§12; §13 is optional).
+Each item is a section below (§2–§12). Then §13 (one fresh settled payment on the hosted site — recommended) and §14 (what to give judges).
 
 ---
 
@@ -89,7 +89,7 @@ PASS  render.yaml — exactly the 3 approved resources, 1 web instance, auto-dep
 WARN  Render validator — file accepted; Render needs a payment method before it can create 3 paid resources
 ```
 
-The WARN is expected until §2 is done (it only appears if the optional Render CLI is installed and logged in). After §2 it becomes `PASS  Render validator — Render accepts render.yaml`. Any **FAIL** means `render.yaml` was changed — do not continue; `git checkout render.yaml`.
+The WARN is expected until §2 is done (it only appears if the optional Render CLI is installed and logged in; if `render` is not on your PATH, point at it first, e.g. in PowerShell `$env:RENDER_CLI="D:\.cache\bin\render.exe"` — without the CLI the line reads *Render CLI not found — skipped*, which is fine). After §2 it becomes `PASS  Render validator — Render accepts render.yaml`. Any **FAIL** means `render.yaml` was changed — do not continue; `git checkout render.yaml`.
 
 ## 2. Add Render payment method
 
@@ -254,28 +254,59 @@ Give judges the URL, the email and the password **privately** (not in the public
 
 ## 12. Run judge Test Run scenarios
 
-In the app as the judge: left menu **Flows** → **Cloud procurement** → **Test this flow** → under *Fill in an example* pick each one → **Run test**:
+In the app as the judge: left menu **Workflows** → **Cloud procurement** → **Test run** → under *Fill in an example* pick each one → **Run test**:
 
 | Example | Expected verdict | Why |
 |---|---|---|
 | $185 · Acme Cloud · GPU compute | **WOULD ALLOW** | Supplier ✓ Currency ✓ Amount ✓ Budget ✓ Purpose ✓ Risk ✓ |
 | $470 · Acme Cloud · digital gift cards | **WOULD REQUIRE REVIEW** | Purpose ✕ — gift cards are not cloud infrastructure (AI evidence) |
 | $650 · AWS · GPU compute | **WOULD REQUIRE REVIEW** | Amount ✕ — exceeds the $500 delegated limit by $150 |
+| $120 · Blocked Vendor | **WOULD DENY** | Supplier ✕ — on the deny list; PayPal is never contacted |
 
 Each is marked *Test input* — PayPal is never contacted and no budget is reserved. The **Demo guide** page (left menu) walks judges through the rest in ~5 minutes.
 
 Deployment done. ✔
 
-## 13. Optional: one real settled payout on the hosted site
+## 13. Recommended: one fresh settled payment on the hosted site
 
-Judges see real PayPal Sandbox evidence most clearly in an Intent Receipt that ends **Settled**. This moves Sandbox test money ($185 from the PixelForge Sandbox merchant to the Acme Cloud Sandbox personal account) — do it only if you want that evidence. In PowerShell, from `D:\Payflow` (use your URL):
+**The hosted database starts empty.** The settled receipt from local testing (`PF-3YA8N6MA`, evidence/phase12/06-settled-proof) lives only in the local database and in the repository's evidence folder — it will **not** appear on the hosted site. Nothing is copied or seeded as fake history. So, for judges to see a complete real payment *in the hosted app*, make one there:
+
+It moves Sandbox test money — **$15** from the PixelForge Sandbox merchant to the AWS Demo Sandbox personal account (the same request that settled locally). §9 (webhook) must be done first, or it will stay *Submitted to PayPal*. In PowerShell, from the project folder (use your URL):
 
 ```bash
-$env:AGENT_TOKEN_FILE=".env.agent.deploy.local"; $env:PAYFLOW_MCP_URL="https://payflow-web.onrender.com/api/mcp"; pnpm agent:mcp call payflow_request_payment scripts/agent-demo/requests/request-185-acme.json
+$env:AGENT_TOKEN_FILE=".env.agent.deploy.local"; $env:PAYFLOW_MCP_URL="https://payflow-web.onrender.com/api/mcp"; pnpm agent:mcp call payflow_request_payment scripts/agent-demo/requests/request-15-aws.json
 ```
 
-Expected: `"state": "ACCEPTED"`. Within about a minute the judge account's **Agents → Cloud Procurement Agent** shows the request *Submitted to PayPal*, then **Settled** when PayPal's signed `PAYMENT.PAYOUTS-ITEM.SUCCEEDED` webhook arrives (§9 must be done). For a waiting approval judges can open, run the same command with `request-650-aws.json` (it stops for a person; nothing is paid unless someone presses **Approve once**; it expires after 24 hours).
+Expected: `"state": "ACCEPTED"`. Within about a minute, **Agents → Cloud Procurement Agent** shows the request *Submitted to PayPal*, then **Settled** when PayPal's signed `PAYMENT.PAYOUTS-ITEM.SUCCEEDED` webhook arrives. Open its receipt: *Authority: ALLOW · Human approval: not needed · PayPal: SETTLED · integrity verified*. Run it **once**; each run is a new payment.
 
+If it stays *Submitted to PayPal* for more than a few minutes: the webhook is not reaching the site — re-run §9, then `pnpm deploy:verify --webhook-test`. Do not send another payment to "fix" it; the status updates when PayPal's event arrives (PayPal retries for up to 3 days).
+
+For a waiting approval judges can open, run the same command with `request-650-aws.json` (it stops for a person; nothing is paid unless someone presses **Approve once**; it expires after 24 hours, so do it shortly before judging and again if needed).
+
+## 14. The judge account — what it can do, and what to give judges
+
+**Give judges exactly this** (in Devpost's testing instructions — not in the README or any public text):
+
+```
+URL:       https://<your-app>.onrender.com
+Email:     judge@payflow.demo
+Password:  <the SEED_OWNER_PASSWORD you typed into Render in §5>
+Start at:  Home → "See it in 3 minutes" (the Demo guide)
+```
+
+What a judge signed in with that account can and cannot do:
+
+| | |
+|---|---|
+| Sandbox only | Every screen shows **PayPal · Sandbox**; PayFlow refuses to start against live PayPal. No real money exists in this deployment. |
+| Test runs | Unlimited to look at, rate-limited to 60 per hour; they never contact PayPal. |
+| AI spend | Capped in code: $1 per rolling 24 hours and $5 in total on this database; 12 AI drafts per person per hour. When a cap is reached the app says so and falls back to a person — it never overspends. |
+| Authority is never bypassed | The judge is the workspace **owner**: they can approve a waiting request (**Approve once** sends that one Sandbox payout), and they can edit authorities — as an owner should. Demo mode gives no shortcut around the authority engine. |
+| Sandbox payouts | Possible only through an approval or an agent request inside an authority (demo authority: ≤ $500 each, $5,000 a month). It is test money from the Sandbox merchant's balance. There is no extra global cap: someone deliberately creating new authorities could send more Sandbox payouts. |
+| Nothing is deleted | No screen deletes records. Pausing a workflow, suspending an authority or revoking the demo agent is undone by **Settings → Restore demo setup** (which never contacts PayPal). |
+| No secrets shown | Settings shows that keys are *present*, the public PayPal app id and webhook id — never a key. An agent credential is shown once, only to whoever registers a new agent. |
+
+If the account is misused or the password leaks: `pnpm deploy:judge-password` sets a new one and signs everyone out; **Restore demo setup** resets the demo; deleting the three Render resources ends it.
 
 ---
 

@@ -26,8 +26,8 @@ export default async function FlowsPage(props: PageProps<"/flows">) {
   return (
     <>
       <PageHeader
-        title="Flows"
-        lead="Each flow is a versioned graph. Edits never change a version that is running; activation is always a person's decision."
+        title="Workflows"
+        lead="A workflow says what should happen when a request arrives — from an AI agent, a person or PayPal. What it may actually pay is bounded by its authority. Versions are never edited in place, and only a person activates one."
         actions={
           <form action={createWorkflowAction} className="flex items-end gap-2">
             <label className="block">

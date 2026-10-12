@@ -1,0 +1,179 @@
+{
+  "source": "REAL_OPENAI — gpt-5.4-mini compilation saved in the local development database on 2026-10-06 (workflow 05b3e6d3, v1); recorded here so the regression test replays it at $0",
+  "instruction": "Pay approved software suppliers automatically when the payment is in USD and is $200 or less. If the payment is above $200, ask me for approval before paying. Never pay Blocked Vendor automatically. (Answers: Acme Cloud sb-yluat53193698@personal.example.com, AWS sb-mnylb53193692@personal.example.com; Blocked Vendor must always be stopped.)",
+  "graph": {
+    "edges": [
+      {
+        "to": "approved_supplier",
+        "from": "start",
+        "port": "next"
+      },
+      {
+        "to": "usd_only",
+        "from": "approved_supplier",
+        "port": "pass"
+      },
+      {
+        "to": "blocked",
+        "from": "approved_supplier",
+        "port": "block"
+      },
+      {
+        "to": "needs_review",
+        "from": "approved_supplier",
+        "port": "error"
+      },
+      {
+        "to": "under_limit",
+        "from": "usd_only",
+        "port": "pass"
+      },
+      {
+        "to": "blocked",
+        "from": "usd_only",
+        "port": "block"
+      },
+      {
+        "to": "needs_review",
+        "from": "usd_only",
+        "port": "error"
+      },
+      {
+        "to": "pay_supplier",
+        "from": "under_limit",
+        "port": "pass"
+      },
+      {
+        "to": "manual_approval",
+        "from": "under_limit",
+        "port": "block"
+      },
+      {
+        "to": "needs_review",
+        "from": "under_limit",
+        "port": "error"
+      },
+      {
+        "to": "pay_supplier",
+        "from": "manual_approval",
+        "port": "approved"
+      },
+      {
+        "to": "rejected",
+        "from": "manual_approval",
+        "port": "rejected"
+      },
+      {
+        "to": "done",
+        "from": "pay_supplier",
+        "port": "done"
+      },
+      {
+        "to": "needs_review",
+        "from": "pay_supplier",
+        "port": "error"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Start",
+        "config": {}
+      },
+      {
+        "id": "approved_supplier",
+        "type": "policy.counterparty",
+        "label": "Approved supplier?",
+        "config": {
+          "ref": "trigger.supplierEmail",
+          "allowed": [
+            "sb-yluat53193698@personal.example.com",
+            "sb-mnylb53193692@personal.example.com"
+          ]
+        }
+      },
+      {
+        "id": "usd_only",
+        "type": "policy.currency",
+        "label": "USD only",
+        "config": {
+          "allowed": [
+            "USD"
+          ],
+          "amountRef": "trigger.amount"
+        }
+      },
+      {
+        "id": "under_limit",
+        "type": "policy.amount_limit",
+        "label": "At most $200?",
+        "config": {
+          "max": {
+            "value": "200.00",
+            "currency": "USD"
+          },
+          "amountRef": "trigger.amount",
+          "comparison": "lte"
+        }
+      },
+      {
+        "id": "manual_approval",
+        "type": "control.approval",
+        "label": "Approve over $200",
+        "config": {
+          "reason": "Approve payout over $200",
+          "amountRef": "trigger.amount",
+          "counterpartyRef": "trigger.supplierEmail"
+        }
+      },
+      {
+        "id": "pay_supplier",
+        "type": "paypal.payout",
+        "label": "Pay supplier",
+        "config": {
+          "note": "Approved software supplier payment",
+          "amountRef": "trigger.amount",
+          "receiverRef": "trigger.supplierEmail"
+        }
+      },
+      {
+        "id": "done",
+        "type": "control.terminal",
+        "label": "Done",
+        "config": {
+          "message": "Payout completed.",
+          "outcome": "completed"
+        }
+      },
+      {
+        "id": "blocked",
+        "type": "control.terminal",
+        "label": "Blocked",
+        "config": {
+          "message": "Payment blocked by policy.",
+          "outcome": "blocked"
+        }
+      },
+      {
+        "id": "rejected",
+        "type": "control.terminal",
+        "label": "Rejected",
+        "config": {
+          "message": "Approval was rejected.",
+          "outcome": "rejected"
+        }
+      },
+      {
+        "id": "needs_review",
+        "type": "control.terminal",
+        "label": "Needs review",
+        "config": {
+          "message": "The run needs review because required data was missing or a step errored.",
+          "outcome": "needs_review"
+        }
+      }
+    ],
+    "schemaVersion": 1
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "evidenceType": "REAL_PAYPAL_SANDBOX — read-only GET /v1/payments/payouts/{batch_id}",
+  "checkedAt": "2026-10-11T15:08:40.851Z",
+  "debugId": "ca48ec81658cb",
+  "batch": {
+    "payout_batch_id": "PNEA99DU4KEVW",
+    "batch_status": "SUCCESS",
+    "time_completed": "2026-10-11T15:07:58Z",
+    "sender_batch_id": "pf:748c83cf-c359-4c45-81b7-605c944aa28e:pay"
+  },
+  "items": [
+    {
+      "payout_item_id": "KH6PMQMW9DAMJ",
+      "transaction_id": "9DK050923G4358331",
+      "transaction_status": "SUCCESS",
+      "receiver": "sb-mnylb53193692@personal.example.com",
+      "amount": {
+        "currency": "USD",
+        "value": "15.00"
+      }
+    }
+  ]
+}

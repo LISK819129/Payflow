@@ -2,28 +2,12 @@
 
 import { FlaskConical } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { testRunAction } from "@/app/(app)/simulations/actions";
 import { Button } from "@/components/ui";
 import type { WorkflowGraph } from "@/server/workflow/dsl/nodes";
-
-type Field = { key: string; kind: "money" | "text" | "long" };
-
-const LONG = /invoice|contract|description|note|purpose|bill|memo|details/i;
-
-/** Fields the graph reads from `trigger.*`, typed by how they are used. */
-function fieldsFor(graph: WorkflowGraph): Field[] {
-  const out = new Map<string, Field["kind"]>();
-  const visit = (v: unknown, prop: string) => {
-    if (typeof v === "string") {
-      const m = /^trigger\.([A-Za-z0-9_]+)/.exec(v);
-      if (m && !out.has(m[1])) out.set(m[1], /amount|payment/i.test(prop) && !/ref$/i.test(m[1]) ? "money" : LONG.test(m[1]) ? "long" : "text");
-    } else if (Array.isArray(v)) v.forEach((x) => visit(x, prop));
-    else if (v && typeof v === "object") Object.entries(v).forEach(([k, x]) => visit(x, k));
-  };
-  graph.nodes.forEach((n) => visit(n.config, ""));
-  return [...out].map(([key, kind]) => ({ key, kind }));
-}
+import { emptyFields, fieldLabel, fieldsFor, manualPayload, RESULT_NAVIGATION_FALLBACK_MS, TEST_RUN_WAIT_MS, withTimeout, type MoneyInput } from "./test-input";
 
 const input = "mt-1 block w-full border-0 border-b border-field bg-transparent pb-1.5 text-body outline-none focus:border-ink";
 
@@ -50,19 +34,21 @@ export function TestRunDialog({
   const eventTypes = (trigger?.config as { eventTypes?: string[] } | undefined)?.eventTypes ?? [];
   const fields = useMemo(() => fieldsFor(graph).filter((f) => !(isEvent && ["amount", "payer", "resourceId", "invoiceId", "eventType", "resource"].includes(f.key))), [graph, isEvent]);
   const [values, setValues] = useState<Record<string, string>>({});
-  const [money, setMoney] = useState<Record<string, { value: string; currency: string }>>({});
+  const [money, setMoney] = useState<Record<string, MoneyInput>>({});
   const [event, setEvent] = useState({ eventType: eventTypes[0] ?? "", amount: "", currency: "USD", payer: "", resourceId: "", invoiceId: "" });
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  // idle → running (waiting for PayFlow) → opening (result saved, navigating). Never stuck: see run().
+  const [phase, setPhase] = useState<"idle" | "running" | "opening">("idle");
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
+  // Empty fields the person has already been told about; a second press tests them as missing.
+  const [acceptedEmpty, setAcceptedEmpty] = useState<string | null>(null);
+  const fallback = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (fallback.current) clearTimeout(fallback.current);
+  }, []);
 
   const build = (): Record<string, unknown> => {
-    const p: Record<string, unknown> = {};
-    for (const f of fields) {
-      if (f.kind === "money") {
-        const m = money[f.key];
-        if (m?.value) p[f.key] = { value: m.value.trim(), currency_code: (m.currency || "USD").trim().toUpperCase() };
-      } else if (values[f.key]) p[f.key] = values[f.key];
-    }
+    const p = manualPayload(fields, values, money);
     if (!isEvent) return p;
     // Shaped like a normalised PayPal event, but labelled as test input everywhere.
     return {
@@ -81,21 +67,54 @@ export function TestRunDialog({
     };
   };
 
-  const run = () =>
-    start(async () => {
-      setError(null);
-      const r = await testRunAction(workflowId, JSON.stringify(build()));
-      if (r.ok) router.push(`/simulations/${r.id}`);
-      else setError(r.error);
-    });
+  const missing = isEvent ? [] : emptyFields(fields, values, money);
+
+  const run = async () => {
+    if (phase !== "idle") return;
+    // An empty field is a legitimate test ("what if the amount is missing?"), but never a silent one.
+    const key = missing.join(",");
+    if (missing.length && acceptedEmpty !== key) {
+      setAcceptedEmpty(key);
+      setError(`${missing.map(fieldLabel).join(", ")} ${missing.length === 1 ? "is" : "are"} empty. This flow reads ${missing.length === 1 ? "it" : "them"}, so the test will treat ${missing.length === 1 ? "it" : "them"} as missing. Fill ${missing.length === 1 ? "it" : "them"} in, or press Run test again to test that.`);
+      return;
+    }
+    setError(null);
+    setPhase("running");
+    let r: Awaited<ReturnType<typeof testRunAction>> | "timeout";
+    try {
+      r = await withTimeout(testRunAction(workflowId, JSON.stringify(build())), TEST_RUN_WAIT_MS);
+    } catch (e) {
+      setPhase("idle");
+      setError(`The test could not be run (${(e as Error).message || "no answer from the server"}). Nothing was sent to PayPal. Try again.`);
+      return;
+    }
+    if (r === "timeout") {
+      setPhase("idle");
+      setError(`No answer from PayFlow after ${TEST_RUN_WAIT_MS / 1000} seconds. Nothing was sent to PayPal and no budget was reserved — a test never does. Try again; if it keeps happening, check that the app is running.`);
+      return;
+    }
+    if (!r.ok) {
+      setPhase("idle");
+      setError(r.error);
+      return;
+    }
+    const url = `/simulations/${r.id}`;
+    setResultUrl(url);
+    setPhase("opening");
+    router.push(url);
+    // If the in-app navigation stalls, load the saved result directly. A full page load is the point
+    // here: it does not depend on the client router that failed to finish.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    fallback.current = setTimeout(() => window.location.assign(url), RESULT_NAVIGATION_FALLBACK_MS);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/20 px-4" role="dialog" aria-modal="true" aria-labelledby="test-title">
       <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-lg border border-line bg-surface p-6 shadow-pop">
         <h2 id="test-title" className="inline-flex items-center gap-2 text-title font-semibold">
-          <FlaskConical size={18} aria-hidden /> Test this flow
+          <FlaskConical size={18} aria-hidden /> Test run
         </h2>
-        <p className="mt-1 text-body-sm text-muted">See exactly how this workflow handles a transaction — without moving money. PayPal is never contacted and no budget is reserved.</p>
+        <p className="mt-1 text-body-sm text-muted">See what PayFlow would decide for a request — with the real rules — without contacting PayPal. Nothing is paid and no budget is reserved.</p>
         <div className="mt-4 inline-block rounded-sm border border-line-strong px-1.5 py-px text-label font-semibold uppercase tracking-[0.06em] text-muted">Test input — user provided</div>
         {examples.length > 0 && (
           <div className="mt-4">
@@ -138,7 +157,7 @@ export function TestRunDialog({
               </label>
               <label className="block">
                 <span className="pf-label">Amount</span>
-                <input aria-label="Amount" className={input} inputMode="decimal" value={event.amount} onChange={(e) => setEvent({ ...event, amount: e.target.value })} placeholder="120.00" />
+                <input aria-label="Amount" className={input} inputMode="decimal" value={event.amount} onChange={(e) => setEvent({ ...event, amount: e.target.value })} />
               </label>
               <label className="block">
                 <span className="pf-label">Currency</span>
@@ -158,18 +177,18 @@ export function TestRunDialog({
             f.kind === "money" ? (
               <div key={f.key} className="grid grid-cols-[1fr_96px] gap-4">
                 <label className="block">
-                  <span className="pf-label">{f.key}</span>
-                  <input aria-label={f.key} className={input} inputMode="decimal" value={money[f.key]?.value ?? ""} onChange={(e) => setMoney({ ...money, [f.key]: { value: e.target.value, currency: money[f.key]?.currency ?? "USD" } })} placeholder="180.00" />
+                  <span className="pf-label">{fieldLabel(f.key)}</span>
+                  <input aria-label={fieldLabel(f.key)} className={input} inputMode="decimal" value={money[f.key]?.value ?? ""} onChange={(e) => setMoney({ ...money, [f.key]: { value: e.target.value, currency: money[f.key]?.currency ?? "USD" } })} />
                 </label>
                 <label className="block">
                   <span className="pf-label">Currency</span>
-                  <input aria-label={`${f.key} currency`} className={input} value={money[f.key]?.currency ?? "USD"} onChange={(e) => setMoney({ ...money, [f.key]: { value: money[f.key]?.value ?? "", currency: e.target.value } })} />
+                  <input aria-label={`${fieldLabel(f.key)} currency`} className={input} value={money[f.key]?.currency ?? "USD"} onChange={(e) => setMoney({ ...money, [f.key]: { value: money[f.key]?.value ?? "", currency: e.target.value } })} />
                 </label>
               </div>
             ) : SUPPLIER_KEYS.has(f.key) && suppliers.length > 0 ? (
               <label key={f.key} className="block">
-                <span className="pf-label">Supplier</span>
-                <select aria-label={f.key} className={input} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}>
+                <span className="pf-label">{fieldLabel(f.key)}</span>
+                <select aria-label={fieldLabel(f.key)} className={input} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}>
                   <option value="">Choose…</option>
                   {suppliers.map((sp) => (
                     <option key={sp.id} value={sp.id}>
@@ -178,28 +197,40 @@ export function TestRunDialog({
                   ))}
                   {values[f.key] && !suppliers.some((sp) => sp.id === values[f.key]) && <option value={values[f.key]}>{values[f.key]}</option>}
                 </select>
-                <input aria-label={`${f.key} (other)`} className={`${input} mt-2 font-mono text-meta`} placeholder="or another PayPal email" value={suppliers.some((sp) => sp.id === values[f.key]) ? "" : (values[f.key] ?? "")} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+                <input aria-label={`${fieldLabel(f.key)} (other)`} className={`${input} mt-2 font-mono text-meta`} placeholder="or another PayPal email" value={suppliers.some((sp) => sp.id === values[f.key]) ? "" : (values[f.key] ?? "")} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
               </label>
             ) : (
               <label key={f.key} className="block">
-                <span className="pf-label">{f.key}</span>
+                <span className="pf-label">{fieldLabel(f.key)}</span>
                 {f.kind === "long" ? (
-                  <textarea aria-label={f.key} className={`${input} h-28 font-mono text-meta`} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+                  <textarea aria-label={fieldLabel(f.key)} className={`${input} h-28 font-mono text-meta`} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
                 ) : (
-                  <input aria-label={f.key} className={input} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+                  <input aria-label={fieldLabel(f.key)} className={input} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
                 )}
               </label>
             ),
           )}
         </div>
 
-        {error && <p className="mt-3 text-body-sm text-danger">{error}</p>}
+        {error && (
+          <p className="mt-3 text-body-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+        {resultUrl && (
+          <p className="mt-3 text-body-sm text-ink-2" role="status">
+            Test finished.{" "}
+            <Link href={resultUrl} className="font-medium text-ink underline underline-offset-4">
+              Open the result
+            </Link>
+          </p>
+        )}
         <div className="mt-6 flex items-center justify-end gap-2">
           <Button variant="quiet" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={run} disabled={pending}>
-            <FlaskConical size={14} aria-hidden /> {pending ? "Testing…" : "Run test"}
+          <Button variant="primary" onClick={run} disabled={phase !== "idle"}>
+            <FlaskConical size={14} aria-hidden /> {phase === "running" ? "Testing…" : phase === "opening" ? "Opening result…" : "Run test"}
           </Button>
         </div>
       </div>

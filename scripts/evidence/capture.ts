@@ -17,7 +17,7 @@
  *                                            (double: clicks Start twice) and waits for it to settle
  *     approve <runId> [scenario] [note]       as above, into a named scenario
  *     authority <scenario> <json>            owner creates an authority in the Authority form
- *     test-run <workflowId> <scenario> <payloadFile>  owner fills "Test this flow" (TEST_INPUT) and
+ *     test-run <workflowId> <scenario> <payloadFile>  owner fills a Test run (TEST_INPUT) and
  *                                            captures the result: no money moves, PayPal is not contacted
  *     assume <simulationId> <scenario> approved|rejected  "Assume …" inside a test (creates no approval)
  *     observe <workflowId> <scenario>        owner switches Observe Mode on for a draft
@@ -38,6 +38,7 @@ import { spentUsd } from "../../src/server/ai/usage";
 import { closeDb } from "../../src/server/db/client";
 import { PHASE4_STOP_USD, SCENARIOS, type ScenarioKey } from "./scenarios";
 import { writeAgentToken } from "../agent-demo/agent-token";
+import { fieldLabel } from "../../src/components/simulation/test-input";
 
 const BASE = "http://localhost:3000";
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
@@ -426,14 +427,14 @@ async function testRun(workflowId: string, scenario: string, payloadFile: string
     await page.goto(`${BASE}/flows/${workflowId}`);
     await page.waitForSelector(".react-flow__node");
     await page.waitForTimeout(1200);
-    await page.getByRole("button", { name: "Test this flow" }).click();
+    await page.getByRole("button", { name: "Test run", exact: true }).click();
     const dialog = page.getByRole("dialog");
     for (const [key, v] of Object.entries(payload)) {
       if (v && typeof v === "object") {
         const m = v as { value: string; currency_code: string };
-        await dialog.getByLabel(key, { exact: true }).fill(m.value);
-        await dialog.getByLabel(`${key} currency`, { exact: true }).fill(m.currency_code);
-      } else await dialog.getByLabel(key, { exact: true }).fill(String(v));
+        await dialog.getByLabel(fieldLabel(key), { exact: true }).fill(m.value);
+        await dialog.getByLabel(`${fieldLabel(key)} currency`, { exact: true }).fill(m.currency_code);
+      } else await dialog.getByLabel(key.endsWith(" (other)") ? `${fieldLabel(key.slice(0, -8))} (other)` : fieldLabel(key), { exact: true }).fill(String(v));
     }
     await shot(page, "test-input");
     await dialog.getByRole("button", { name: "Run test" }).click();
@@ -491,7 +492,7 @@ async function registerAgentStep(scenario: string, name: string, workflowName: s
     await page.goto(`${BASE}/agents`);
     await page.getByRole("button", { name: "Register an agent" }).click();
     await page.getByLabel("Name").fill(name);
-    await page.getByLabel("What it does (optional)").fill("Pays cloud suppliers' invoices for PixelForge Studio");
+    await page.getByLabel("What it does (optional)").fill("Pays cloud suppliers' invoices");
     await page.locator("section[aria-label='Register an agent'] li").filter({ hasText: workflowName }).locator("input[type=checkbox]").first().check();
     await page.waitForTimeout(500);
     await shot(page, "register-agent-form", true);

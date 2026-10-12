@@ -98,6 +98,7 @@ export function ApprovalCard({ v, canDecide, now }: { v: ApprovalView; canDecide
             limits={v.authorities.map((a) => a.perTransactionMax ?? null)}
             agent={v.agent ? { name: v.agent.name } : null}
             humanDecision={v.status}
+            purpose={{ delegated: v.authorities.find((a) => a.purposeScope)?.purposeScope ?? null, requested: v.requestedPurpose }}
           />
         </div>
       )}

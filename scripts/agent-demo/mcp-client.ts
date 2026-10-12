@@ -36,11 +36,12 @@ async function main() {
       const args = JSON.parse(readFileSync(b, "utf8")) as Record<string, unknown>;
       // Like any agent: discover the workflow it may ask through, and use a fresh request id
       // unless the file pins one (the same id replays the stored answer instead of asking again).
-      if (!args.workflow_id && a !== "payflow_list_capabilities") {
+      const asks = ["payflow_request_payment", "payflow_request_refund", "payflow_test_request"].includes(a);
+      if (asks && !args.workflow_id) {
         const caps = (await client.callTool({ name: "payflow_list_capabilities", arguments: {} })).structuredContent as { can_request?: { workflow_id: string }[] };
         args.workflow_id = caps.can_request?.[0]?.workflow_id;
       }
-      if (!args.request_id && a !== "payflow_list_capabilities" && a !== "payflow_get_authority") args.request_id = `demo-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
+      if (asks && !args.request_id) args.request_id = `demo-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
       exchange.request = { tool: a, arguments: args };
       const r = await client.callTool({ name: a, arguments: args });
       exchange.response = { isError: !!r.isError, structuredContent: r.structuredContent ?? null, text: (r.content as { text?: string }[])[0]?.text ?? null };

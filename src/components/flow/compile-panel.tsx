@@ -4,7 +4,7 @@ import { ArrowRight, CircleAlert, CircleCheck, CircleX, Sparkles } from "lucide-
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { compileAction, type CompileActionResult } from "@/app/(app)/flows/ai-actions";
-import { Button, ProvenanceTag, SetupRequired } from "@/components/ui";
+import { Button, buttonClass, ProvenanceTag, SetupRequired } from "@/components/ui";
 import type { WorkflowGraph } from "@/server/workflow/dsl/nodes";
 import { CompileStages, type Stage } from "./compile-stages";
 import { RevealGraph } from "./reveal-graph";
@@ -239,10 +239,26 @@ function Verdict({ result }: { result: Exclude<CompileActionResult, { status: "S
             ))}
             {result.attempts > 1 && <Line tone="warn">The first answer failed validation; this is the one permitted repair</Line>}
           </ul>
-          <p className="mt-4 text-body-sm text-muted">Saved as a draft. Nothing is active until you activate it.</p>
-          <Link href={`/flows/${result.workflowId}`} className="mt-3 inline-flex items-center gap-1.5 text-body font-medium text-ink hover:underline">
-            Open draft in Flow Builder <ArrowRight size={14} aria-hidden />
-          </Link>
+          <div className="mt-5 border-t border-line pt-4">
+            <div className="text-body font-semibold text-ink">Your payment rule is ready — as a draft. Nothing runs yet.</div>
+            <ol className="mt-2 space-y-1 text-body-sm text-ink-2">
+              <li>
+                <span className="font-mono text-meta text-faint">1</span> <span className="text-ink">Test it</span> — see what PayFlow would decide for a few payments. PayPal is not contacted.
+              </li>
+              <li>
+                <span className="font-mono text-meta text-faint">2</span> <span className="text-ink">Activate it</span> — only a person can.
+              </li>
+              <li>
+                <span className="font-mono text-meta text-faint">3</span> <span className="text-ink">Let requests in</span> — the rule page shows where they come from (a person, an AI agent or PayPal), and whether an authority lets it pay without asking you.
+              </li>
+            </ol>
+            <Link href={`/flows/${result.workflowId}?test=1`} className={`mt-4 ${buttonClass("primary")}`}>
+              Test the rule <ArrowRight size={14} aria-hidden />
+            </Link>
+            <Link href={`/flows/${result.workflowId}`} className="ml-3 inline-flex items-center gap-1.5 text-body-sm font-medium text-ink hover:underline">
+              Open the rule <ArrowRight size={13} aria-hidden />
+            </Link>
+          </div>
         </div>
       );
     case "NEEDS_CLARIFICATION":
