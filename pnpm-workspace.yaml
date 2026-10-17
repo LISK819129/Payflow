@@ -3,3 +3,10 @@ allowBuilds:
   esbuild: true
   sharp: false
   unrs-resolver: false
+
+allowBuilds:
+  '@embedded-postgres/windows-x64': true
+  '@embedded-postgres/linux-x64': true
+  esbuild: true
+  sharp: false
+  unrs-resolver: false
